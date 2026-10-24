@@ -240,9 +240,18 @@ export const readWindowData = (): WindowData | null => {
     }
   }
 
-  // Backward compatibility: backend hiện phát phẳng cho trang chủ
+  // Backward compatibility: backend phát payload phẳng (không bọc envelope).
   if (isHomePayload(raw)) {
     return { page: 'home', payload: raw, notFound: false }
+  }
+  if (isMachineDetailPayload(raw)) {
+    return { page: 'machine_detail', payload: raw, notFound: false }
+  }
+  if (isMachineListPayload(raw)) {
+    return { page: 'machine_list', payload: raw, notFound: false }
+  }
+  if (isTopupPayload(raw)) {
+    return { page: 'topup', payload: raw, notFound: false }
   }
 
   // Không nhận diện được — coi như payload thô
