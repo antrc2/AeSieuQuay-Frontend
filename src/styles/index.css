@@ -1,0 +1,133 @@
+@import "tailwindcss";
+
+/* Dark variant theo class .dark trên <html> */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* =========================================
+   DESIGN TOKENS — AeSieuQuay
+   Semantic tokens: bg/surface/fg/muted/border
+   ========================================= */
+
+:root {
+  /* Brand (giữ nguyên giữa 2 theme) */
+  --brand: #1e90ff;
+  --brand-strong: #0b5ed7;
+  --brand-soft: #1e90ff1a;
+  --accent: #7c3aed;
+
+  /* Light mode */
+  --bg: #f6f8fb;
+  --surface: #ffffff;
+  --surface-2: #eef2f7;
+  --fg: #0f172a;
+  --muted: #5b6b81;
+  --border: #e2e8f0;
+  --ring: #1e90ff40;
+}
+
+.dark {
+  /* Dark mode: xanh đen */
+  --bg: #070b14;
+  --surface: #0d1424;
+  --surface-2: #131c30;
+  --fg: #f1f5f9;
+  --muted: #94a3b8;
+  --border: #1e2a45;
+  --ring: #1e90ff60;
+}
+
+/* Map token -> Tailwind utilities: bg-bg, bg-surface, text-fg, border-border... */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-border-c: var(--border);
+  --color-primary: var(--brand);
+  --color-primary-strong: var(--brand-strong);
+  --color-primary-soft: var(--brand-soft);
+  --color-accent: var(--accent);
+  --color-warning: #f5a623;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    background-color: var(--bg);
+    color: var(--fg);
+    font-family: 'Inter Variable', system-ui, 'Segoe UI', Tahoma, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection {
+    background: var(--brand);
+    color: #fff;
+  }
+}
+
+@layer utilities {
+  /* Tiêu đề gaming: gradient chữ */
+  .text-gradient-brand {
+    background: linear-gradient(120deg, #58a6ff 0%, #1e90ff 45%, #7c3aed 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  /* Overlay cho chữ trên ảnh */
+  .img-overlay {
+    background: linear-gradient(180deg, transparent 35%, rgba(2, 6, 18, 0.85) 100%);
+  }
+  /* Hiệu ứng xuất hiện khi cuộn (tôn trọng reduced-motion) */
+  .reveal {
+    opacity: 0;
+    transform: translateY(18px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+  }
+  .reveal.is-visible {
+    opacity: 1;
+    transform: none;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .reveal {
+      opacity: 1;
+      transform: none;
+      transition: none;
+    }
+    html {
+      scroll-behavior: auto;
+    }
+  }
+}
+
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modalIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
