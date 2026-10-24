@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react'
-import Header from '@/components/layout/Header'
-import Footer from '@/components/layout/Footer'
+import SiteLayout from '@/components/layout/SiteLayout'
 import Toast from '@/components/ui/Toast'
 import { EmptyState } from '@/components/ui/States'
-import { Link } from 'react-router-dom'
-import { home_mock as data } from '@/mock-data/home'
+import DataUnavailable from '@/components/ui/DataUnavailable'
+import { getHomePageData, type HomePayload } from '@/data'
 import { cn } from '@/lib/utils'
 
 /* ================= Helpers ================= */
@@ -56,8 +55,7 @@ const SURROUND_SLOTS = [
   'bottom-[14%] right-[2%] w-16 -rotate-3 xl:w-20',
 ]
 
-const Hero = () => {
-  const hero = data.hero
+const Hero = ({ hero = {}, serverInfo = {} }: { hero?: HomePayload['hero']; serverInfo?: HomePayload['server_info'] }) => {
 
   // Ảnh thật (URL https:// đầy đủ) — 0 ảnh → gradient, 1 ảnh → 1 card, > 1 → coverflow
   const rawSlides = (hero.images ?? []).filter((img) => img.src) as Array<{
@@ -95,11 +93,13 @@ const Hero = () => {
   }, [playModalOpen])
 
   const copyIp = async () => {
+    const ip = serverInfo?.ip
+    if (!ip) return
     try {
-      await navigator.clipboard.writeText(data.server_info.ip)
+      await navigator.clipboard.writeText(ip)
     } catch {
       const el = document.createElement('textarea')
-      el.value = data.server_info.ip
+      el.value = ip
       document.body.appendChild(el)
       el.select()
       document.execCommand('copy')
@@ -141,17 +141,21 @@ const Hero = () => {
           {/* ===== Cột nội dung ===== */}
           <div className="text-center lg:text-left">
             {/* Badge */}
-            <span className="mb-5 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary-soft px-4 py-1.5 text-xs font-semibold text-primary">
-              🟩 {hero.tagline}
-            </span>
+            {hero.tagline && (
+              <span className="mb-5 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary-soft px-4 py-1.5 text-xs font-semibold text-primary">
+                🟩 {hero.tagline}
+              </span>
+            )}
 
             <h1 className="mx-auto max-w-3xl text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl lg:mx-0 xl:text-6xl">
-              <span className="text-gradient-brand">{hero.name}</span>
+              <span className="text-gradient-brand">{hero.name || 'SV AeSieuQuay'}</span>
             </h1>
 
-            <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-muted sm:text-lg lg:mx-0">
-              {hero.description}
-            </p>
+            {hero.description && (
+              <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-muted sm:text-lg lg:mx-0">
+                {hero.description}
+              </p>
+            )}
 
             {/* CTA */}
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row lg:justify-start">
@@ -160,7 +164,7 @@ const Hero = () => {
                 onClick={() => setPlayModalOpen(true)}
                 className="w-full max-w-[240px] rounded-xl bg-primary px-8 py-3 text-base font-semibold text-white shadow-lg shadow-primary/30 transition-all hover:bg-primary-strong active:scale-[0.98] sm:w-auto"
               >
-                {hero.cta.primary}
+                {hero.cta?.primary || 'Chơi ngay'}
               </button>
               {hero.discord_url ? (
                 <a
@@ -169,14 +173,14 @@ const Hero = () => {
                   rel="noopener noreferrer"
                   className="w-full max-w-[240px] rounded-xl border border-border-c bg-surface px-8 py-3 text-base font-semibold text-fg transition-all hover:bg-surface-2 active:scale-[0.98] sm:w-auto"
                 >
-                  {hero.cta.secondary}
+                  {hero.cta?.secondary || 'Tham gia Discord'}
                 </a>
               ) : (
                 <span
                   title="Đang chờ link Discord chính thức"
                   className="w-full max-w-[240px] cursor-not-allowed rounded-xl border border-dashed border-border-c px-8 py-3 text-base font-semibold text-muted sm:w-auto"
                 >
-                  {hero.cta.secondary} (sắp ra mắt)
+                  {hero.cta?.secondary || 'Tham gia Discord'} (sắp ra mắt)
                 </span>
               )}
             </div>
@@ -306,14 +310,14 @@ const Hero = () => {
 
       {playModalOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm animate-[fadeIn_.2s_ease]"
           onClick={() => setPlayModalOpen(false)}
         >
           <div
             role="dialog"
             aria-modal="true"
             aria-labelledby="play-modal-title"
-            className="w-full max-w-md rounded-2xl border border-border-c bg-surface p-6 text-center shadow-2xl shadow-black/40 sm:p-8"
+            className="w-full max-w-md rounded-2xl border border-border-c bg-surface p-6 text-center shadow-2xl shadow-black/40 animate-[modalIn_.25s_ease] sm:p-8"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary-soft text-primary">
@@ -329,7 +333,7 @@ const Hero = () => {
             </p>
             <div className="mt-5 flex items-center gap-2 rounded-xl border border-border-c bg-surface-2 px-4 py-2.5">
               <code className="flex-1 text-center font-mono text-sm text-fg sm:text-base">
-                {data.server_info.ip}
+                {serverInfo?.ip || '—'}
               </code>
               <button
                 type="button"
@@ -347,12 +351,12 @@ const Hero = () => {
               >
                 Đóng
               </button>
-              <Link
-                to="/dang-ky"
+              <a
+                href="/dang-ky"
                 className="rounded-xl bg-primary px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-strong"
               >
                 Tạo tài khoản
-              </Link>
+              </a>
             </div>
           </div>
         </div>
@@ -364,8 +368,7 @@ const Hero = () => {
 
 /* ========== Server info bar ========== */
 
-const ServerInfoBar = () => {
-  const info = data.server_info
+const ServerInfoBar = ({ info = {} }: { info?: HomePayload['server_info'] }) => {
   const [copied, setCopied] = useState(false)
 
   // Trạng thái server: online = true/false; players/version null = chưa có dữ liệu
@@ -452,8 +455,8 @@ const usePerView = (enabled) => {
   return perView
 }
 
-const GameModes = () => {
-  const modes = data.game_modes?.modes ?? []
+const GameModes = ({ section = {} }: { section?: HomePayload['game_modes'] }) => {
+  const modes = section?.modes ?? []
   const perView = usePerView(true)
   const isCarousel = modes.length > Math.max(perView, 3) // > 3 mode mới chuyển carousel
 
@@ -515,13 +518,13 @@ const GameModes = () => {
           </ul>
         )}
         <div className="mt-auto pt-4">
-          <Link
-            to={`/che-do-choi/${mode.slug}`}
+          <a
+            href={`/may-chu/${mode.slug}`}
             className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary transition-colors hover:text-primary-strong"
           >
             Khám phá
             <span className="transition-transform group-hover:translate-x-1">→</span>
-          </Link>
+          </a>
         </div>
       </div>
     </article>
@@ -532,10 +535,10 @@ const GameModes = () => {
       {/* Tiêu đề — luôn căn giữa */}
       <div className="mb-8 text-center">
         <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
-          {data.game_modes?.title ?? 'Chế độ chơi'}
+          {section?.title ?? 'Máy chủ'}
         </h2>
-        {data.game_modes?.subtitle && (
-          <p className="mt-2 text-muted">{data.game_modes.subtitle}</p>
+        {section?.subtitle && (
+          <p className="mt-2 text-muted">{section.subtitle}</p>
         )}
       </div>
 
@@ -620,13 +623,13 @@ const GameModes = () => {
 
 /* ================= Điểm nổi bật ================= */
 
-const Highlights = () => (
+const Highlights = ({ section }: { section?: HomePayload['highlights'] }) => (
   <section className="reveal mx-auto mt-20 max-w-6xl px-4 sm:px-6">
     <h2 className="mb-8 text-center text-3xl font-extrabold tracking-tight sm:text-4xl">
-      {data.highlights.title}
+      {section?.title ?? 'Điểm nổi bật'}
     </h2>
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      {data.highlights.items.map((item) => (
+      {(section?.items ?? []).map((item) => (
         <div
           key={item.title}
           className="rounded-2xl border border-border-c bg-surface p-5 transition-colors hover:border-primary/40"
@@ -644,13 +647,13 @@ const Highlights = () => (
 
 const galleryIcons = ['🌳', '🏝️', '⚔️', '🏙️']
 
-const Gallery = () => (
+const Gallery = ({ gallery }: { gallery?: HomePayload['gallery'] }) => (
   <section className="reveal mx-auto mt-20 max-w-6xl px-4 sm:px-6">
     <h2 className="mb-8 text-center text-3xl font-extrabold tracking-tight sm:text-4xl">
-      {data.gallery?.title ?? 'Khám phá thế giới AeSieuQuay'}
+      {gallery?.title ?? 'Khám phá thế giới AeSieuQuay'}
     </h2>
 
-    {(data.gallery?.images ?? []).length === 0 ? (
+    {(gallery?.images ?? []).length === 0 ? (
       <EmptyState
         icon="📷"
         title="Chưa có hình ảnh"
@@ -658,7 +661,7 @@ const Gallery = () => (
       />
     ) : (
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {data.gallery.images.map((img, i) => (
+        {(gallery?.images ?? []).map((img, i) => (
           <figure
             key={img.id ?? i}
             className={cn(
@@ -695,8 +698,8 @@ const Gallery = () => (
 
 /* ============ Cộng đồng / mạng xã hội ============ */
 
-const Community = () => {
-  const community = data.community
+const Community = ({ community }: { community?: HomePayload['community'] }) => {
+  if (!community) return null
 
   return (
     <section className="reveal mx-auto mt-20 max-w-6xl px-4 sm:px-6">
@@ -748,11 +751,12 @@ const Community = () => {
 
 /* ================= CTA cuối trang ================= */
 
-const FinalCTA = () => {
+const FinalCTA = ({ serverInfo = {} }: { serverInfo?: HomePayload['server_info'] }) => {
   const [copied, setCopied] = useState(false)
-  const ip = data.server_info.ip
+  const ip = serverInfo?.ip ?? ''
 
   const copy = async () => {
+    if (!ip) return
     try {
       await navigator.clipboard.writeText(ip)
       setCopied(true)
@@ -779,12 +783,12 @@ const FinalCTA = () => {
             >
               📋 Sao chép IP
             </button>
-            <Link
-              to="/dang-ky"
+            <a
+              href="/dang-ky"
               className="w-full max-w-[280px] rounded-xl border border-border-c bg-surface px-8 py-3 font-semibold text-fg transition-all hover:bg-surface-2 active:scale-[0.98] sm:w-auto"
             >
               Tạo tài khoản
-            </Link>
+            </a>
           </div>
         </div>
       </div>
@@ -798,22 +802,70 @@ const FinalCTA = () => {
 export const HomePage = () => {
   useReveal()
 
+  const result = getHomePageData()
+
+  if (result.status !== 'ok') {
+    return (
+      <SiteLayout
+        seo={{
+          title: 'SV AeSieuQuay — Minecraft Việt Nam',
+          description:
+            'Máy chủ Minecraft Việt Nam — sinh tồn, xây dựng và cạnh tranh cùng cộng đồng AE.',
+          path: '/',
+          noindex: true,
+        }}
+      >
+        <DataUnavailable
+          title={result.status === 'not_found' ? 'Trang không tồn tại' : undefined}
+        />
+      </SiteLayout>
+    )
+  }
+
+  const data = result.data
+  const hero: NonNullable<HomePayload['hero']> = data.hero ?? {}
+  const siteUrl = typeof window !== 'undefined' ? window.location.origin : ''
+  const socials = data.community?.socials ?? []
+  const description =
+    hero.description ||
+    'Máy chủ Minecraft Việt Nam — sinh tồn, xây dựng và cạnh tranh cùng cộng đồng AE.'
+
   return (
-    <div className="min-h-screen bg-bg text-fg">
-      <Header menu={data.header.menu} />
-
-      <main>
-        <Hero />
-        <ServerInfoBar />
-        <GameModes />
-        <Highlights />
-        <Gallery />
-        <Community />
-        <FinalCTA />
-      </main>
-
-      <Footer columns={data.footer.columns} socials={data.footer.socials} />
-    </div>
+    <SiteLayout
+      seo={{
+        title: `${hero.name || 'SV AeSieuQuay'} — ${hero.tagline || 'Minecraft Việt Nam'}`,
+        description,
+        path: '/',
+        ogImage: hero.bg_image || hero.images?.[0]?.src,
+        jsonLd: [
+          {
+            '@context': 'https://schema.org',
+            '@type': 'WebSite',
+            name: hero.name || 'SV AeSieuQuay',
+            alternateName: hero.tagline || 'Minecraft Server Việt Nam',
+            url: siteUrl || '/',
+            description,
+            inLanguage: 'vi-VN',
+          },
+          {
+            '@context': 'https://schema.org',
+            '@type': 'Organization',
+            name: 'SV AeSieuQuay',
+            url: siteUrl || '/',
+            logo: siteUrl ? `${siteUrl}/logo.png` : '/logo.png',
+            sameAs: socials.map((social) => social.url),
+          },
+        ],
+      }}
+    >
+      <Hero hero={data.hero} serverInfo={data.server_info} />
+      {data.server_info && <ServerInfoBar info={data.server_info} />}
+      {data.game_modes && <GameModes section={data.game_modes} />}
+      {data.highlights?.items?.length ? <Highlights section={data.highlights} /> : null}
+      {data.gallery ? <Gallery gallery={data.gallery} /> : null}
+      {data.community ? <Community community={data.community} /> : null}
+      {data.server_info && <FinalCTA serverInfo={data.server_info} />}
+    </SiteLayout>
   )
 }
 

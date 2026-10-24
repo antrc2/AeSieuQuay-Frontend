@@ -1,6 +1,5 @@
-import { Link } from 'react-router-dom'
 import Logo from '@/components/Logo'
-import homeMock from '@/mock-data/home'
+import { DEFAULT_FOOTER, DEFAULT_SERVER_INFO } from '@/data/site'
 
 /**
  * @typedef {{ title: string, links: Array<{ label: string, to: string }> }} FooterColumn
@@ -8,15 +7,18 @@ import homeMock from '@/mock-data/home'
  */
 
 /**
- * @param {{ columns?: FooterColumn[], socials?: FooterSocial[] }} props
+ * @param {{
+ *   columns?: FooterColumn[],
+ *   socials?: FooterSocial[],
+ *   copyright?: string,
+ *   ip?: string,
+ * }} props
  */
-export const Footer = ({ columns = [], socials = [] }) => {
-  const cols = columns.length ? columns : (homeMock?.footer?.columns ?? [])
-  const socialsList = socials.length ? socials : (homeMock?.footer?.socials ?? [])
-  const copyright =
-    homeMock?.footer?.copyright ??
-    '© 2026 SV AeSieuQuay — Minecraft Việt Nam.'
-  const serverIp = homeMock?.server_info?.ip
+export const Footer = ({ columns = [], socials = [], copyright = '', ip = '' }) => {
+  const cols = columns.length ? columns : DEFAULT_FOOTER.columns
+  const socialsList = socials.length ? socials : DEFAULT_FOOTER.socials
+  const copyrightText = copyright || DEFAULT_FOOTER.copyright
+  const serverIp = ip || DEFAULT_SERVER_INFO.ip
 
   return (
     <footer className="mt-24 border-t border-border-c bg-surface">
@@ -53,12 +55,12 @@ export const Footer = ({ columns = [], socials = [] }) => {
               <ul className="space-y-2.5">
                 {col.links.map((link) => (
                   <li key={link.to}>
-                    <Link
-                      to={link.to}
+                    <a
+                      href={link.to}
                       className="text-sm text-muted transition-colors hover:text-primary"
                     >
                       {link.label}
-                    </Link>
+                    </a>
                   </li>
                 ))}
               </ul>
@@ -92,17 +94,17 @@ export const Footer = ({ columns = [], socials = [] }) => {
         {/* Hàng dưới: copyright + liên kết phụ */}
         <div className="mt-10 flex flex-col items-center justify-between gap-4 border-t border-border-c pt-6 sm:flex-row">
           <p className="text-center text-xs text-muted sm:text-left">
-            {copyright}
+            {copyrightText}
           </p>
 
           <div className="flex items-center gap-4 text-xs text-muted">
-            <Link to="/noi-quy" className="transition-colors hover:text-primary">
-              Nội quy
-            </Link>
+            <a href="/may-chu" className="transition-colors hover:text-primary">
+              Máy chủ
+            </a>
             <span aria-hidden className="h-3 w-px bg-[var(--border)]" />
-            <Link to="/wiki" className="transition-colors hover:text-primary">
-              Hướng dẫn
-            </Link>
+            <a href="/nap-the" className="transition-colors hover:text-primary">
+              Nạp thẻ
+            </a>
             <span aria-hidden className="h-3 w-px bg-[var(--border)]" />
             <a
               href="#top"

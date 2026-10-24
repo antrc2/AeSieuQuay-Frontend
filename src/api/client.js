@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { API_BASE_URL, isDev } from '@/config/env'
+import { API_BASE_URL } from '@/config/env'
 
 /* ============================================================
  * AXIOS API CLIENT — chỉ cần import là gọi
@@ -94,7 +94,6 @@ const normalizeError = (err) => {
     message = 'Không thể kết nối máy chủ. Vui lòng kiểm tra mạng.'
   }
 
-  if (isDev && status) console.warn(`[API] ${status} ${err.config?.url} → ${message}`)
 
   return new ApiError(message, status ?? 0, payload)
 }
@@ -123,12 +122,30 @@ const redirectTo = (path) => {
   if (window.location.pathname !== path) window.location.assign(path)
 }
 
+/**
+ * Các endpoint không auto-refresh/redirect khi gặp 401:
+ * - auth: 401 là sai thông tin đăng nhập/đăng ký, không phải hết phiên.
+ * - /user/me: session bootstrap; guest chưa đăng nhập phải được coi là "chưa có user",
+ *   không bị đẩy sang /dang-nhap.
+ */
+const NO_REFRESH_ENDPOINTS = [
+  '/auth/login',
+  '/auth/register',
+  '/auth/refresh',
+  '/auth/logout',
+  '/user/me',
+]
+
+const shouldSkipRefresh = (url = '') =>
+  NO_REFRESH_ENDPOINTS.some((path) => String(url).startsWith(path))
+
 /** Thực thi request, nếu 401 thì refresh rồi retry đúng 1 lần */
 const execute = async (config) => {
   try {
     return await client.request(config)
   } catch (err) {
     if (!(err instanceof ApiError) || err.status !== 401) throw err
+    if (shouldSkipRefresh(config.url)) throw err
 
     const ok = await refreshSession()
     if (!ok) {
@@ -145,7 +162,13 @@ const execute = async (config) => {
 /** GET:  const data = await apiGet('/endpoint', { params, headers?, signal? }) */
 export const apiGet = (url, config) => execute({ method: 'GET', url, ...config })
 
-/** POST: await apiPost('/login', { email, password }) */
+/**
+ * @template T = any
+ * @param {string} url
+ * @param {unknown} [data]
+ * @param {import('axios').AxiosRequestConfig} [config]
+ * @returns {Promise<{success?: boolean, code?: string, message?: string, data?: any, [k: string]: any}>}
+ */
 export const apiPost = (url, data, config) => execute({ method: 'POST', url, data, ...config })
 
 /** PUT: await apiPut('/user/me', { name }) */

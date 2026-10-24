@@ -1,9 +1,15 @@
 import { useNavigate } from 'react-router-dom'
 import { FiShield, FiAlertCircle, FiLogIn, FiArrowLeft } from 'react-icons/fi'
 import Logo from '@/components/Logo'
+import { useSeo } from '@/hooks/useSeo'
 
 export const Forbidden = () => {
   const navigate = useNavigate()
+  useSeo({
+    title: '403 - Từ chối truy cập — SV AeSieuQuay',
+    description: 'Bạn không có quyền truy cập trang này.',
+    noindex: true,
+  })
 
   return (
     <section className="min-h-screen bg-bg text-fg">
@@ -47,12 +53,12 @@ export const Forbidden = () => {
               <FiArrowLeft /> Quay về trang trước
             </button>
 
-            <button
-              onClick={() => navigate('/dang-nhap')}
+            <a
+              href="/dang-nhap"
               className="inline-flex items-center justify-center gap-2 rounded-xl border border-border-c bg-surface px-4 py-2.5 font-semibold text-fg transition-all hover:bg-surface-2 active:scale-[0.98]"
             >
               <FiLogIn /> Đăng nhập lại
-            </button>
+            </a>
           </div>
         </div>
 

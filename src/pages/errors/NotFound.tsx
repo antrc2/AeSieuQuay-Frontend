@@ -1,9 +1,15 @@
 import { useNavigate } from 'react-router-dom'
 import { FiXCircle, FiHome, FiSearch } from 'react-icons/fi'
 import Logo from '@/components/Logo'
+import { useSeo } from '@/hooks/useSeo'
 
 export const NotFound = () => {
   const navigate = useNavigate()
+  useSeo({
+    title: '404 - Không tìm thấy — SV AeSieuQuay',
+    description: 'Trang bạn truy cập không tồn tại hoặc đã được xóa.',
+    noindex: true,
+  })
 
   return (
     <section className="min-h-screen bg-bg text-fg">
@@ -20,12 +26,12 @@ export const NotFound = () => {
           </p>
 
           <div className="mt-8 grid w-full max-w-lg grid-cols-1 gap-3 sm:grid-cols-2">
-            <button
-              onClick={() => navigate('/')}
+            <a
+              href="/"
               className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 font-semibold text-white transition-all hover:bg-primary-strong active:scale-[0.98]"
             >
               <FiHome /> Quay về trang chủ
-            </button>
+            </a>
 
             <button
               onClick={() => navigate(-1)}

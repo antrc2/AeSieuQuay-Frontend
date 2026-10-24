@@ -1,8 +1,14 @@
 import { useNavigate } from 'react-router-dom'
 import { FiAlertTriangle, FiRotateCcw } from 'react-icons/fi'
+import { useSeo } from '@/hooks/useSeo'
 
 export const ErrorPage = ({ status = 500, message = 'Có lỗi xảy ra. Vui lòng thử lại sau.' }) => {
   const navigate = useNavigate()
+  useSeo({
+    title: `${status} - Có lỗi xảy ra — SV AeSieuQuay`,
+    description: message,
+    noindex: true,
+  })
 
   return (
     <section className="flex min-h-screen items-center justify-center bg-bg p-8">

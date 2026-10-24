@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { useLocation } from 'react-router-dom'
 import Logo from '@/components/Logo'
 import ThemeToggle from '@/components/theme/ThemeToggle'
+import { DEFAULT_MENU } from '@/data/site'
 import useAuth from '@/hooks/useAuth'
 import { cn } from '@/lib/utils'
 
@@ -26,8 +27,9 @@ const AuthButton = ({ className }) => {
     }
   }, [])
 
+  // Ưu tiên tên hiển thị (realname), sau đó mới tới username/email.
   const displayName =
-    user?.username || user?.name || user?.nickname || user?.email?.split('@')[0] || 'AE'
+    user?.realname || user?.username || user?.name || user?.nickname || user?.email?.split('@')[0] || 'AE'
 
   if (loading) {
     // Skeleton khi đang kiểm tra phiên
@@ -37,8 +39,8 @@ const AuthButton = ({ className }) => {
   /* ----- Chưa đăng nhập: nút Đăng nhập ----- */
   if (!user) {
     return (
-      <Link
-        to="/dang-nhap"
+      <a
+        href="/dang-nhap"
         className={cn(
           'inline-flex h-9 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold text-white',
           'bg-primary shadow-sm shadow-primary/25 transition-all hover:bg-primary-strong active:scale-[0.98]',
@@ -46,11 +48,11 @@ const AuthButton = ({ className }) => {
         )}
       >
         Đăng nhập
-      </Link>
+      </a>
     )
   }
 
-  /* ----- Đã đăng nhập: "Xin chào, {tên}" + dropdown ----- */
+  /* ----- Đã đăng nhập: hiển thị realname + dropdown ----- */
   return (
     <div ref={ref} className={cn('relative', className)}>
       <button
@@ -64,7 +66,7 @@ const AuthButton = ({ className }) => {
           {displayName.charAt(0).toUpperCase()}
         </span>
         <span className="max-w-[120px] truncate text-sm font-medium text-fg">
-          Xin chào, {displayName}
+          {displayName}
         </span>
         <svg
           className={cn('h-3.5 w-3.5 text-muted transition-transform', open && 'rotate-180')}
@@ -90,22 +92,14 @@ const AuthButton = ({ className }) => {
           </div>
           <hr className="border-border-c opacity-60" />
 
-          <Link
-            to="/tai-khoan"
-            role="menuitem"
-            onClick={() => setOpen(false)}
-            className="block px-3 py-2 text-sm text-muted transition-colors hover:bg-surface-2 hover:text-fg"
-          >
-            Trang cá nhân
-          </Link>
-          <Link
-            to="/nap-the"
+          <a
+            href="/nap-the"
             role="menuitem"
             onClick={() => setOpen(false)}
             className="block px-3 py-2 text-sm text-muted transition-colors hover:bg-surface-2 hover:text-fg"
           >
             Nạp thẻ
-          </Link>
+          </a>
           <hr className="border-border-c opacity-60" />
 
           <button
@@ -134,7 +128,7 @@ const AuthButton = ({ className }) => {
 /**
  * @param {{ menu?: Array<{ label: string, to: string }> }} props
  */
-export const Header = ({ menu = [] }) => {
+export const Header = ({ menu = DEFAULT_MENU }) => {
   const [scrolled, setScrolled] = useState(false)
   const [open, setOpen] = useState(false)
   const location = useLocation()
@@ -167,9 +161,9 @@ export const Header = ({ menu = [] }) => {
             const active =
               item.to === '/' ? location.pathname === '/' : location.pathname.startsWith(item.to)
             return (
-              <Link
+              <a
                 key={item.to}
-                to={item.to}
+                href={item.to}
                 aria-current={active ? 'page' : undefined}
                 className={cn(
                   'rounded-lg px-3 py-2 text-sm font-medium transition-colors',
@@ -179,7 +173,7 @@ export const Header = ({ menu = [] }) => {
                 )}
               >
                 {item.label}
-              </Link>
+              </a>
             )
           })}
         </nav>
@@ -227,9 +221,9 @@ export const Header = ({ menu = [] }) => {
             const active =
               item.to === '/' ? location.pathname === '/' : location.pathname.startsWith(item.to)
             return (
-              <Link
+              <a
                 key={item.to}
-                to={item.to}
+                href={item.to}
                 className={cn(
                   'block rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
                   active
@@ -238,7 +232,7 @@ export const Header = ({ menu = [] }) => {
                 )}
               >
                 {item.label}
-              </Link>
+              </a>
             )
           })}
         </nav>

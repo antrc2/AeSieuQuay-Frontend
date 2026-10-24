@@ -22,6 +22,19 @@ const readCache = () => {
   }
 }
 
+/**
+ * `/api/user/me` trả envelope chuẩn `{ success, code, message, data, request_id }`.
+ * Chấp nhận cả trường hợp backend trả thẳng object user (tương thích ngược).
+ */
+const unwrapUser = (response) => {
+  if (!response || typeof response !== 'object') return response ?? null
+  const payload = 'data' in response ? response.data : response
+  if (!payload || typeof payload !== 'object') return payload ?? null
+  // Hỗ trợ cả `data: user` (khuyến nghị) và `data: { user }`.
+  if ('user' in payload) return payload.user ?? null
+  return payload
+}
+
 const writeCache = (user) => {
   try {
     if (user) {
@@ -56,7 +69,7 @@ export const AuthProvider = ({ children }) => {
       try {
         const me = await apiGet('/user/me')
         if (!aliveRef.current) return
-        const nextUser = me ?? null
+        const nextUser = unwrapUser(me)
         setUser(nextUser)
         writeCache(nextUser)
       } catch {
@@ -84,7 +97,7 @@ export const AuthProvider = ({ children }) => {
   const refreshUser = useCallback(async () => {
     try {
       const me = await apiGet('/user/me')
-      const nextUser = me ?? null
+      const nextUser = unwrapUser(me)
       if (aliveRef.current) {
         setUser(nextUser)
         writeCache(nextUser)

@@ -1,8 +1,7 @@
 import { cn } from '@/lib/utils'
-import { Link } from 'react-router-dom'
 
 /**
- * Logo SV AeSieuQuay — file ảnh tại /AeSieuQuay.webp (thư mục public).
+ * Logo SV AeSieuQuay — file ảnh tại /logo.png (thư mục public).
  */
 export const Logo = ({ linkTo = '/', size = 'md', textOnly = false, className = '' }) => {
   const sizes = {
@@ -17,7 +16,7 @@ export const Logo = ({ linkTo = '/', size = 'md', textOnly = false, className = 
   const content = (
     <span className={cn('flex items-center gap-3', className)}>
       <img
-        src="/AeSieuQuay.webp"
+        src="/logo.png"
         alt="Logo SV AeSieuQuay - Minecraft Việt Nam"
         width={56}
         height={56}
@@ -36,9 +35,9 @@ export const Logo = ({ linkTo = '/', size = 'md', textOnly = false, className = 
 
   if (linkTo) {
     return (
-      <Link to={linkTo} aria-label="Trang chủ AeSieuQuay" className="inline-flex">
+      <a href={linkTo} aria-label="Trang chủ AeSieuQuay" className="inline-flex">
         {content}
-      </Link>
+      </a>
     )
   }
   return content
