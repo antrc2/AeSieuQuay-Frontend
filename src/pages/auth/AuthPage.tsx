@@ -5,7 +5,7 @@ import {
   type InputHTMLAttributes,
   type ReactNode,
 } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation } from 'react-router-dom'
 
 import SiteLayout from '@/components/layout/SiteLayout'
 import { apiPost } from '@/api/client'
@@ -111,22 +111,21 @@ const SubmitButton = ({ loading, idle, busy }: { loading: boolean; idle: string;
   </button>
 )
 
-const FormFooter = ({ text, action, onAction }: { text: string; action: string; onAction: () => void }) => (
+const FormFooter = ({ text, action, href }: { text: string; action: string; href: string }) => (
   <p className="pt-1 text-center text-sm text-muted">
     {text}{' '}
-    <button
-      type="button"
-      onClick={onAction}
+    <a
+      href={href}
       className="font-semibold text-primary transition-colors hover:text-primary-strong hover:underline"
     >
       {action}
-    </button>
+    </a>
   </p>
 )
 
 /* ================= Form đăng nhập ================= */
 
-const LoginForm = ({ onSwitch }: { onSwitch: () => void }) => {
+const LoginForm = () => {
   const [form, setForm] = useState({ username: '', password: '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -195,14 +194,14 @@ const LoginForm = ({ onSwitch }: { onSwitch: () => void }) => {
 
       <SubmitButton loading={loading} idle="Đăng nhập" busy="Đang đăng nhập..." />
 
-      <FormFooter text="Chưa có tài khoản?" action="Đăng ký ngay" onAction={onSwitch} />
+      <FormFooter text="Chưa có tài khoản?" action="Đăng ký ngay" href="/dang-ky" />
     </form>
   )
 }
 
 /* ================= Form đăng ký ================= */
 
-const RegisterForm = ({ onSwitch }: { onSwitch: () => void }) => {
+const RegisterForm = () => {
   const [form, setForm] = useState({
     username: '',
     email: '',
@@ -308,7 +307,7 @@ const RegisterForm = ({ onSwitch }: { onSwitch: () => void }) => {
 
       <SubmitButton loading={loading} idle="Tạo tài khoản" busy="Đang đăng ký..." />
 
-      <FormFooter text="Đã có tài khoản?" action="Đăng nhập" onAction={onSwitch} />
+      <FormFooter text="Đã có tài khoản?" action="Đăng nhập" href="/dang-nhap" />
     </form>
   )
 }
@@ -317,16 +316,9 @@ const RegisterForm = ({ onSwitch }: { onSwitch: () => void }) => {
 
 export const AuthPage = () => {
   const location = useLocation()
-  const navigate = useNavigate()
 
   const isRegister = location.pathname.startsWith('/dang-ky')
   const tab: Tab = isRegister ? 'register' : 'login'
-
-  const switchTab = (next: Tab) => {
-    if (next === tab) return
-    const target = TABS.find((t) => t.id === next)?.path ?? '/dang-nhap'
-    navigate(target, { replace: true, preventScrollReset: true })
-  }
 
   return (
     <SiteLayout
@@ -355,35 +347,30 @@ export const AuthPage = () => {
 
         <div className="relative w-full max-w-md">
           <div className="rounded-3xl border border-border-c bg-surface p-6 shadow-2xl shadow-black/10 sm:p-8">
-            {/* Tabs */}
-            <div
-              role="tablist"
+            {/* Tabs — dùng <a href> để full reload, lấy window.DATA mới */}
+            <nav
               aria-label="Đăng nhập hoặc đăng ký"
               className="grid grid-cols-2 gap-1 rounded-xl border border-border-c bg-surface-2 p-1"
             >
               {TABS.map((t) => {
                 const active = tab === t.id
                 return (
-                  <button
+                  <a
                     key={t.id}
-                    id={`tab-${t.id}`}
-                    type="button"
-                    role="tab"
-                    aria-selected={active}
-                    aria-controls={`panel-${t.id}`}
-                    onClick={() => switchTab(t.id)}
+                    href={t.path}
+                    aria-current={active ? 'page' : undefined}
                     className={cn(
-                      'rounded-lg px-4 py-2 text-sm font-semibold transition-all',
+                      'rounded-lg px-4 py-2 text-center text-sm font-semibold transition-all',
                       active
                         ? 'bg-primary text-white shadow-sm shadow-primary/30'
                         : 'text-muted hover:bg-surface hover:text-fg',
                     )}
                   >
                     {t.label}
-                  </button>
+                  </a>
                 )
               })}
-            </div>
+            </nav>
 
             {/* Tiêu đề */}
             <div className="mt-6 text-center">
@@ -397,30 +384,13 @@ export const AuthPage = () => {
               </p>
             </div>
 
-            <div
-              role="tabpanel"
-              id={`panel-${tab}`}
-              aria-labelledby={`tab-${tab}`}
-              className="animate-[fadeIn_.2s_ease]"
-            >
-              {tab === 'login' ? (
-                <LoginForm onSwitch={() => switchTab('register')} />
-              ) : (
-                <RegisterForm onSwitch={() => switchTab('login')} />
-              )}
+            <div className="animate-[fadeIn_.2s_ease]">
+              {tab === 'login' ? <LoginForm /> : <RegisterForm />}
             </div>
           </div>
 
           <p className="mt-6 text-center text-xs leading-relaxed text-muted">
-            Bằng việc tiếp tục, bạn đồng ý với{' '}
-            <a href="/noi-quy" className="text-primary hover:underline">
-              Nội quy
-            </a>{' '}
-            và{' '}
-            <a href="/wiki" className="text-primary hover:underline">
-              hướng dẫn
-            </a>{' '}
-            của server.
+            Bằng việc tiếp tục, bạn đồng ý với nội quy và hướng dẫn của server.
           </p>
         </div>
       </section>

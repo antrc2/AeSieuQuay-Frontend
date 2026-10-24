@@ -1,10 +1,10 @@
-import { useNavigate } from 'react-router-dom'
 import { FiXCircle, FiHome, FiSearch } from 'react-icons/fi'
 import Logo from '@/components/Logo'
 import { useSeo } from '@/hooks/useSeo'
+import { getBackHref } from '@/lib/utils'
 
 export const NotFound = () => {
-  const navigate = useNavigate()
+  const backHref = getBackHref()
   useSeo({
     title: '404 - Không tìm thấy — SV AeSieuQuay',
     description: 'Trang bạn truy cập không tồn tại hoặc đã được xóa.',
@@ -33,12 +33,12 @@ export const NotFound = () => {
               <FiHome /> Quay về trang chủ
             </a>
 
-            <button
-              onClick={() => navigate(-1)}
+            <a
+              href={backHref}
               className="inline-flex items-center justify-center gap-2 rounded-xl border border-border-c bg-surface px-4 py-2.5 font-semibold text-fg transition-all hover:bg-surface-2 active:scale-[0.98]"
             >
               <FiSearch /> Tìm lại
-            </button>
+            </a>
           </div>
         </div>
 

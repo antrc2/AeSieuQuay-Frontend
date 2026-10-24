@@ -111,6 +111,13 @@ export const machineListPageMock = {
   ],
 }
 
+/**
+ * Payload chi tiết mẫu cho development — giống hệt object backend trả cho
+ * /may-chu/:slug: commands, desc, difficulty, features, highlights, images,
+ * name, players_online, rules, short_desc, slug, status, tagline.
+ */
+export const machineDetailMock = { ...machineListPageMock.modes[0] }
+
 /* ================== TRANG CHỦ ================== */
 
 export const homePageMock = {
@@ -230,5 +237,6 @@ export const topupPageMock = {
 export default {
   homePageMock,
   machineListPageMock,
+  machineDetailMock,
   topupPageMock,
 }

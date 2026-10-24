@@ -4,7 +4,8 @@ import SiteLayout from '@/components/layout/SiteLayout'
 import DataUnavailable from '@/components/ui/DataUnavailable'
 import NotFound from '@/pages/errors/NotFound'
 import Toast from '@/components/ui/Toast'
-import { getMachineDetailData } from '@/data'
+import { getMachineDetailData, getSiteData } from '@/data'
+import { DEFAULT_DISCORD_URL } from '@/data/site'
 
 const defaultHighlights = [
   { title: 'Ổn định', desc: 'Máy chủ ổn định, tối ưu ping Việt Nam' },
@@ -38,6 +39,10 @@ export const GameModeDetailPage = () => {
   }
 
   const mode = result.data
+  const site = getSiteData()
+  // Payload backend không có ip/discord_url → fallback về cấu hình site.
+  const serverIp = mode.ip || site.server_info.ip || ''
+  const discordUrl = mode.discord_url || DEFAULT_DISCORD_URL
   const highlights = mode.highlights?.length ? mode.highlights : defaultHighlights
   const siteUrl = typeof window !== 'undefined' ? window.location.origin : ''
   const canonicalPath = `/may-chu/${mode.slug || slug}`
@@ -45,13 +50,12 @@ export const GameModeDetailPage = () => {
     mode.short_desc || mode.desc || `Thông tin máy chủ ${mode.name} tại SV AeSieuQuay.`
 
   const copyIp = async () => {
-    const ip = mode.ip
-    if (!ip) return
+    if (!serverIp) return
     try {
-      await navigator.clipboard.writeText(ip)
+      await navigator.clipboard.writeText(serverIp)
     } catch {
       const el = document.createElement('textarea')
-      el.value = ip
+      el.value = serverIp
       document.body.appendChild(el)
       el.select()
       document.execCommand('copy')
@@ -141,9 +145,9 @@ export const GameModeDetailPage = () => {
                 >
                   Chơi ngay
                 </button>
-                {mode.discord_url && (
+                {discordUrl && (
                   <a
-                    href={mode.discord_url}
+                    href={discordUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center justify-center rounded-xl border border-border-c bg-surface px-8 py-3 text-base font-semibold transition-all hover:bg-surface-2"
@@ -255,7 +259,7 @@ export const GameModeDetailPage = () => {
             <h3 className="mt-4 text-xl font-bold">Tham gia {mode.name}</h3>
             <p className="mt-2 text-sm text-muted">Sao chép IP và thêm vào Minecraft của bạn</p>
             <div className="mt-5 flex items-center gap-2 rounded-xl border border-border-c bg-surface-2 px-4 py-2.5">
-              <code className="flex-1 text-center font-mono text-sm">{mode.ip || '—'}</code>
+              <code className="flex-1 text-center font-mono text-sm">{serverIp || '—'}</code>
               <button
                 type="button"
                 onClick={copyIp}

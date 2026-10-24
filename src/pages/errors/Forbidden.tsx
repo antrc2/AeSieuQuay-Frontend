@@ -1,10 +1,10 @@
-import { useNavigate } from 'react-router-dom'
 import { FiShield, FiAlertCircle, FiLogIn, FiArrowLeft } from 'react-icons/fi'
 import Logo from '@/components/Logo'
 import { useSeo } from '@/hooks/useSeo'
+import { getBackHref } from '@/lib/utils'
 
 export const Forbidden = () => {
-  const navigate = useNavigate()
+  const backHref = getBackHref()
   useSeo({
     title: '403 - Từ chối truy cập — SV AeSieuQuay',
     description: 'Bạn không có quyền truy cập trang này.',
@@ -46,12 +46,12 @@ export const Forbidden = () => {
           </div>
 
           <div className="mt-8 grid w-full max-w-lg grid-cols-1 gap-3 sm:grid-cols-2">
-            <button
-              onClick={() => navigate(-1)}
+            <a
+              href={backHref}
               className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 font-semibold text-white transition-all hover:bg-primary-strong active:scale-[0.98]"
             >
               <FiArrowLeft /> Quay về trang trước
-            </button>
+            </a>
 
             <a
               href="/dang-nhap"

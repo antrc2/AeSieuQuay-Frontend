@@ -1,9 +1,9 @@
-import { useNavigate } from 'react-router-dom'
 import { FiAlertTriangle, FiRotateCcw } from 'react-icons/fi'
 import { useSeo } from '@/hooks/useSeo'
+import { getBackHref } from '@/lib/utils'
 
 export const ErrorPage = ({ status = 500, message = 'Có lỗi xảy ra. Vui lòng thử lại sau.' }) => {
-  const navigate = useNavigate()
+  const backHref = getBackHref()
   useSeo({
     title: `${status} - Có lỗi xảy ra — SV AeSieuQuay`,
     description: message,
@@ -19,12 +19,12 @@ export const ErrorPage = ({ status = 500, message = 'Có lỗi xảy ra. Vui lò
 
         <p className="mb-8 text-lg text-muted">{message}</p>
 
-        <button
-          onClick={() => navigate(-1)}
+        <a
+          href={backHref}
           className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-8 py-2.5 font-semibold text-white transition-all hover:bg-primary-strong active:scale-[0.98]"
         >
           <FiRotateCcw /> Quay lại trang trước
-        </button>
+        </a>
       </div>
     </section>
   )

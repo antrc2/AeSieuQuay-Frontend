@@ -26,7 +26,7 @@ import {
   type SiteData,
   type TopupPayload,
 } from './contract'
-import { DEFAULT_DISCORD_URL, resolveSiteData } from './site'
+import { resolveSiteData } from './site'
 
 const ok = <T>(data: T, source: 'mock' | 'window' = 'mock'): DataResult<T> => ({
   status: 'ok',
@@ -94,24 +94,15 @@ export const getMachineListData = (): DataResult<MachineListPayload> => {
 
 /* ================= Chi tiết máy chủ ================= */
 
-const enrichDetail = (mode: MachineDetailPayload): MachineDetailPayload => {
-  const site = getSiteData()
-  return {
-    ...mode,
-    ip: mode.ip ?? site.server_info.ip,
-    discord_url: mode.discord_url ?? DEFAULT_DISCORD_URL,
-    gallery: mode.gallery ?? mode.images,
-  }
-}
-
 export const getMachineDetailData = (slug: string): DataResult<MachineDetailPayload> => {
   const normalized = normalizeSlug(slug)
 
   if (useMockData) {
+    // Trả đúng object mock, không thêm field phụ (giống payload backend).
     const fromList = machineListPageMock.modes.find((mode) => mode.slug === normalized)
-    if (fromList) return ok(enrichDetail(fromList as MachineDetailPayload))
+    if (fromList) return ok(fromList as MachineDetailPayload)
     // Slug lạ ở development: sinh dữ liệu giả ổn định để luôn render được UI.
-    return ok(enrichDetail(generateMachineDetail(normalized)))
+    return ok(generateMachineDetail(normalized))
   }
 
   const w = readWindowData()
@@ -129,7 +120,7 @@ export const getMachineDetailData = (slug: string): DataResult<MachineDetailPayl
   // Backend có thể trả detail khác slug (cache/route sai) → coi như không tồn tại.
   if (payload.slug && normalizeSlug(payload.slug) !== normalized) return notFound()
 
-  return ok(enrichDetail(payload), 'window')
+  return ok(payload, 'window')
 }
 
 /* ================= Nạp thẻ ================= */

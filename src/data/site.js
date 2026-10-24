@@ -10,6 +10,12 @@
 
 export const DEFAULT_DISCORD_URL = 'https://discord.gg/tBH4zEpK2S'
 
+/**
+ * VietQR nhận nạp tiền qua ngân hàng.
+ * Khi user đã đăng nhập, frontend thêm `?addInfo=<realname>`.
+ */
+export const BANK_QR_BASE_URL = 'https://img.vietqr.io/image/MB-0838411897-compact.svg'
+
 export const DEFAULT_MENU = [
   { label: 'Trang chủ', to: '/' },
   { label: 'Máy chủ', to: '/may-chu' },
@@ -54,6 +60,47 @@ export const DEFAULT_HEADER = {
   cta: { label: 'Chơi ngay', to: '/nap-the' },
 }
 
+/** URL cũ → URL chuẩn. */
+const ROUTE_ALIASES = {
+  '/che-do-choi': '/may-chu',
+}
+
+const ROUTE_PREFIXES = ['/may-chu', '/nap-the', '/dang-nhap', '/dang-ky']
+
+/** Chỉ giữ link nội bộ trỏ tới route thật (hoặc hash). */
+const isKnownRoute = (to = '') => {
+  if (!to) return false
+  if (to === '/' || to.startsWith('#')) return true
+  if (/^https?:\/\//i.test(to)) return true
+  return ROUTE_PREFIXES.some((path) => to === path || to.startsWith(`${path}/`))
+}
+
+const sanitizeLinks = (links) =>
+  (Array.isArray(links) ? links : [])
+    .map((link) => {
+      const to = ROUTE_ALIASES[link.to] ?? link.to
+      return isKnownRoute(to) ? { ...link, to } : null
+    })
+    .filter(Boolean)
+
+const sanitizeMenu = (menu, fallbackMenu) => {
+  const items = sanitizeLinks(menu)
+  return items.length ? items : fallbackMenu
+}
+
+const sanitizeFooterColumns = (columns, fallbackColumns) => {
+  const sanitized = (Array.isArray(columns) ? columns : [])
+    .map((column) => ({ ...column, links: sanitizeLinks(column.links) }))
+    .filter((column) => column.links.length > 0)
+
+  // Bổ sung cột mặc định còn thiếu (vd: Tài khoản) để footer không bị rỗng.
+  const merged = [...sanitized]
+  for (const column of fallbackColumns) {
+    if (!merged.some((item) => item.title === column.title)) merged.push(column)
+  }
+  return merged.length ? merged : fallbackColumns
+}
+
 export const buildDefaultSiteData = () => ({
   header: DEFAULT_HEADER,
   footer: DEFAULT_FOOTER,
@@ -64,6 +111,7 @@ export const buildDefaultSiteData = () => ({
  * Gộp dữ liệu site từ backend với default.
  * `windowData.site` được ưu tiên; nếu là trang chủ phẳng thì dùng header/footer
  * của payload đó; cuối cùng mới tới default.
+ * Link chết/URL cũ được lọc hoặc map sang route chuẩn.
  */
 export const resolveSiteData = (site, homePayload) => {
   const fallback = buildDefaultSiteData()
@@ -76,12 +124,12 @@ export const resolveSiteData = (site, homePayload) => {
     header: {
       ...fallback.header,
       ...header,
-      menu: header?.menu?.length ? header.menu : fallback.header.menu,
+      menu: sanitizeMenu(header?.menu, fallback.header.menu),
     },
     footer: {
       ...fallback.footer,
       ...footer,
-      columns: footer?.columns?.length ? footer.columns : fallback.footer.columns,
+      columns: sanitizeFooterColumns(footer?.columns, fallback.footer.columns),
       socials: footer?.socials?.length ? footer.socials : fallback.footer.socials,
     },
     server_info: { ...fallback.server_info, ...serverInfo },

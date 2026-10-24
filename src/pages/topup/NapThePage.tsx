@@ -2,6 +2,7 @@ import { useState } from 'react'
 import SiteLayout from '@/components/layout/SiteLayout'
 import DataUnavailable from '@/components/ui/DataUnavailable'
 import { getTopupPageData } from '@/data'
+import { BANK_QR_BASE_URL } from '@/data/site'
 import {
   CARD_TELCO_OPTIONS,
   DEFAULT_TELCO,
@@ -9,9 +10,22 @@ import {
   getCardValues,
   telcoLabel,
 } from '@/data/card-options'
+import useAuth from '@/hooks/useAuth'
+import { apiPost } from '@/api/client'
+import { showApiError, showSuccess } from '@/utils/swal'
+import { cn } from '@/lib/utils'
+
+type CardFormErrors = {
+  telco?: string
+  amount?: string
+  code?: string
+  serial?: string
+  form?: string
+}
 
 export const NapThePage = () => {
   const result = getTopupPageData()
+  const { user, loading: authLoading } = useAuth()
 
   const [cardForm, setCardForm] = useState({
     telco: DEFAULT_TELCO,
@@ -19,15 +33,10 @@ export const NapThePage = () => {
     card_code: '',
     card_serial: '',
   })
-  const [atmForm, setAtmForm] = useState({
-    bank: '',
-    account_name: '',
-    account_number: '',
-    amount: '',
-    note: '',
-  })
   const [submittingCard, setSubmittingCard] = useState(false)
-  const [submittingAtm, setSubmittingAtm] = useState(false)
+  const [errors, setErrors] = useState<CardFormErrors>({})
+
+  const clearErrors = () => setErrors({})
 
   if (result.status !== 'ok') {
     return (
@@ -49,10 +58,20 @@ export const NapThePage = () => {
   const data = result.data
   const description = data.subtitle || 'Nạp thẻ vào tài khoản AeSieuQuay nhanh chóng và an toàn.'
   const siteUrl = typeof window !== 'undefined' ? window.location.origin : ''
+
+  const isLoggedIn = Boolean(user)
+  const canTopup = !authLoading && isLoggedIn
+  const realname = typeof user?.realname === 'string' ? user.realname.trim() : ''
   const amountOptions = getCardValues(cardForm.telco)
+
+  // Chưa đăng nhập → QR không kèm addInfo; đã đăng nhập → addInfo = realname.
+  const qrUrl = realname
+    ? `${BANK_QR_BASE_URL}?addInfo=${encodeURIComponent(realname)}`
+    : BANK_QR_BASE_URL
 
   const onTelcoChange = (telco: string) => {
     const values = getCardValues(telco)
+    clearErrors()
     setCardForm((s) => ({
       ...s,
       telco,
@@ -60,18 +79,52 @@ export const NapThePage = () => {
     }))
   }
 
-  const onSubmitCard = (e: React.FormEvent) => {
+  const onSubmitCard = async (e: React.FormEvent) => {
     e.preventDefault()
-    setSubmittingCard(true)
-    // TODO: implement sau
-    setTimeout(() => setSubmittingCard(false), 800)
-  }
 
-  const onSubmitAtm = (e: React.FormEvent) => {
-    e.preventDefault()
-    setSubmittingAtm(true)
-    // TODO: implement sau
-    setTimeout(() => setSubmittingAtm(false), 800)
+    const nextErrors: CardFormErrors = {}
+
+    // Chặn gửi thẻ khi chưa đăng nhập (backend cũng yêu cầu JWT).
+    if (!isLoggedIn) {
+      nextErrors.form = 'Vui lòng đăng nhập để nạp thẻ.'
+    }
+
+    if (!CARD_TELCO_OPTIONS.some((option) => option.telco === cardForm.telco)) {
+      nextErrors.telco = 'Vui lòng chọn nhà mạng.'
+    }
+
+    const code = cardForm.card_code.trim()
+    const serial = cardForm.card_serial.trim()
+    const amount = Number(cardForm.amount)
+
+    if (!code) nextErrors.code = 'Vui lòng nhập mã thẻ.'
+    if (!serial) nextErrors.serial = 'Vui lòng nhập seri thẻ.'
+    if (!Number.isFinite(amount) || !getCardValues(cardForm.telco).includes(amount)) {
+      nextErrors.amount = 'Vui lòng chọn mệnh giá hợp lệ.'
+    }
+
+    if (Object.keys(nextErrors).length > 0) {
+      setErrors(nextErrors)
+      return
+    }
+
+    setErrors({})
+    setSubmittingCard(true)
+    try {
+      const res = await apiPost('/card/charge', {
+        telco: cardForm.telco,
+        amount,
+        serial,
+        code,
+      })
+      await showSuccess('Gửi thẻ thành công', res?.message || 'Thẻ đang được xử lý.')
+      setCardForm((s) => ({ ...s, card_code: '', card_serial: '' }))
+    } catch (err) {
+      // SweetAlert chỉ dùng cho response API (lỗi/thành công).
+      await showApiError(err, 'Nạp thẻ thất bại')
+    } finally {
+      setSubmittingCard(false)
+    }
   }
 
   return (
@@ -99,7 +152,7 @@ export const NapThePage = () => {
         <div className="grid items-start gap-6 lg:grid-cols-2">
           {/* ================= Nạp bằng thẻ cào ================= */}
           <section className="overflow-hidden rounded-3xl border border-border-c bg-surface shadow-lg shadow-black/10">
-            <form onSubmit={onSubmitCard} className="p-6 sm:p-8">
+            <form onSubmit={onSubmitCard} className="p-6 sm:p-8" noValidate>
               <div className="flex items-center gap-3">
                 <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary-soft text-xl">
                   💳
@@ -110,7 +163,23 @@ export const NapThePage = () => {
                 </div>
               </div>
 
-              <div className="mt-6 grid gap-4 sm:grid-cols-2">
+              {!authLoading && !isLoggedIn && (
+                <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-muted">
+                  Bạn cần{' '}
+                  <a href="/dang-nhap" className="font-semibold text-primary underline">
+                    đăng nhập
+                  </a>{' '}
+                  để nạp thẻ.
+                </div>
+              )}
+
+              <fieldset
+                disabled={!canTopup}
+                className={cn(
+                  'mt-6 grid gap-4 border-0 p-0 sm:grid-cols-2',
+                  !canTopup && 'opacity-60',
+                )}
+              >
                 <div>
                   <label htmlFor="card-telco" className="mb-1.5 block text-sm font-medium">
                     Nhà mạng
@@ -118,8 +187,9 @@ export const NapThePage = () => {
                   <select
                     id="card-telco"
                     value={cardForm.telco}
+                    disabled={!canTopup}
                     onChange={(e) => onTelcoChange(e.target.value)}
-                    className="w-full rounded-xl border border-border-c bg-bg px-4 py-2.5 text-sm outline-none transition-colors focus:border-primary"
+                    className="w-full rounded-xl border border-border-c bg-bg px-4 py-2.5 text-sm outline-none transition-colors focus:border-primary disabled:cursor-not-allowed"
                   >
                     {CARD_TELCO_OPTIONS.map(({ telco }) => (
                       <option key={telco} value={telco}>
@@ -127,6 +197,7 @@ export const NapThePage = () => {
                       </option>
                     ))}
                   </select>
+                  {errors.telco && <p className="mt-1 text-xs text-red-500">{errors.telco}</p>}
                 </div>
 
                 <div>
@@ -136,8 +207,12 @@ export const NapThePage = () => {
                   <select
                     id="card-amount"
                     value={cardForm.amount}
-                    onChange={(e) => setCardForm((s) => ({ ...s, amount: e.target.value }))}
-                    className="w-full rounded-xl border border-border-c bg-bg px-4 py-2.5 text-sm outline-none transition-colors focus:border-primary"
+                    disabled={!canTopup}
+                    onChange={(e) => {
+                      clearErrors()
+                      setCardForm((s) => ({ ...s, amount: e.target.value }))
+                    }}
+                    className="w-full rounded-xl border border-border-c bg-bg px-4 py-2.5 text-sm outline-none transition-colors focus:border-primary disabled:cursor-not-allowed"
                   >
                     {amountOptions.map((value) => (
                       <option key={value} value={String(value)}>
@@ -145,6 +220,7 @@ export const NapThePage = () => {
                       </option>
                     ))}
                   </select>
+                  {errors.amount && <p className="mt-1 text-xs text-red-500">{errors.amount}</p>}
                 </div>
 
                 <div>
@@ -155,11 +231,15 @@ export const NapThePage = () => {
                     id="card-code"
                     type="text"
                     value={cardForm.card_code}
-                    onChange={(e) => setCardForm((s) => ({ ...s, card_code: e.target.value }))}
+                    disabled={!canTopup}
+                    onChange={(e) => {
+                      clearErrors()
+                      setCardForm((s) => ({ ...s, card_code: e.target.value }))
+                    }}
                     placeholder="Nhập mã thẻ cào"
-                    className="w-full rounded-xl border border-border-c bg-bg px-4 py-2.5 text-sm outline-none transition-colors focus:border-primary"
-                    required
+                    className="w-full rounded-xl border border-border-c bg-bg px-4 py-2.5 text-sm outline-none transition-colors focus:border-primary disabled:cursor-not-allowed"
                   />
+                  {errors.code && <p className="mt-1 text-xs text-red-500">{errors.code}</p>}
                 </div>
 
                 <div>
@@ -170,117 +250,90 @@ export const NapThePage = () => {
                     id="card-serial"
                     type="text"
                     value={cardForm.card_serial}
-                    onChange={(e) => setCardForm((s) => ({ ...s, card_serial: e.target.value }))}
+                    disabled={!canTopup}
+                    onChange={(e) => {
+                      clearErrors()
+                      setCardForm((s) => ({ ...s, card_serial: e.target.value }))
+                    }}
                     placeholder="Nhập số seri thẻ"
-                    className="w-full rounded-xl border border-border-c bg-bg px-4 py-2.5 text-sm outline-none transition-colors focus:border-primary"
-                    required
+                    className="w-full rounded-xl border border-border-c bg-bg px-4 py-2.5 text-sm outline-none transition-colors focus:border-primary disabled:cursor-not-allowed"
                   />
+                  {errors.serial && <p className="mt-1 text-xs text-red-500">{errors.serial}</p>}
                 </div>
-              </div>
+              </fieldset>
 
               <button
                 type="submit"
-                disabled={submittingCard}
-                className="mt-6 w-full rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-primary-strong disabled:opacity-60"
+                disabled={!canTopup || submittingCard}
+                className="mt-6 w-full rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-primary-strong disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {submittingCard ? 'Đang gửi...' : 'Gửi yêu cầu nạp thẻ'}
+                {submittingCard
+                  ? 'Đang gửi...'
+                  : canTopup
+                    ? 'Nạp thẻ'
+                    : 'Đăng nhập để nạp thẻ'}
               </button>
+
+              {errors.form && (
+                <p role="alert" className="mt-3 text-sm text-red-500">
+                  {errors.form}
+                </p>
+              )}
             </form>
           </section>
 
-          {/* ================= Nạp bằng ATM/Bank ================= */}
+          {/* ================= Nạp bằng ATM/Bank (VietQR) ================= */}
           <section className="overflow-hidden rounded-3xl border border-border-c bg-surface shadow-lg shadow-black/10">
-            <form onSubmit={onSubmitAtm} className="p-6 sm:p-8">
+            <div className="p-6 sm:p-8">
               <div className="flex items-center gap-3">
                 <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary-soft text-xl">
                   🏦
                 </span>
                 <div>
                   <h2 className="text-xl font-bold">Nạp bằng ATM/Bank</h2>
-                  <p className="mt-0.5 text-sm text-muted">Điền thông tin chuyển khoản để xác nhận nạp</p>
+                  <p className="mt-0.5 text-sm text-muted">Quét mã VietQR để chuyển khoản</p>
                 </div>
               </div>
 
-              <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                <div className="sm:col-span-2">
-                  <label htmlFor="atm-bank" className="mb-1.5 block text-sm font-medium">
-                    Ngân hàng
-                  </label>
-                  <input
-                    id="atm-bank"
-                    type="text"
-                    value={atmForm.bank}
-                    onChange={(e) => setAtmForm((s) => ({ ...s, bank: e.target.value }))}
-                    placeholder="Tên ngân hàng (VD: Vietcombank, MB Bank...)"
-                    className="w-full rounded-xl border border-border-c bg-bg px-4 py-2.5 text-sm outline-none transition-colors focus:border-primary"
-                    required
+              <div className="mt-6 flex flex-col items-center">
+                <div className="relative w-full max-w-[300px]">
+                  <img
+                    src={qrUrl}
+                    alt={realname ? `Mã QR nạp tiền cho ${realname}` : 'Mã QR nạp tiền'}
+                    className={cn(
+                      'w-full select-none rounded-2xl border border-border-c bg-white p-2 shadow-sm',
+                      !canTopup && 'pointer-events-none scale-[1.04] blur-lg',
+                    )}
+                    draggable={false}
                   />
-                </div>
-                <div>
-                  <label htmlFor="atm-account-name" className="mb-1.5 block text-sm font-medium">
-                    Tên tài khoản
-                  </label>
-                  <input
-                    id="atm-account-name"
-                    type="text"
-                    value={atmForm.account_name}
-                    onChange={(e) => setAtmForm((s) => ({ ...s, account_name: e.target.value }))}
-                    placeholder="Tên chủ tài khoản"
-                    className="w-full rounded-xl border border-border-c bg-bg px-4 py-2.5 text-sm outline-none transition-colors focus:border-primary"
-                    required
-                  />
-                </div>
-                <div>
-                  <label htmlFor="atm-account-number" className="mb-1.5 block text-sm font-medium">
-                    Số tài khoản
-                  </label>
-                  <input
-                    id="atm-account-number"
-                    type="text"
-                    value={atmForm.account_number}
-                    onChange={(e) => setAtmForm((s) => ({ ...s, account_number: e.target.value }))}
-                    placeholder="Số tài khoản"
-                    className="w-full rounded-xl border border-border-c bg-bg px-4 py-2.5 text-sm outline-none transition-colors focus:border-primary"
-                    required
-                  />
-                </div>
-                <div className="sm:col-span-2">
-                  <label htmlFor="atm-amount" className="mb-1.5 block text-sm font-medium">
-                    Số tiền
-                  </label>
-                  <input
-                    id="atm-amount"
-                    type="number"
-                    value={atmForm.amount}
-                    onChange={(e) => setAtmForm((s) => ({ ...s, amount: e.target.value }))}
-                    placeholder="Số tiền chuyển khoản"
-                    className="w-full rounded-xl border border-border-c bg-bg px-4 py-2.5 text-sm outline-none transition-colors focus:border-primary"
-                    required
-                  />
-                </div>
-                <div className="sm:col-span-2">
-                  <label htmlFor="atm-note" className="mb-1.5 block text-sm font-medium">
-                    Nội dung chuyển khoản
-                  </label>
-                  <input
-                    id="atm-note"
-                    type="text"
-                    value={atmForm.note}
-                    onChange={(e) => setAtmForm((s) => ({ ...s, note: e.target.value }))}
-                    placeholder="Nội dung (VD: Nap tien tai khoan...)"
-                    className="w-full rounded-xl border border-border-c bg-bg px-4 py-2.5 text-sm outline-none transition-colors focus:border-primary"
-                  />
-                </div>
-              </div>
 
-              <button
-                type="submit"
-                disabled={submittingAtm}
-                className="mt-6 w-full rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-primary-strong disabled:opacity-60"
-              >
-                {submittingAtm ? 'Đang gửi...' : 'Gửi thông tin chuyển khoản'}
-              </button>
-            </form>
+                  {!canTopup && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center rounded-2xl bg-bg/40 p-4 text-center backdrop-blur-[2px]">
+                      <span className="text-3xl">🔒</span>
+                      <p className="mt-2 text-sm font-semibold text-fg">Đăng nhập để quét mã</p>
+                      <a
+                        href="/dang-nhap"
+                        className="mt-3 rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-primary-strong"
+                      >
+                        Đăng nhập
+                      </a>
+                    </div>
+                  )}
+                </div>
+
+                {canTopup && realname && (
+                  <p className="mt-4 text-center text-sm text-muted">
+                    Nội dung chuyển khoản:{' '}
+                    <span className="font-semibold text-fg">{realname}</span>
+                  </p>
+                )}
+
+                <p className="mt-3 max-w-xs text-center text-xs leading-relaxed text-muted">
+                  Mở ứng dụng ngân hàng và quét mã. Nội dung chuyển khoản tự điền theo tên tài
+                  khoản của bạn.
+                </p>
+              </div>
+            </div>
           </section>
         </div>
       </main>
