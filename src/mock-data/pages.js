@@ -14,109 +14,161 @@
 
 import { DEFAULT_FOOTER, DEFAULT_HEADER, DEFAULT_SERVER_INFO, DEFAULT_DISCORD_URL } from '@/data/site'
 
+/* ================== Stat cụm mock (shape backend.md 0.1) ================== */
+
+const MOCK_CLUSTER = { id: 1, slug: 'aesq', name: 'AESQ Network' }
+
+/**
+ * ClusterStats mẫu — plausible để test UI. Muốn test "ẩn strip khi
+ * backend chưa từng report", đổi thành `null` (payload.stats == null).
+ */
+const clusterStats = (players, max, tps, uptime, serversOnline, serverStatus) => ({
+  cluster: MOCK_CLUSTER,
+  scope: 'cluster',
+  status: 'online',
+  updated_at_ms: Date.now(),
+  players: { online: players, max },
+  tps: { avg_1m: tps },
+  uptime: { percent_7d: uptime, window_hours: 168 },
+  servers: { total: serverStatus.length, online: serversOnline },
+  server_status: serverStatus,
+})
+
+const MOCK_SERVER_STATUS = [
+  { server_key: 'proxy-1', name: 'Proxy 1', role: 'proxy', online: true, maintenance: false, players_online: 210, players_max: 1000 },
+  { server_key: 'survival-1', name: 'Survival 1', role: 'game', online: true, maintenance: false, players_online: 96, players_max: 300 },
+  { server_key: 'pvp-1', name: 'PvP 1', role: 'game', online: true, maintenance: false, players_online: 58, players_max: 200 },
+  { server_key: 'minigame-1', name: 'Minigame 1', role: 'game', online: false, maintenance: false, players_online: null, players_max: null },
+]
+
 /* ================== TRANG DANH SÁCH MÁY CHỦ ================== */
 
 export const machineListPageMock = {
   title: 'Máy chủ',
   subtitle: 'Khám phá tất cả máy chủ tại SV AeSieuQuay',
+  cluster: MOCK_CLUSTER,
+  stats: clusterStats(210, 1000, 19.8, 99.4, 3, MOCK_SERVER_STATUS),
   modes: [
     {
       slug: 'sinh-ton',
       name: 'Sinh tồn',
       tagline: 'Classic Survival',
       short_desc: 'Khám phá thế giới, bảo vệ lãnh thổ, chinh phục Boss mỗi cuối tuần.',
-      desc: 'Chế độ Sinh tồn với hệ thống lãnh thổ, bang hội, Boss World Boss và sự kiện định kỳ.',
       status: 'hot',
-      players_online: 156,
-      difficulty: 'Trung bình',
-      features: ['Lãnh thổ & claim đất', 'Boss & World Boss', 'Bang hội & liên minh', 'Thương mại người chơi', 'Sự kiện PvE'],
-      highlights: [
-        { title: 'Bảo vệ lãnh thổ', desc: 'Chỉ thành viên được phép trong claim' },
-        { title: 'Boss đấu', desc: 'Thử thách cùng đội để nhận loot hiếm' },
-        { title: 'Cộng đồng', desc: 'Xây dựng và phát triển cùng AE' },
-      ],
-      images: [
-        'https://images.unsplash.com/photo-1601987077677-5346c0c57d3f?q=80&w=1974&auto=format&fit=crop',
-        'https://images.unsplash.com/photo-1551103782-8ab07afd45c1?q=80&w=2070&auto=format&fit=crop',
-      ],
-      rules: ['Không grief', 'Không hack/client bất hợp pháp', 'Tôn trọng người chơi khác'],
-      commands: ['/spawn', '/home', '/sethome', '/warp', '/tpa', '/claim'],
+      image: 'https://images.unsplash.com/photo-1601987077677-5346c0c57d3f?q=80&w=1974&auto=format&fit=crop',
     },
     {
       slug: 'skyblock',
       name: 'Skyblock',
       tagline: 'Sky Islands',
       short_desc: 'Bắt đầu từ đảo nhỏ trên không, mở rộng thành đảo vương quốc.',
-      desc: 'Skyblock độc đáo với hệ thống đảo, nâng cấp giá trị đảo, shop, đấu giá và bảng xếp hạng.',
       status: 'hot',
-      players_online: 98,
-      difficulty: 'Dễ - Trung bình',
-      features: ['Đảo riêng', 'Nâng cấp đảo', 'Shop & Trade', 'Sự kiện Island', 'Khu PvE'],
-      highlights: [
-        { title: 'Từ nhỏ đến lớn', desc: 'Mỗi block đều quý giá' },
-        { title: 'Xếp hạng đảo', desc: 'Cạnh tranh top đảo' },
-        { title: 'Phần thưởng', desc: 'Nhiều quà từ nhiệm vụ & sự kiện' },
-      ],
-      images: [
-        'https://images.unsplash.com/photo-1464802686167-b939a6910659?q=80&w=2050&auto=format&fit=crop',
-        'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?q=80&w=2070&auto=format&fit=crop',
-      ],
-      rules: ['Không phá đảo người khác', 'Không exploit bug', 'Tuân thủ quy định trade'],
-      commands: ['/is create', '/is home', '/is visit', '/is shop', '/is top'],
+      image: 'https://images.unsplash.com/photo-1464802686167-b939a6910659?q=80&w=2050&auto=format&fit=crop',
     },
     {
       slug: 'pvp',
       name: 'PvP',
       tagline: 'Arena Combat',
-      short_desc: 'Khẳng định kỹ năng trong 1v1, Team, FFA.',
-      desc: 'Arena PvP tối ưu combat, nhiều chế độ, hệ thống Rank & ELO, giải đấu tuần.',
+      short_desc: 'Sảnh combat tối ưu ping Việt Nam.',
       status: 'new',
-      players_online: 64,
-      difficulty: 'Khó',
-      features: ['1v1 / 2v2 / FFA', 'Rank & ELO', 'Kit cân bằng', 'Giải đấu tuần', 'BXH toàn server'],
-      highlights: [
-        { title: 'Combat cân bằng', desc: 'Kit điều chỉnh thường xuyên' },
-        { title: 'Thăng hạng', desc: 'Leo rank từ Bronze đến Master' },
-        { title: 'Giải thưởng', desc: 'Top giải đấu nhận phần thưởng giá trị' },
-      ],
-      images: [
-        'https://images.unsplash.com/photo-1511512578047-dfb367046420?q=80&w=2071&auto=format&fit=crop',
-        'https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=2070&auto=format&fit=crop',
-      ],
-      rules: ['Không sử dụng hack', 'Chơi fair', 'Tôn trọng đối thủ'],
-      commands: ['/pvp join', '/pvp leave', '/stats', '/top pvp'],
+      image: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?q=80&w=2071&auto=format&fit=crop',
     },
     {
       slug: 'minigame',
       name: 'Minigame',
       tagline: 'Fun & Casual',
       short_desc: 'Bedwars, SkyWars, Build Battle và nhiều hơn nữa.',
-      desc: 'Minigame giải trí, trận đấu ngắn, party cùng bạn bè, hệ thống coin & shop reward.',
       status: 'normal',
-      players_online: 87,
-      difficulty: 'Dễ',
-      features: ['Bedwars', 'SkyWars', 'Build Battle', 'Party', 'Nhiệm vụ & Coin'],
-      highlights: [
-        { title: 'Chơi nhanh', desc: 'Vào trận ngay, không chờ lâu' },
-        { title: 'Party', desc: 'Mời bạn bè cùng chơi' },
-        { title: 'Thưởng', desc: 'Hoàn thành nhiệm vụ nhận Coin' },
-      ],
-      images: [
-        'https://images.unsplash.com/photo-1493711662062-fa541adb3fc8?q=80&w=2070&auto=format&fit=crop',
-        'https://images.unsplash.com/photo-1511882150382-421056c89033?q=80&w=2071&auto=format&fit=crop',
-      ],
-      rules: ['Không phá map', 'Chơi vui vẻ', 'Không spam chat'],
-      commands: ['/play', '/party', '/lobby', '/stats'],
+      image: 'https://images.unsplash.com/photo-1493711662062-fa541adb3fc8?q=80&w=2070&auto=format&fit=crop',
     },
   ],
 }
 
 /**
- * Payload chi tiết mẫu cho development — giống hệt object backend trả cho
- * /may-chu/:slug: commands, desc, difficulty, features, highlights, images,
- * name, players_online, rules, short_desc, slug, status, tagline.
+ * Nội dung mẫu cho mock — Tailwind classes nằm trong HTML (không qua
+ * scanner) nên mọi class dùng ở đây phải có trong `tailwind-safelist.html`
+ * hoặc mặc định `.aqs-prose` lo.
  */
-export const machineDetailMock = { ...machineListPageMock.modes[0] }
+const sampleContentHtml = (name, image) => `
+<h2>Chào mừng đến với ${name}</h2>
+<p>Nội dung trang này do admin soạn tự do ở <b>/admin/game-modes</b> — trình soạn HTML 2 cột (mã nguồn + preview). Backend đã sanitize allowlist tags/attrs trước khi ghi DB.</p>
+${image ? `<img src="${image}" alt="${name}" loading="lazy" class="rounded-xl w-full" />` : ''}
+<div class="grid gap-4 md:grid-cols-2">
+  <div class="rounded-xl border border-border-c bg-surface p-4">
+    <h3 class="font-bold">Lối chơi</h3>
+    <p class="text-sm text-muted">Mô tả ngắn cho block trái — class nằm trong DB HTML, ăn safelist + .aqs-prose.</p>
+  </div>
+  <div class="rounded-xl border border-border-c bg-surface p-4">
+    <h3 class="font-bold">Phù hợp với ai</h3>
+    <p class="text-sm text-muted">Block phải. Dark mode tự đổi theo token nên không cần style cứng.</p>
+  </div>
+</div>
+<ul>
+  <li>Danh sách kế thừa style từ <code>.aqs-prose</code> (không cần class)</li>
+  <li>Muốn đẹp hơn thì dùng Tailwind class có trong safelist</li>
+</ul>
+<blockquote>Lưu ý: style="…" bị sanitizer loại — cứ dùng class.</blockquote>
+`
+
+/**
+ * Payload chi tiết mẫu cho development — giống hệt object backend trả cho
+ * /may-chu/:slug (GameModeOut đã cắt còn field frontend cần).
+ */
+export const machineDetailsMock = {
+  'sinh-ton': {
+    slug: 'sinh-ton',
+    name: 'Sinh tồn',
+    tagline: 'Classic Survival',
+    short_desc: 'Khám phá thế giới, bảo vệ lãnh thổ, chinh phục Boss mỗi cuối tuần.',
+    status: 'hot',
+    image: machineListPageMock.modes[0].image,
+    images: [
+      machineListPageMock.modes[0].image,
+      'https://images.unsplash.com/photo-1551103782-8ab07afd45c1?q=80&w=2070&auto=format&fit=crop',
+    ],
+    cluster: { id: 1 },
+    stats: clusterStats(96, 300, 19.9, 99.6, 1, MOCK_SERVER_STATUS.slice(1, 2)),
+    content_html: sampleContentHtml('Sinh tồn', machineListPageMock.modes[0].image),
+  },
+  skyblock: {
+    slug: 'skyblock',
+    name: 'Skyblock',
+    tagline: 'Sky Islands',
+    short_desc: 'Bắt đầu từ đảo nhỏ trên không, mở rộng thành đảo vương quốc.',
+    status: 'hot',
+    image: machineListPageMock.modes[1].image,
+    images: [machineListPageMock.modes[1].image],
+    cluster: { id: 1 },
+    stats: clusterStats(58, 200, 20, 100, 1, [MOCK_SERVER_STATUS[1]]),
+    content_html: sampleContentHtml('Skyblock', machineListPageMock.modes[1].image),
+  },
+  pvp: {
+    slug: 'pvp',
+    name: 'PvP',
+    tagline: 'Arena Combat',
+    short_desc: 'Sảnh combat tối ưu ping Việt Nam.',
+    status: 'new',
+    image: machineListPageMock.modes[2].image,
+    images: [machineListPageMock.modes[2].image],
+    cluster: { id: 1 },
+    // stats === null: test trường hợp backend chưa từng report → strip ẩn.
+    stats: null,
+    content_html: sampleContentHtml('PvP', machineListPageMock.modes[2].image),
+  },
+  minigame: {
+    slug: 'minigame',
+    name: 'Minigame',
+    tagline: 'Fun & Casual',
+    short_desc: 'Bedwars, SkyWars, Build Battle và nhiều hơn nữa.',
+    status: 'normal',
+    image: machineListPageMock.modes[3].image,
+    images: [machineListPageMock.modes[3].image],
+    cluster: { id: 1 },
+    stats: null,
+    // content_html null → fallback paragraph short_desc.
+    content_html: null,
+  },
+}
 
 /* ================== TRANG CHỦ ================== */
 
@@ -149,10 +201,12 @@ export const homePageMock = {
     ],
     slideshow_interval: 4000,
   },
+  // Stat cụm thật — backend override server_info.players từ cùng nguồn stats.
+  stats: machineListPageMock.stats,
   server_info: {
     ...DEFAULT_SERVER_INFO,
     online: true,
-    players: { online: 156, max: 500 },
+    players: { online: 210, max: 1000 },
     version: '1.21.11',
   },
   game_modes: {
@@ -162,9 +216,10 @@ export const homePageMock = {
     modes: machineListPageMock.modes.map((mode) => ({
       slug: mode.slug,
       name: mode.name,
-      desc: mode.short_desc,
-      features: mode.features.slice(0, 3),
-      image: null,
+      tagline: mode.tagline,
+      short_desc: mode.short_desc,
+      status: mode.status,
+      image: mode.image,
     })),
   },
   highlights: {
@@ -237,6 +292,6 @@ export const topupPageMock = {
 export default {
   homePageMock,
   machineListPageMock,
-  machineDetailMock,
+  machineDetailsMock,
   topupPageMock,
 }

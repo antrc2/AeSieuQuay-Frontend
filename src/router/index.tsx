@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { createBrowserRouter } from 'react-router-dom'
 
 import HomePage from '@/pages/landing/HomePage'
@@ -8,7 +9,19 @@ import GameModeDetailPage from '@/pages/game/GameModeDetailPage'
 import NotFound from '@/pages/errors/NotFound'
 import Forbidden from '@/pages/errors/Forbidden'
 import ErrorPage from '@/pages/errors/ErrorPage'
+import AdminLayout from '@/components/layout/AdminLayout'
+import AdminOverviewPage from '@/pages/admin/AdminOverviewPage'
+import AdminClustersPage from '@/pages/admin/AdminClustersPage'
+import AdminServersPage from '@/pages/admin/AdminServersPage'
+import AdminKeysPage from '@/pages/admin/AdminKeysPage'
+import { lazy } from 'react'
+import AdminMonitorPage from '@/pages/admin/AdminMonitorPage'
+import AdminMonitorDetailPage from '@/pages/admin/AdminMonitorDetailPage'
+import AdminGameModesPage from '@/pages/admin/AdminGameModesPage'
 import { LegacyRedirect, LegacySlugRedirect, RootLayout } from '@/router/RouteHelpers'
+
+/** Editor HTML admin kéo theo CodeMirror (~450KB) — chỉ tải khi admin mở trang soạn. */
+const AdminGameModeContentPage = lazy(() => import('@/pages/admin/AdminGameModeContentPage'))
 
 export const router = createBrowserRouter([
   {
@@ -42,6 +55,28 @@ export const router = createBrowserRouter([
       {
         path: '/forbidden',
         element: <Forbidden />,
+      },
+      // ===== Khu admin: dữ liệu động qua API, được phép navigation SPA (<Link>) =====
+      {
+        path: '/admin',
+        element: <AdminLayout />,
+        children: [
+          { index: true, element: <AdminOverviewPage /> },
+          { path: 'clusters', element: <AdminClustersPage /> },
+          { path: 'servers', element: <AdminServersPage /> },
+          { path: 'game-modes', element: <AdminGameModesPage /> },
+          {
+            path: 'game-modes/:id/content',
+            element: (
+              <Suspense fallback={<div className="p-8 text-sm text-muted">Đang tải editor…</div>}>
+                <AdminGameModeContentPage />
+              </Suspense>
+            ),
+          },
+          { path: 'keys', element: <AdminKeysPage /> },
+          { path: 'monitor', element: <AdminMonitorPage /> },
+          { path: 'monitor/:server', element: <AdminMonitorDetailPage /> },
+        ],
       },
       // ===== Legacy URLs: /che-do-choi* → /may-chu* =====
       {

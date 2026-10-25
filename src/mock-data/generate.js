@@ -4,12 +4,15 @@
  * Deterministic: cùng slug → cùng dữ liệu ở mọi lần reload.
  * Cách làm: hash slug (FNV-1a) → seed PRNG (mulberry32) → chọn template trong
  * `machineListPageMock` và biến đổi ổn định.
+ *
+ * Shape mới (backend.md 0.1): không còn features/highlights/rules/commands/
+ * difficulty/players_online — nội dung dài nằm trong `content_html`,
+ * số liệu động nằm trong `stats`.
  */
 
 import { machineListPageMock } from './pages'
 
 const TAGLINES = ['Khám phá thế giới', 'Cộng đồng AE', 'Thử thách mới', 'Phiêu lưu bất tận']
-const DIFFICULTIES = ['Dễ', 'Trung bình', 'Khó']
 const STATUSES = ['normal', 'new', 'hot']
 
 /** FNV-1a 32-bit — ổn định, không phụ thuộc thứ tự. */
@@ -41,12 +44,6 @@ const humanizeSlug = (slug) => {
   return words.map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
 }
 
-/** Xoay vòng mảng theo offset — vẫn giữ đủ phần tử, không trùng. */
-const rotate = (list, offset) => {
-  if (!Array.isArray(list) || list.length === 0) return []
-  const start = offset % list.length
-  return [...list.slice(start), ...list.slice(0, start)]
-}
 
 /**
  * @param {string} slug
@@ -61,26 +58,60 @@ export const generateMachineDetail = (slug) => {
   const name = humanizeSlug(normalized)
 
   const pick = (list) => list[Math.floor(rnd() * list.length)]
-  const playersOnline = 20 + Math.floor(rnd() * 380)
-  const highlights = rotate(base.highlights ?? [], hash).slice(0, 3)
-  const features = rotate(base.features ?? [], hash).slice(0, 5)
-  const images = rotate(base.images ?? [], hash)
+  const image = base.image ?? null
+  const players = 20 + Math.floor(rnd() * 380)
+  const max = 200 + Math.floor(rnd() * 8) * 50
+  const tps = 17 + rnd() * 3
+  const uptime = 90 + rnd() * 10
+
+  // Nội dung dài mock — cùng template prose với trang có content_html.
+  const contentHtml = `
+<h2>${name}</h2>
+<p>Máy chủ giả lập cho slug <code>${normalized || '—'}</code> — dev chỉ, để test giao diện chi tiết với mọi slug. Ở production nội dung này do admin soạn trong <b>/admin/game-modes</b>.</p>
+${image ? `<img src="${image}" alt="${name}" loading="lazy" class="rounded-xl w-full" />` : ''}
+<div class="grid gap-4 md:grid-cols-2">
+  <div class="rounded-xl border border-border-c bg-surface p-4">
+    <h3 class="font-bold">Lối chơi</h3>
+    <p class="text-sm text-muted">Nội dung minh hoạ sinh tự động, deterministic theo slug.</p>
+  </div>
+  <div class="rounded-xl border border-border-c bg-surface p-4">
+    <h3 class="font-bold">Cộng đồng</h3>
+    <p class="text-sm text-muted">Kiểm tra dark mode + safelist class.</p>
+  </div>
+</div>
+`
 
   return {
     slug: normalized,
     name,
     tagline: pick(TAGLINES),
     short_desc: `Máy chủ ${name} dành cho cộng đồng AE — khám phá, xây dựng và cạnh tranh.`,
-    desc: `${name} là một máy chủ giả lập được tạo tự động trong môi trường development. Nội dung minh hoạ dựa trên mẫu ${base.name ?? 'máy chủ'} để kiểm tra giao diện chi tiết với mọi slug.`,
     status: pick(STATUSES),
-    players_online: playersOnline,
-    difficulty: pick(DIFFICULTIES),
-    features,
-    highlights,
-    images,
-    rules: base.rules ?? [],
-    commands: base.commands ?? [],
-    gallery: images.slice(0, 2),
+    image,
+    images: image ? [image] : [],
+    cluster: { id: 1 },
+    stats: {
+      cluster: { id: 1, slug: 'aesq', name: 'AESQ Network' },
+      scope: `group:${normalized}`,
+      status: 'online',
+      updated_at_ms: Date.now(),
+      players: { online: players, max },
+      tps: { avg_1m: Number(tps.toFixed(2)) },
+      uptime: { percent_7d: Number(uptime.toFixed(2)), window_hours: 168 },
+      servers: { total: 2, online: 2 },
+      server_status: [
+        {
+          server_key: normalized,
+          name,
+          role: 'game',
+          online: true,
+          maintenance: false,
+          players_online: players,
+          players_max: max,
+        },
+      ],
+    },
+    content_html: contentHtml,
   }
 }
 

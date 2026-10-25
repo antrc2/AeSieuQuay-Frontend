@@ -9,7 +9,7 @@
  */
 
 import { useMockData } from '@/config/env'
-import { homePageMock, machineListPageMock, topupPageMock } from '@/mock-data/pages'
+import { homePageMock, machineDetailsMock, machineListPageMock, topupPageMock } from '@/mock-data/pages'
 import { generateMachineDetail } from '@/mock-data/generate'
 
 import {
@@ -60,7 +60,8 @@ export const getSiteData = (): SiteData => {
 /* ================= Trang chủ ================= */
 
 export const getHomePageData = (): DataResult<HomePayload> => {
-  if (useMockData) return ok(homePageMock)
+  // Mock viết tay bằng JS → literal union bị suy diễn thành string; cast tại ranh giới mock.
+  if (useMockData) return ok(homePageMock as HomePayload)
 
   const w = readWindowData()
   if (!w) return missing()
@@ -73,7 +74,7 @@ export const getHomePageData = (): DataResult<HomePayload> => {
 /* ================= Danh sách máy chủ ================= */
 
 export const getMachineListData = (): DataResult<MachineListPayload> => {
-  if (useMockData) return ok(machineListPageMock)
+  if (useMockData) return ok(machineListPageMock as MachineListPayload)
 
   const w = readWindowData()
   if (!w) return missing()
@@ -99,10 +100,10 @@ export const getMachineDetailData = (slug: string): DataResult<MachineDetailPayl
 
   if (useMockData) {
     // Trả đúng object mock, không thêm field phụ (giống payload backend).
-    const fromList = machineListPageMock.modes.find((mode) => mode.slug === normalized)
-    if (fromList) return ok(fromList as MachineDetailPayload)
+    const detail = (machineDetailsMock as Record<string, MachineDetailPayload>)[normalized]
+    if (detail) return ok(detail)
     // Slug lạ ở development: sinh dữ liệu giả ổn định để luôn render được UI.
-    return ok(generateMachineDetail(normalized))
+    return ok(generateMachineDetail(normalized) as MachineDetailPayload)
   }
 
   const w = readWindowData()
