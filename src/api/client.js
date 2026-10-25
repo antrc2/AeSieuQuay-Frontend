@@ -14,16 +14,16 @@ import { API_BASE_URL } from '@/config/env'
  * ============================================================ */
 
 /* ---------------- Phiên: cookie HttpOnly ----------------
- * Backend set 2 cookie (backend-2.md mục 1):
- *   access_token_cookie  Path=/          HttpOnly  30 phút
- *   refresh_token_cookie Path=/api/auth  HttpOnly  7 ngày
+ * Backend (app.py — JWT_ACCESS_COOKIE_NAME/JWT_REFRESH_COOKIE_NAME) set 2 cookie:
+ *   access_token   Path=/  HttpOnly  30 phút
+ *   refresh_token  Path=/  HttpOnly  7 ngày
+ * Tên + path thống nhất 1-1 với backend từ 26/10 (trước là *_cookie,
+ * refresh nằm Path=/api/auth gây ảo giác "biến mất" khi đổi trang).
  * JS KHÔNG BAO GIỜ chạm được 2 cookie này — muốn xóa thì gọi
- * POST /auth/logout (server trả Set-Cookie expires=1970).
- * Mã cũ dùng sai tên ('access_token'/'refresh_token') và path →
- * "tự xóa token" chưa từng hoạt động; đã gỡ hoàn toàn.
+ * POST /auth/logout (server expire cả tên mới lẫn tên cũ).
  */
 
-const SESSION_COOKIE_NAMES = ['access_token_cookie', 'refresh_token_cookie']
+const SESSION_COOKIE_NAMES = ['access_token', 'refresh_token']
 
 /** Best-effort dọn cookie do CHÍNH JS set (legacy `saveTokens` cũ để lại);
  *  cookie HttpOnly thì server lo (POST /auth/logout). */
