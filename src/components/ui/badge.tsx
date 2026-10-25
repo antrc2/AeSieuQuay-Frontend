@@ -8,7 +8,7 @@ const variants = {
   danger: 'bg-red-500/10 text-red-500 border border-red-500/30',
 }
 
-export const Badge = ({ className, variant = 'default', ...props }) => (
+export const Badge = ({ className = '', variant = 'default', ...props }) => (
   <span
     className={cn(
       'inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium',

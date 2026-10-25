@@ -62,9 +62,41 @@ export interface ServerInfo {
 export interface GameModeSummary {
   slug: string
   name: string
-  desc?: string
-  features?: string[]
+  tagline?: string
+  short_desc?: string
+  status?: string
   image?: string | null
+}
+
+/* ================= Cluster stats (backend.md mục 0.1) ================= */
+
+export interface ClusterStatsServerStatus {
+  server_key: string
+  name: string
+  role: string // 'proxy' | 'lobby' | 'game'
+  online: boolean
+  maintenance: boolean
+  players_online: number | null
+  players_max: number | null
+}
+
+export interface ClusterStats {
+  cluster: { id: number; slug: string; name: string }
+  scope: string // 'cluster' | 'game' | 'group:<slug>'
+  status: 'online' | 'offline' | 'maintenance'
+  updated_at_ms: number
+  players: { online: number; max: number } | null
+  tps: { avg_1m: number } | null
+  uptime: { percent_7d: number | null; window_hours: number } | null
+  servers: { total: number; online: number }
+  server_status: ClusterStatsServerStatus[]
+}
+
+export interface ClusterSummary {
+  id?: number
+  slug: string
+  name: string
+  description?: string | null
 }
 
 export interface GalleryImage {
@@ -110,6 +142,8 @@ export interface HomePayload {
     subtitle?: string
     modes?: GameModeSummary[]
   }
+  /** Stat cụm thật — backend override `server_info.players` từ đây. null → ẩn strip. */
+  stats?: ClusterStats | null
   highlights?: {
     title?: string
     subtitle?: string
@@ -129,34 +163,42 @@ export interface HomePayload {
   footer?: FooterData
 }
 
-export interface MachineHighlight {
-  title: string
-  desc?: string
-}
-
+/**
+ * Trang /may-chu/<slug>: nội dung dài KHÔNG còn là field cấu trúc —
+ * admin soạn tự do trong `content_html` (đã sanitize server-side, render
+ * qua `.aqs-prose`). Các field cũ (features/highlights/rules/commands/
+ * difficulty/players_online/desc) đã rời payload.
+ */
 export interface MachineDetailPayload {
   slug: string
   name: string
   tagline?: string
   short_desc?: string
-  desc?: string
   status?: string
-  players_online?: number
-  difficulty?: string
-  ip?: string
-  discord_url?: string
-  features?: string[]
-  highlights?: MachineHighlight[]
+  /** Ảnh cover (game_modes.image_url). */
+  image?: string | null
+  /** Gallery — ảnh trong nội dung. */
   images?: string[]
-  rules?: string[]
-  commands?: string[]
-  gallery?: string[]
+  cluster?: { id: number } | null
+  stats?: ClusterStats | null
+  content_html?: string | null
+}
+
+export interface MachineModeCard {
+  slug: string
+  name: string
+  tagline?: string
+  short_desc?: string
+  status?: string
+  image?: string | null
 }
 
 export interface MachineListPayload {
   title?: string
   subtitle?: string
-  modes?: MachineDetailPayload[]
+  cluster?: ClusterSummary | null
+  stats?: ClusterStats | null
+  modes?: MachineModeCard[]
 }
 
 export interface TopupPayload {

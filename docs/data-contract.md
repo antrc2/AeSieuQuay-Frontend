@@ -76,7 +76,8 @@ Shape khuyến nghị:
     "slideshow_interval": 4000
   },
   "server_info": { "ip": "...", "online": true, "players": { "online": 120, "max": 500 }, "version": "1.21.11" },
-  "game_modes": { "title": "Máy chủ", "subtitle": "...", "modes": [{ "slug": "sinh-ton", "name": "Sinh tồn", "desc": "...", "features": [], "image": null }] },
+  "stats": { /* ClusterStats — backend override server_info.players từ cùng nguồn; null → UI ẩn strip */ },
+  "game_modes": { "title": "Máy chủ", "subtitle": "...", "modes": [{ "slug": "sinh-ton", "name": "Sinh tồn", "tagline": "...", "short_desc": "...", "status": "hot", "image": "https://..." }] },
   "highlights": { "title": "...", "items": [{ "icon": "⚡", "title": "...", "desc": "..." }] },
   "gallery": { "title": "...", "description": "...", "images": [{ "id": 1, "title": "...", "alt": "...", "src_asset": "https://...", "width": 1920, "height": 1080 }] },
   "community": { "title": "...", "description": "...", "socials": [{ "icon": "discord", "label": "Discord", "url": "..." }] },
@@ -95,30 +96,67 @@ Lưu ý:
 {
   "title": "Máy chủ",
   "subtitle": "...",
+  "cluster": { "id": 1, "slug": "aesq", "name": "AESQ Network" }, // optional
+  "stats": { /* ClusterStats — xem src/data/contract.ts; null khi chưa từng report → UI ẩn strip */ },
   "modes": [
     {
       "slug": "sinh-ton",
       "name": "Sinh tồn",
       "tagline": "Classic Survival",
       "short_desc": "...",
-      "desc": "...",
       "status": "hot | new | normal",
-      "players_online": 156,
-      "difficulty": "Trung bình",
-      "features": ["..."],
-      "highlights": [{ "title": "...", "desc": "..." }],
-      "images": ["https://..."],
-      "rules": ["..."],
-      "commands": ["/spawn"]
+      "image": "https://..." // ảnh cover (game_modes.image_url)
     }
+  ]
+}
+```
+
+> Card **không** còn `features` / `players_online` / `difficulty` / `highlights` /
+> `rules` / `commands` — số liệu động lấy từ `stats` (cluster-level), nội dung dài
+> từ `content_html` ở trang chi tiết.
+
+### `ClusterStats` (dùng chung home / machine_list / machine_detail)
+
+```jsonc
+{
+  "cluster": { "id": 1, "slug": "aesq", "name": "AESQ Network" },
+  "scope": "cluster | game | group:<slug>",
+  "status": "online | offline | maintenance",
+  "updated_at_ms": 1730000000000,
+  "players": { "online": 210, "max": 1000 },  // null → ẩn chip
+  "tps":     { "avg_1m": 19.8 },              // null → ẩn chip
+  "uptime":  { "percent_7d": 99.4, "window_hours": 168 },
+  "servers": { "total": 4, "online": 3 },
+  "server_status": [
+    { "server_key": "survival-1", "name": "Survival 1", "role": "game",
+      "online": true, "maintenance": false,
+      "players_online": 96, "players_max": 300 }
   ]
 }
 ```
 
 ### `/may-chu/<slug>` — `page: "machine_detail"`
 
-Cùng shape với một phần tử trong `modes`, bắt buộc có `slug` và `name`; có thể thêm
-`ip`, `discord_url`.
+```jsonc
+{
+  "slug": "sinh-ton",
+  "name": "Sinh tồn",
+  "tagline": "Classic Survival",
+  "short_desc": "...",
+  "status": "hot",
+  "image": "https://...",
+  "images": ["https://..."],              // gallery (optional)
+  "cluster": { "id": 1 },
+  "stats": { /* ClusterStats scope=game */ },
+  "content_html": "<h2>...</h2>"          // admin soạn, ĐÃ sanitize server-side (nh3)
+}
+```
+
+- `content_html` render nguyên văn qua wrapper `.aqs-prose` (class Tailwind nằm
+  trong DB phải có trong `tailwind-safelist.html`).
+- `content_html == null` → UI fallback đúng 1 paragraph `short_desc`.
+- Mọi field cấu trúc cũ (`features/highlights/rules/commands/difficulty/
+  players_online/desc/ip/discord_url`) đã rời payload. IP/Discord lấy từ `site`.
 
 Nếu slug không tồn tại:
 
@@ -164,6 +202,7 @@ Không cần payload riêng; vẫn nên gửi `site` để Header/Footer đúng.
 | Slug không tồn tại | **404** + HTML SEO + `notFound: true` |
 | `/not-found` | Không còn route riêng; dùng catch-all 404 |
 | `/nap-the/<card>` | Chưa hỗ trợ tới khi có dữ liệu thẻ |
+| `/admin`, `/admin/*` | Shell SPA, **noindex**; không dùng `window.DATA` — dashboard gọi `/api/admin/*` (xem `docs/admin-api.md`) |
 
 Frontend có redirect tạm `/che-do-choi*` bằng full reload, nhưng 301 từ backend vẫn
 bắt buộc để chuẩn SEO.
@@ -248,6 +287,8 @@ Khuyến nghị HTTP **200** với `data: null`:
 }
 ```
 
-Hoặc HTTP **401** (`code: "unauthorized"`) cũng được: frontend đã loại `/user/me`
-khỏi cơ chế auto-refresh/redirect, nên guest sẽ được coi là "chưa có user" thay vì
-bị đẩy sang `/dang-nhap`.
+Hoặc HTTP **401** (`code: "unauthorized"`) cũng được, vì `client.js`:
+- 401 trên `/user/me` → **thử `POST /auth/refresh` 1 lần** (access token hết hạn
+  30' nhưng refresh cookie còn 7 ngày thì phiên vẫn sống, retry `/user/me` 200);
+- refresh cũng thất bại → **im lặng** coi là "chưa có user", KHÔNG redirect
+  `/dang-nhap` (`SILENT_401_ENDPOINTS`). Khách vãng lai luôn được xem trang.

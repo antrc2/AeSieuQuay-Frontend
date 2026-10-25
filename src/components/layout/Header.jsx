@@ -100,6 +100,16 @@ const AuthButton = ({ className }) => {
           >
             Nạp thẻ
           </a>
+          {user?.role_slug === 'admin' && (
+            <a
+              href="/admin"
+              role="menuitem"
+              onClick={() => setOpen(false)}
+              className="block px-3 py-2 text-sm text-muted transition-colors hover:bg-surface-2 hover:text-fg"
+            >
+              Quản trị
+            </a>
+          )}
           <hr className="border-border-c opacity-60" />
 
           <button

@@ -46,15 +46,19 @@ export const showApiError = async (err, fallbackTitle = 'Thất bại') => {
   })
 }
 
-/** Hiển thị thành công; tự đóng sau `timer` ms (mặc định 1600) */
-export const showSuccess = async (title, text, timer = 1600) => {
+/** Hiển thị thành công — có nút OK, ĐỒNG THỜI tự đóng sau `timer` ms (1.5s).
+ *  Bấm OK nếu vội; truyền `timer` khác nếu muốn nhanh/chậm hơn. */
+export const showSuccess = async (title, text, timer = 1500) => {
   await Swal.fire({
     icon: 'success',
     title,
     text,
     timer,
     timerProgressBar: true,
-    showConfirmButton: false,
+    showConfirmButton: true,
+    confirmButtonText: 'OK',
+    confirmButtonColor: '#1e90ff',
+    allowOutsideClick: false,
   })
 }
 

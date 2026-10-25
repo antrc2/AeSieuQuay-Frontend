@@ -5,6 +5,8 @@ import { EmptyState } from '@/components/ui/States'
 import DataUnavailable from '@/components/ui/DataUnavailable'
 import { getHomePageData, type HomePayload } from '@/data'
 import { cn } from '@/lib/utils'
+import ClusterStatsStrip from '@/components/stats/ClusterStatsStrip'
+import ServerConCard from '@/components/game/ServerConCard'
 
 /* ================= Helpers ================= */
 
@@ -455,7 +457,13 @@ const usePerView = (enabled) => {
   return perView
 }
 
-const GameModes = ({ section = {} }: { section?: HomePayload['game_modes'] }) => {
+const GameModes = ({
+  section = {},
+  stats,
+}: {
+  section?: HomePayload['game_modes']
+  stats?: HomePayload['stats']
+}) => {
   const modes = section?.modes ?? []
   const perView = usePerView(true)
   const isCarousel = modes.length > Math.max(perView, 3) // > 3 mode mới chuyển carousel
@@ -474,66 +482,10 @@ const GameModes = ({ section = {} }: { section?: HomePayload['game_modes'] }) =>
     return () => clearInterval(timer)
   }, [isCarousel, maxSlide, slide])
 
-  const card = (mode) => (
-    <article
-      key={mode.slug}
-      className="group flex h-full flex-col overflow-hidden rounded-2xl border border-border-c bg-surface transition-all duration-300 hover:-translate-y-1 hover:border-primary/50 hover:shadow-xl hover:shadow-primary/10"
-    >
-      {/* Ảnh: dùng nguyên URL https:// từ mock (null → placeholder) */}
-      {mode.image ? (
-        <img
-          src={mode.image}
-          alt={mode.name}
-          width={640}
-          height={360}
-          loading="lazy"
-          className="aspect-video w-full object-cover transition-transform duration-500 group-hover:scale-105"
-        />
-      ) : (
-        <div className="relative flex aspect-video w-full items-center justify-center bg-surface-2">
-          <span className="text-5xl opacity-60 transition-transform duration-500 group-hover:scale-110">
-            {mode.slug === 'pvp' ? '⚔️' : mode.slug === 'skyblock' ? '🏝️' : mode.slug === 'minigame' ? '🎯' : '🌳'}
-          </span>
-          <span className="absolute bottom-3 right-3 rounded-full bg-black/30 px-2 py-0.5 text-[10px] text-white/80">
-            ảnh đang cập nhật
-          </span>
-        </div>
-      )}
-
-      <div className="flex flex-1 flex-col p-5">
-        <h3 className="text-lg font-bold text-fg">{mode.name}</h3>
-        <p className="mt-1.5 text-sm leading-relaxed text-muted">
-          {mode.desc || 'Thông tin chế độ chơi đang được cập nhật.'}
-        </p>
-        {mode.features?.length > 0 && (
-          <ul className="mt-3 flex flex-wrap gap-1.5">
-            {mode.features.map((f) => (
-              <li
-                key={f}
-                className="rounded-full bg-surface-2 px-2.5 py-0.5 text-[11px] font-medium text-muted"
-              >
-                {f}
-              </li>
-            ))}
-          </ul>
-        )}
-        <div className="mt-auto pt-4">
-          <a
-            href={`/may-chu/${mode.slug}`}
-            className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary transition-colors hover:text-primary-strong"
-          >
-            Khám phá
-            <span className="transition-transform group-hover:translate-x-1">→</span>
-          </a>
-        </div>
-      </div>
-    </article>
-  )
-
   return (
     <section className="reveal mx-auto mt-20 max-w-6xl px-4 sm:px-6">
       {/* Tiêu đề — luôn căn giữa */}
-      <div className="mb-8 text-center">
+      <div className="mb-4 text-center">
         <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
           {section?.title ?? 'Máy chủ'}
         </h2>
@@ -541,6 +493,8 @@ const GameModes = ({ section = {} }: { section?: HomePayload['game_modes'] }) =>
           <p className="mt-2 text-muted">{section.subtitle}</p>
         )}
       </div>
+      {/* Stat cụm thật — ẩn khi backend chưa trả stats */}
+      <ClusterStatsStrip stats={stats} compact className="mb-6 justify-center" />
 
       {!isCarousel ? (
         /* ===== Grid căn giữa (≤ 3 mode) ===== */
@@ -554,7 +508,9 @@ const GameModes = ({ section = {} }: { section?: HomePayload['game_modes'] }) =>
                 : '',
           )}
         >
-          {modes.map(card)}
+          {modes.map((mode) => (
+            <ServerConCard key={mode.slug} mode={mode} />
+          ))}
         </div>
       ) : (
         /* ===== Carousel (> 3 mode) ===== */
@@ -570,7 +526,7 @@ const GameModes = ({ section = {} }: { section?: HomePayload['game_modes'] }) =>
                   className="shrink-0"
                   style={{ width: `calc((100% - ${(perView - 1) * 1.5}rem) / ${perView})` }}
                 >
-                  {card(mode)}
+                  <ServerConCard mode={mode} />
                 </div>
               ))}
             </div>
@@ -860,7 +816,7 @@ export const HomePage = () => {
     >
       <Hero hero={data.hero} serverInfo={data.server_info} />
       {data.server_info && <ServerInfoBar info={data.server_info} />}
-      {data.game_modes && <GameModes section={data.game_modes} />}
+      {data.game_modes && <GameModes section={data.game_modes} stats={data.stats} />}
       {data.highlights?.items?.length ? <Highlights section={data.highlights} /> : null}
       {data.gallery ? <Gallery gallery={data.gallery} /> : null}
       {data.community ? <Community community={data.community} /> : null}
