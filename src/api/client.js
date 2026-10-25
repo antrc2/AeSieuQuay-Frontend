@@ -8,54 +8,31 @@ import { API_BASE_URL } from '@/config/env'
  *     const me   = await apiGet('/user/me')
  *     const data = await apiPost('/auth/login', { email, password })
  *
- * AUTH: access_token + refresh_token lưu trong COOKIE
- * - Production (khuyến nghị): backend set HttpOnly cookie →
- *   frontend KHÔNG đọc được token (an toàn XSS), axios tự gửi
- *   cookie nhờ withCredentials.
- * - Dev tiện dụng: { saveTokens, clearTokens } để tự set cookie
- *   ngay từ frontend nếu backend trả token trong response body.
- *
  * AUTO REFRESH: khi request gặp 401, client tự gọi /auth/refresh
  * rồi retry request gốc đúng 1 lần. Refresh chạy 1 luồng duy nhất
  * (single-flight) để tránh refresh nhiều lần song song.
  * ============================================================ */
 
-/* ---------------- Cookie utils ---------------- */
+/* ---------------- Phiên: cookie HttpOnly ----------------
+ * Backend set 2 cookie (backend-2.md mục 1):
+ *   access_token_cookie  Path=/          HttpOnly  30 phút
+ *   refresh_token_cookie Path=/api/auth  HttpOnly  7 ngày
+ * JS KHÔNG BAO GIỜ chạm được 2 cookie này — muốn xóa thì gọi
+ * POST /auth/logout (server trả Set-Cookie expires=1970).
+ * Mã cũ dùng sai tên ('access_token'/'refresh_token') và path →
+ * "tự xóa token" chưa từng hoạt động; đã gỡ hoàn toàn.
+ */
 
-const TOKEN_NAMES = ['access_token', 'refresh_token']
+const SESSION_COOKIE_NAMES = ['access_token_cookie', 'refresh_token_cookie']
 
-export const setCookie = (name, value, days = 1) => {
-  const expires = days
-    ? `; expires=${new Date(Date.now() + days * 864e5).toUTCString()}`
-    : ''
-  document.cookie = `${name}=${encodeURIComponent(value)}${expires}; path=/; SameSite=Lax`
+/** Best-effort dọn cookie do CHÍNH JS set (legacy `saveTokens` cũ để lại);
+ *  cookie HttpOnly thì server lo (POST /auth/logout). */
+export const clearLocalCookies = () => {
+  // for (const name of [...SESSION_COOKIE_NAMES]) {
+  //   document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`
+  //   document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/api/auth;`
+  // }
 }
-
-export const getCookie = (name) => {
-  try {
-    const match = document.cookie.match(new RegExp(`(^|;\\s*)${name}=([^;]*)`))
-    return match ? decodeURIComponent(match[2]) : null
-  } catch {
-    return null
-  }
-}
-
-export const deleteCookie = (name) => {
-  document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`
-}
-
-/** Lưu 2 token vào cookie (dev — production nên để backend set HttpOnly) */
-export const saveTokens = ({ access_token, refresh_token, accessDays = 1, refreshDays = 30 }) => {
-  if (access_token) setCookie('access_token', access_token, accessDays)
-  if (refresh_token) setCookie('refresh_token', refresh_token, refreshDays)
-}
-
-/** Xoá toàn bộ token khỏi cookie */
-export const clearTokens = () => {
-  TOKEN_NAMES.forEach(deleteCookie)
-}
-
-export const getAccessToken = () => getCookie('access_token')
 
 /* ---------------- Axios instance ---------------- */
 
@@ -123,21 +100,22 @@ const redirectTo = (path) => {
 }
 
 /**
- * Các endpoint không auto-refresh/redirect khi gặp 401:
- * - auth: 401 là sai thông tin đăng nhập/đăng ký, không phải hết phiên.
- * - /user/me: session bootstrap; guest chưa đăng nhập phải được coi là "chưa có user",
- *   không bị đẩy sang /dang-nhap.
+ * Hai khái niệm tách biệt:
+ * - NO_REFRESH: 401 ở đây là nghiệp vụ (sai mật khẩu...), KHÔNG phải hết phiên
+ *   → không refresh, không redirect.
+ * - SILENT_401: refresh cũng thất bại → KHÔNG redirect /dang-nhap; khách vãng
+ *   lai phải được xem trang. /user/me thuộc nhóm này — trước đây nó nằm trong
+ *   NO_REFRESH nên access token hết hạn 30' là mất phiên giả (bug #2):
+ *   giờ nó ĐƯỢC thử /auth/refresh, chỉ im lặng khi refresh cũng hết hạn.
  */
-const NO_REFRESH_ENDPOINTS = [
-  '/auth/login',
-  '/auth/register',
-  '/auth/refresh',
-  '/auth/logout',
-  '/user/me',
-]
+const NO_REFRESH_ENDPOINTS = ['/auth/login', '/auth/register', '/auth/refresh', '/auth/logout']
+const SILENT_401_ENDPOINTS = ['/user/me']
 
 const shouldSkipRefresh = (url = '') =>
   NO_REFRESH_ENDPOINTS.some((path) => String(url).startsWith(path))
+
+const isSilent401 = (url = '') =>
+  SILENT_401_ENDPOINTS.some((path) => String(url).startsWith(path))
 
 /** Thực thi request, nếu 401 thì refresh rồi retry đúng 1 lần */
 const execute = async (config) => {
@@ -149,11 +127,18 @@ const execute = async (config) => {
 
     const ok = await refreshSession()
     if (!ok) {
-      clearTokens()
+      clearLocalCookies()
+      if (isSilent401(config.url)) throw err
+      // /user/me fail im lặng → AuthProvider tự xử lý "chưa đăng nhập"
+      try {
+        await apiPost('/auth/logout')
+      } catch {
+        /* cookie đã hết hạn — server không còn gì để dọn */
+      }
       redirectTo('/dang-nhap')
       throw err
     }
-    return client.request(config) // retry với cookie mới
+    return client.request(config) // retry — /user/me giờ ăn cookie access mới
   }
 }
 
@@ -180,7 +165,8 @@ export const apiPatch = (url, data, config) => execute({ method: 'PATCH', url, d
 /** DELETE: await apiDelete('/posts/1') */
 export const apiDelete = (url, config) => execute({ method: 'DELETE', url, ...config })
 
-/** Upload file: await apiUpload('/upload', fileObj) — tự set multipart */
+/** Upload file: await apiUpload('/upload', fileObj) — Content-Type để null để
+ *  browser tự sinh "multipart/form-data; boundary=…" (set tay = mất boundary). */
 export const apiUpload = (url, file, config) => {
   const fd = new FormData()
   fd.append('file', file)
@@ -188,7 +174,7 @@ export const apiUpload = (url, file, config) => {
     method: 'POST',
     url,
     data: fd,
-    headers: { 'Content-Type': 'multipart/form-data' },
+    headers: { 'Content-Type': null },
     ...config,
   })
 }
@@ -196,4 +182,4 @@ export const apiUpload = (url, file, config) => {
 /** Gọi tuỳ biến hoàn toàn (download blob, đổi baseURL, ...) với mọi interceptor */
 export const rawClient = client
 
-export default { apiGet, apiPost, apiPut, apiPatch, apiDelete, apiUpload, rawClient, saveTokens, clearTokens }
+export default { apiGet, apiPost, apiPut, apiPatch, apiDelete, apiUpload, rawClient, clearLocalCookies }

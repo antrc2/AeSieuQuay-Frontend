@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
-import { apiGet, apiPost, clearTokens } from '@/api/client'
+import { apiGet, apiPost, clearLocalCookies } from '@/api/client'
 
 const AuthContext = createContext(null)
 
@@ -53,6 +53,8 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(cachedUser ? false : true)
   const fetched = useRef(false)
   const aliveRef = useRef(true)
+  /** Lần sync /user/me gần nhất — chống gọi dồn khi tab hiện/ẩn liên tục. */
+  const lastSyncRef = useRef(Date.now())
 
   useEffect(() => {
     aliveRef.current = true
@@ -69,11 +71,13 @@ export const AuthProvider = ({ children }) => {
       try {
         const me = await apiGet('/user/me')
         if (!aliveRef.current) return
+        lastSyncRef.current = Date.now()
         const nextUser = unwrapUser(me)
         setUser(nextUser)
         writeCache(nextUser)
       } catch {
         if (!aliveRef.current) return
+        lastSyncRef.current = Date.now()
         setUser(null)
         writeCache(null)
       } finally {
@@ -84,11 +88,12 @@ export const AuthProvider = ({ children }) => {
 
   const logout = useCallback(async () => {
     try {
+      // Server trả Set-Cookie expires=1970 cho 2 cookie HttpOnly — JS không xóa được chúng.
       await apiPost('/auth/logout')
     } catch {
       /* ignore */
     }
-    clearTokens()
+    clearLocalCookies() // dọn cookie legacy do JS set (nếu còn sót)
     writeCache(null)
     setUser(null)
     window.location.assign('/')
@@ -99,18 +104,32 @@ export const AuthProvider = ({ children }) => {
       const me = await apiGet('/user/me')
       const nextUser = unwrapUser(me)
       if (aliveRef.current) {
+        lastSyncRef.current = Date.now()
         setUser(nextUser)
         writeCache(nextUser)
       }
       return nextUser
     } catch {
       if (aliveRef.current) {
+        lastSyncRef.current = Date.now()
         setUser(null)
         writeCache(null)
       }
       return null
     }
   }, [])
+
+  /* Tab quay lại sau >5': re-validate (kết hợp auto-refresh của client.js —
+     access hết hạn 30' nhưng refresh cookie còn 7 ngày thì phiên vẫn sống). */
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return
+      if (Date.now() - lastSyncRef.current < CACHE_TTL_MS) return
+      refreshUser()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [refreshUser])
 
   return (
     <AuthContext.Provider
