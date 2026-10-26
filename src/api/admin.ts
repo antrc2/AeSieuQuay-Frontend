@@ -440,3 +440,342 @@ export const uploadAdminImage = async (file: File, prefix = 'game-modes'): Promi
   form.append('prefix', prefix)
   return unwrap(await apiPost('/admin/upload', form, { headers: { 'Content-Type': null } }))
 }
+
+/* ================= Monitor mở rộng — admin_monitor chưa wrap hết (FRONTEND-3 §8)
+ *_shapes khớp modules/api/admin_monitor/service.py (đã đối chiếu 27/10)._
+ */
+
+export interface UptimePeriod {
+  status: 'online' | 'offline'
+  started_at_ms: number
+  ended_at_ms: number | null // null = khoảng còn MỞ
+  duration_ms: number
+  reason: string | null // online → 'boot'; offline → 'shutdown' | 'crash' | 'lost'
+  source: string | null
+}
+
+export interface TopPlayer {
+  player_name: string
+  player_uuid: string
+  sessions: number
+  seconds: number
+}
+
+export interface DiskSample {
+  path: string
+  ts_ms: number
+  total_bytes: number
+  free_bytes: number
+  usable_bytes: number
+  free_pct: number | null
+}
+
+export interface WorldSize {
+  world: string
+  ts_ms: number
+  size_bytes: number
+}
+
+export interface SampleRow {
+  id: number
+  kind: string
+  boot_id: string | null
+  seq: number | null
+  ts_ms: number
+  data: Record<string, unknown>
+  hot?: Record<string, unknown>
+}
+
+export interface BatchRow {
+  batch_id: string
+  boot_id: string | null
+  seq: number | null
+  sent_at_ms: number | null
+  received_at_ms: number
+  record_count: number
+  accepted_count: number
+  rejected_count: number
+  replay: boolean
+  errors: unknown[] | null
+}
+
+export const monitorUptimePeriods = async (name: string, hours = 168): Promise<UptimePeriod[]> => {
+  if (useAdminMock) return mock.monitorUptimePeriods(name, hours)
+  return (unwrap(await apiGet(`/admin/monitor/servers/${encodeURIComponent(name)}/uptime-periods`, { params: { hours } }))) ?? []
+}
+
+export const monitorPlayersTop = async (name: string, limit = 20): Promise<TopPlayer[]> => {
+  if (useAdminMock) return mock.monitorPlayersTop(name, limit)
+  return (unwrap(await apiGet(`/admin/monitor/servers/${encodeURIComponent(name)}/players/top`, { params: { limit } }))) ?? []
+}
+
+export const monitorDisks = async (name: string, hours = 24): Promise<DiskSample[]> => {
+  if (useAdminMock) return mock.monitorDisks(name)
+  return (unwrap(await apiGet(`/admin/monitor/servers/${encodeURIComponent(name)}/disks`, { params: { hours: undefined, from_ms: Date.now() - hours * 3_600_000 } }))) ?? []
+}
+
+export const monitorWorlds = async (name: string, hours = 24): Promise<WorldSize[]> => {
+  if (useAdminMock) return mock.monitorWorlds(name)
+  return (unwrap(await apiGet(`/admin/monitor/servers/${encodeURIComponent(name)}/worlds`, { params: { from_ms: Date.now() - hours * 3_600_000 } }))) ?? []
+}
+
+export const monitorSamples = async (
+  name: string,
+  query: { kind?: string; limit?: number; offset?: number } = {},
+): Promise<{ total: number; items: SampleRow[] }> => {
+  if (useAdminMock) return mock.monitorSamples(name, query)
+  return unwrap(await apiGet(`/admin/monitor/servers/${encodeURIComponent(name)}/samples`, { params: cleanParams({ limit: 50, ...query }) }))
+}
+
+export const monitorBatches = async (name: string, limit = 50): Promise<BatchRow[]> => {
+  if (useAdminMock) return mock.monitorBatches(name, limit)
+  return (unwrap(await apiGet(`/admin/monitor/servers/${encodeURIComponent(name)}/batches`, { params: { limit } }))) ?? []
+}
+
+/* ================= Lịch sử nạp bank (admin-history-api.md §1) =================
+ * CHỈ đọc + 1 action requeue ("tạo lại event"). Không có API duyệt/reject.
+ * `q` khớp content/reference_code/account_number hoặc ĐÚNG credit_command_id (UUID 36).
+ */
+
+export type DepositStatus = 'received' | 'unmatched' | 'matched' | 'credited' | 'rejected' | 'ignored'
+export type CreditCmdStatus = 'pending' | 'claimed' | 'done' | 'failed' | 'expired' | 'uncertain'
+
+export interface BankDepositAdmin {
+  id: number
+  transaction_id: string
+  reference_code: string | null
+  gateway: string | null
+  amount_vnd: number
+  content: string
+  status: DepositStatus
+  user_id: number | null
+  username: string | null
+  realname: string | null
+  xu_amount: number | null
+  sandbox: boolean
+  note: string | null
+  credit_command_id: string | null
+  credit_attempts: number
+  credit_command_status: CreditCmdStatus | null
+  credit_command_attempts: number | null
+  credit_command_error: string | null
+  credit_result_balance: number | null
+  transaction_date_ms: number
+  created_at: string | null
+  credited_at: string | null
+}
+
+export interface PagedAdmin<T> {
+  total: number
+  page: number
+  limit?: number
+  page_size?: number
+  items: T[]
+}
+
+export const listBankDeposits = async (
+  query: { status?: string; q?: string; user_id?: number | ''; page?: number; limit?: number } = {},
+): Promise<PagedAdmin<BankDepositAdmin>> => {
+  if (useAdminMock) return mock.listBankDeposits(query)
+  return unwrap(await apiGet('/admin/bank-deposits', { params: cleanParams(query) }))
+}
+
+export const getBankDeposit = async (id: number): Promise<BankDepositAdmin> => {
+  if (useAdminMock) return mock.getBankDeposit(id)
+  return unwrap(await apiGet(`/admin/bank-deposits/${id}`))
+}
+
+/** Body { username? } — unmatched bắt buộc username. 400 message tiếng Việt, toast thẳng. */
+export const requeueBankDeposit = async (id: number, username?: string): Promise<BankDepositAdmin> => {
+  if (useAdminMock) return mock.requeueBankDeposit(id, username)
+  const data = unwrap(await apiPost(`/admin/bank-deposits/${id}/requeue`, username ? { username } : {}))
+  return data?.deposit ?? data
+}
+
+/* ================= Lịch sử points (admin-history-api.md §2) ================= */
+
+export type TransferStatus =
+  | 'pending'
+  | 'debited'
+  | 'refund_pending'
+  | 'completed'
+  | 'failed'
+  | 'refunded'
+  | 'needs_reconcile'
+
+export interface PointTransferAdmin {
+  transfer_id: string
+  idempotency_key: string | null
+  from_server_key: string
+  to_server_key: string
+  player_uuid: string | null
+  player_name: string | null
+  created_by: number | null
+  amount: number
+  status: TransferStatus
+  debit_command_id: string | null
+  credit_command_id: string | null
+  refund_command_id: string | null
+  from_balance_before: number | null
+  from_balance_after: number | null
+  to_balance_before: number | null
+  to_balance_after: number | null
+  error: string | null
+  created_at: string | null
+  updated_at: string | null
+  completed_at: string | null
+}
+
+export type CommandType = 'look' | 'debit' | 'credit' | 'refund'
+
+export interface PointCommandAdmin {
+  id: string // command_id UUID
+  transfer_id: string | null
+  type: CommandType
+  server_key: string
+  player_uuid: string | null
+  player_name: string | null
+  amount: number
+  status: CreditCmdStatus
+  attempts: number
+  ok: boolean | null
+  balance: number | null
+  balance_before: number | null
+  error: string | null
+  expires_at_ms: number
+  created_at_ms: number
+  claimed_at_ms: number | null
+  completed_at_ms: number | null
+  /** ≠ null ⇒ lệnh sinh từ luồng nạp bank — chip link sang /admin/bank-deposits?q=<id>. */
+  deposit_id: number | null
+}
+
+export const listPointTransfers = async (
+  query: { status?: string; q?: string; user_id?: number | ''; page?: number; limit?: number } = {},
+): Promise<PagedAdmin<PointTransferAdmin>> => {
+  if (useAdminMock) return mock.listPointTransfers(query)
+  return unwrap(await apiGet('/admin/points/transfers', { params: cleanParams(query) }))
+}
+
+export const getPointTransfer = async (
+  transferId: string,
+): Promise<{ transfer: PointTransferAdmin; commands: PointCommandAdmin[] }> => {
+  if (useAdminMock) return mock.getPointTransfer(transferId)
+  return unwrap(await apiGet(`/admin/points/transfers/${encodeURIComponent(transferId)}`))
+}
+
+export const listPointCommands = async (
+  query: { server_key?: string; type?: string; status?: string; q?: string; page?: number; limit?: number } = {},
+): Promise<PagedAdmin<PointCommandAdmin>> => {
+  if (useAdminMock) return mock.listPointCommands(query)
+  return unwrap(await apiGet('/admin/points/commands', { params: cleanParams(query) }))
+}
+
+/* ================= Lịch sử thẻ cào (backend-3 §1) =================
+ * card_code_masked đã mask từ backend (chỉ 4 số cuối plaintext) — maskTail là lớp phụ.
+ */
+
+export interface CardTransactionAdmin {
+  id: number
+  request_id: string
+  trans_id: number | null
+  username: string
+  telco: string
+  card_type: string | null
+  serial: string
+  card_code_masked: string
+  amount_vnd: number
+  real_amount: number | null
+  card_value: number | null
+  xu_amount: number | null
+  status: 'pending' | 'success' | 'failed' | 'error'
+  gateway_code: number | null
+  gateway_message: string | null
+  in_game: boolean
+  created_at: string | null
+  credited_at: string | null
+  callback_at: string | null
+  client_ip?: string | null
+}
+
+export const listCardTransactions = async (
+  query: { status?: string; user_id?: number | ''; q?: string; page?: number; page_size?: number } = {},
+): Promise<PagedAdmin<CardTransactionAdmin>> => {
+  if (useAdminMock) return mock.listCardTransactions(query)
+  return unwrap(await apiGet('/admin/card-transactions', { params: cleanParams(query) }))
+}
+
+/* ================= Users admin (backend-3 §2) ================= */
+
+export interface AdminUser {
+  id: number
+  username: string
+  realname: string
+  email: string | null
+  role_slug: string
+  registered_at: string | null
+  last_login: string | null
+}
+
+export interface UserMoneySummary {
+  bank_deposits: { count: number; sum_vnd_credited: number; last_at: string | null }
+  card_tx: { count: number; sum_vnd_success: number; last_at: string | null }
+  point_transfers: { count: number; sum_amount: number; last_at: string | null }
+}
+
+export interface AdminUserDetail extends AdminUser {
+  money_summary: UserMoneySummary
+}
+
+export const listUsers = async (
+  query: { q?: string; sort?: 'id' | 'username' | 'regdate' | 'lastlogin'; order?: 'asc' | 'desc'; page?: number; page_size?: number } = {},
+): Promise<PagedAdmin<AdminUser>> => {
+  if (useAdminMock) return mock.listUsers(query)
+  return unwrap(await apiGet('/users', { params: cleanParams(query) }))
+}
+
+export const getUser = async (id: number): Promise<AdminUserDetail> => {
+  if (useAdminMock) return mock.getUser(id)
+  return unwrap(await apiGet(`/users/${id}`))
+}
+
+/* ================= API phía USER (trang /nap-the — có JWT) ================= */
+
+export interface CardFeeRow {
+  telco: string
+  value: number
+  fees: number // % phí
+  penalty?: number
+}
+
+/** GET /api/card/fees → {user_fee_rate, payout_rate, fees:[{telco,value,fees,penalty}]} */
+export const getCardFees = async (): Promise<{ user_fee_rate: number; payout_rate: number; fees: CardFeeRow[] }> => {
+  const data = unwrap(await apiGet('/card/fees'))
+  return {
+    user_fee_rate: data?.user_fee_rate ?? 0,
+    payout_rate: data?.payout_rate ?? 1,
+    // Cổng gachthe1s trả {code, data:[...]} — chuẩn hoá về mảng thẳng.
+    fees: Array.isArray(data?.fees) ? data.fees : Array.isArray(data?.fees?.data) ? data.fees.data : [],
+  }
+}
+
+/** GET /api/card/history — lịch sử thẻ của chính user. */
+export const getMyCardHistory = async (
+  query: { page?: number; page_size?: number } = {},
+): Promise<PagedAdmin<CardTransactionAdmin>> => {
+  return unwrap(await apiGet('/card/history', { params: cleanParams({ page_size: 20, ...query }) }))
+}
+
+/** GET /api/bank/deposits — lịch sử bank của chính user. */
+export const getMyBankDeposits = async (query: { limit?: number; offset?: number } = {}): Promise<PagedAdmin<BankDepositAdmin>> => {
+  return unwrap(await apiGet('/bank/deposits', { params: cleanParams(query) }))
+}
+
+/** GET /api/bank/info — vnd_per_xu để tính Xu dự kiến từ phí thẻ. */
+export const getBankInfo = async (): Promise<{ vnd_per_xu: number; min_amount_vnd: number; enabled: boolean } | null> => {
+  try {
+    return unwrap(await apiGet('/bank/info'))
+  } catch {
+    return null
+  }
+}

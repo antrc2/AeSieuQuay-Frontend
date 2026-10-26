@@ -3,27 +3,49 @@ import { Link, useParams } from 'react-router-dom'
 
 import { useSeo } from '@/hooks/useSeo'
 import {
+  monitorBatches,
+  monitorDisks,
   monitorEvents,
   monitorExceptions,
   monitorMetrics,
   monitorOnlinePlayers,
+  monitorPlayersTop,
   monitorPlugins,
+  monitorSamples,
   monitorServerDetail,
+  monitorUptimePeriods,
+  monitorWorlds,
+  type BatchRow,
+  type DiskSample,
   type ExceptionGroup,
   type Granularity,
   type MetricPoint,
   type MonitorEvent,
   type MonitorServerDetail,
   type OnlinePlayer,
+  type SampleRow,
+  type TopPlayer,
+  type UptimePeriod,
+  type WorldSize,
 } from '@/api/admin'
 import { PageHeader } from '@/components/admin/blocks'
 import { OnlineBadge } from '@/components/admin/badges'
 import LineChart, { type ChartSeries } from '@/components/admin/LineChart'
+import Modal from '@/components/admin/Modal'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/States'
-import { fmtDateTime, timeAgo } from '@/lib/format'
+import { fmtBytes, fmtDateTime, fmtDateTimeMs, fmtDuration, timeAgo } from '@/lib/format'
 import { cn } from '@/lib/utils'
+
+const TABS = [
+  { id: 'overview', label: 'Tổng quan' },
+  { id: 'uptime', label: 'Uptime' },
+  { id: 'storage', label: 'Disk & Worlds' },
+  { id: 'advanced', label: 'Nâng cao' },
+] as const
+
+type TabId = (typeof TABS)[number]['id']
 
 const COLORS = { blue: '#3b82f6', violet: '#8b5cf6', emerald: '#10b981', amber: '#f59e0b', red: '#ef4444' }
 
@@ -50,6 +72,16 @@ export const AdminMonitorDetailPage = () => {
   const [nowSync, setNowSync] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const aliveRef = useRef(true)
+
+  /* §8 — tab dữ liệu mở rộng (load-on-first-open, giữ cache khi đổi lại) */
+  const [tab, setTab] = useState<TabId>('overview')
+  const [uptime, setUptime] = useState<UptimePeriod[] | null>(null)
+  const [disks, setDisks] = useState<DiskSample[] | null>(null)
+  const [worlds, setWorlds] = useState<WorldSize[] | null>(null)
+  const [topPlayers, setTopPlayers] = useState<TopPlayer[] | null>(null)
+  const [samples, setSamples] = useState<SampleRow[] | null>(null)
+  const [batches, setBatches] = useState<BatchRow[] | null>(null)
+  const [openSample, setOpenSample] = useState<SampleRow | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -90,6 +122,27 @@ export const AdminMonitorDetailPage = () => {
       aliveRef.current = false
     }
   }, [load])
+
+  /* Tab dữ liệu lớn → fetch lần đầu mở tab, không nặng trang mặc định. */
+  useEffect(() => {
+    let alive = true
+    const grab = <T,>(getter: () => Promise<T>, setter: (v: T) => void) => {
+      getter().then((v) => alive && setter(v)).catch(() => alive && setter([] as never))
+    }
+    if (tab === 'uptime' && uptime === null) grab(() => monitorUptimePeriods(server, 168), setUptime)
+    if (tab === 'storage') {
+      if (disks === null) grab(() => monitorDisks(server, 24), setDisks)
+      if (worlds === null) grab(() => monitorWorlds(server, 168), setWorlds)
+    }
+    if (tab === 'advanced') {
+      if (samples === null) grab(() => monitorSamples(server, { limit: 50 }).then((r) => r.items), setSamples)
+      if (batches === null) grab(() => monitorBatches(server, 50), setBatches)
+    }
+    if (tab === 'overview' && topPlayers === null) grab(() => monitorPlayersTop(server, 10), setTopPlayers)
+    return () => {
+      alive = false
+    }
+  }, [tab, server, uptime, disks, worlds, samples, batches, topPlayers])
 
   const fmtX = (ms: number) =>
     range.granularity === 'minute'
@@ -179,6 +232,30 @@ export const AdminMonitorDetailPage = () => {
         </div>
       )}
 
+      <div className="flex gap-1 overflow-x-auto rounded-xl border border-border-c bg-surface-2 p-1" role="tablist">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            role="tab"
+            aria-selected={tab === t.id}
+            onClick={() => setTab(t.id)}
+            className={cn(
+              'shrink-0 rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-colors',
+              tab === t.id ? 'bg-primary text-white' : 'text-muted hover:text-fg',
+            )}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'uptime' && <UptimeTab periods={uptime} />}
+      {tab === 'storage' && <StorageTab disks={disks} worlds={worlds} />}
+      {tab === 'advanced' && <AdvancedTab samples={samples} batches={batches} onOpenSample={setOpenSample} />}
+
+      {tab === 'overview' && (
+        <>
       <div className="grid gap-4 xl:grid-cols-1">
         {chart('TPS (1m)', [{ label: 'tpsbq', color: COLORS.emerald, data: line(perf, 'tps_avg') }])}
         {chart('MSPT', [
@@ -200,26 +277,55 @@ export const AdminMonitorDetailPage = () => {
         )}
         {chart('Người chơi online', [{ label: 'players', color: COLORS.violet, data: line(heartbeat, 'online_avg') }])}
 
-        {/* Players đang online */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Đang online ({players.length})</CardTitle>
-          </CardHeader>
-          <CardContent className="max-h-64 overflow-y-auto">
-            {players.length === 0 ? (
-              <p className="text-sm text-muted">Server đang offline hoặc chưa gửi danh sách player.</p>
-            ) : (
-              <ul className="divide-y divide-[var(--border)] text-sm">
-                {players.map((p) => (
-                  <li key={p.player_uuid} className="flex items-center justify-between py-1.5">
-                    <span className="font-semibold text-fg">{p.player_name}</span>
-                    <span className="text-xs text-muted">{Math.floor(p.online_s / 3600)}h{Math.floor((p.online_s % 3600) / 60)}m online</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
+        {/* Players đang online + top playtime (§8) */}
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Đang online ({players.length})</CardTitle>
+            </CardHeader>
+            <CardContent className="max-h-64 overflow-y-auto">
+              {players.length === 0 ? (
+                <p className="text-sm text-muted">Server đang offline hoặc chưa gửi danh sách player.</p>
+              ) : (
+                <ul className="divide-y divide-[var(--border)] text-sm">
+                  {players.map((p) => (
+                    <li key={p.player_uuid} className="flex items-center justify-between py-1.5">
+                      <span className="font-semibold text-fg">{p.player_name}</span>
+                      <span className="text-xs text-muted">{Math.floor(p.online_s / 3600)}h{Math.floor((p.online_s % 3600) / 60)}m online</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Top chơi 7 ngày</CardTitle>
+            </CardHeader>
+            <CardContent className="max-h-64 overflow-y-auto">
+              {!topPlayers ? (
+                <Skeleton className="h-24" />
+              ) : topPlayers.length === 0 ? (
+                <p className="text-sm text-muted">Chưa có playtime tích luỹ.</p>
+              ) : (
+                <ul className="divide-y divide-[var(--border)] text-sm">
+                  {topPlayers.map((p, i) => (
+                    <li key={p.player_uuid} className="flex items-center justify-between py-1.5">
+                      <span className="font-semibold text-fg">
+                        <span className="mr-2 inline-block w-4 text-right text-xs text-muted tabular-nums">{i + 1}</span>
+                        {p.player_name}
+                      </span>
+                      <span className="text-xs text-muted" title={`${p.sessions} phiên`}>
+                        {fmtDuration(p.seconds * 1000)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-1">
@@ -294,6 +400,214 @@ export const AdminMonitorDetailPage = () => {
           </CardContent>
         </Card>
       </div>
+        </>
+      )}
+
+      {openSample && (
+        <Modal open onClose={() => setOpenSample(null)} title={`Sample #${openSample.id} · ${openSample.kind}`} description={`${fmtDateTimeMs(openSample.ts_ms)} · seq ${openSample.seq ?? '—'}`}>
+          <pre className="max-h-[50vh] overflow-auto rounded-xl bg-surface-2 p-4 font-mono text-xs text-fg">{JSON.stringify(openSample.data, null, 2)}</pre>
+        </Modal>
+      )}
+    </div>
+  )
+}
+
+/* ================= §8 — các tab dữ liệu mở rộng ================= */
+
+const UPTIME_WINDOW_MS = 7 * 86_400_000
+
+const UptimeTab = ({ periods }: { periods: UptimePeriod[] | null }) => {
+  // ảnh chụp cửa sổ 7 ngày lúc mount — thanh bar không cần tick từng giây
+  const [now] = useState(() => Date.now())
+  if (!periods) return <Skeleton className="h-40" />
+  if (periods.length === 0)
+    return <p className="text-sm text-muted">Chưa có khoảng uptime nào (bảng status_periods trống — cần server gửi đủ heartbeat/boot).</p>
+
+  const from = now - UPTIME_WINDOW_MS
+  const clamp = (p: UptimePeriod) => {
+    const start = Math.max(p.started_at_ms, from)
+    const end = Math.min(p.ended_at_ms ?? now, now)
+    return { ...p, start, dur: Math.max(0, end - start) }
+  }
+  const clipped = periods.map(clamp)
+  const onlineMs = clipped.filter((p) => p.status === 'online').reduce((s, p) => s + p.dur, 0)
+  const pct = ((onlineMs / UPTIME_WINDOW_MS) * 100).toFixed(2)
+
+  return (
+    <Card>
+      <CardHeader className="flex-row items-center justify-between">
+        <CardTitle>Uptime 7 ngày</CardTitle>
+        <span className={cn('text-2xl font-extrabold tabular-nums', Number(pct) >= 99 ? 'text-emerald-500' : Number(pct) >= 95 ? 'text-amber-500' : 'text-red-500')}>
+          {pct}%
+        </span>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* thanh liên tục — width theo duration, đỏ = offline */}
+        <div className="flex h-8 w-full overflow-hidden rounded-xl border border-border-c" role="img" aria-label={`Uptime ${pct}% trong 7 ngày`}>
+          {clipped.map((p, i) => (
+            <span
+              key={i}
+              className={cn('h-full', p.status === 'online' ? 'bg-emerald-500/70' : 'bg-red-500/80')}
+              style={{ width: `${(p.dur / UPTIME_WINDOW_MS) * 100}%` }}
+              title={`${p.status} · ${fmtDateTimeMs(p.start)} → ${p.ended_at_ms ? fmtDateTimeMs(p.ended_at_ms) : 'hiện tại'} · ${fmtDuration(p.dur)}${p.reason ? ` · ${p.reason}` : ''}`}
+            />
+          ))}
+        </div>
+        <ul className="space-y-1 text-sm">
+          {periods
+            .slice()
+            .reverse()
+            .slice(0, 10)
+            .map((p, i) => (
+              <li key={i} className="flex items-center justify-between gap-3 rounded-lg bg-surface-2/50 px-3 py-1.5">
+                <span className={cn('font-semibold', p.status === 'online' ? 'text-emerald-500' : 'text-red-500')}>
+                  {p.status === 'online' ? '▲ online' : '▼ offline'}
+                </span>
+                <span className="text-xs text-muted">
+                  {fmtDateTimeMs(p.started_at_ms)} → {p.ended_at_ms ? fmtDateTimeMs(p.ended_at_ms) : 'đang chạy'} · {fmtDuration(p.duration_ms)}
+                </span>
+                <span className="text-xs capitalize text-muted">{p.reason ?? '—'}</span>
+              </li>
+            ))}
+        </ul>
+      </CardContent>
+    </Card>
+  )
+}
+
+const StorageTab = ({ disks, worlds }: { disks: DiskSample[] | null; worlds: WorldSize[] | null }) => {
+  if (!disks || !worlds) return <Skeleton className="h-40" />
+
+  // thế giới gần nhất + delta so với sample cũ nhất trong range
+  const byWorld = new Map<string, { latest: WorldSize; oldest: WorldSize }>()
+  for (const w of worlds) {
+    const cur = byWorld.get(w.world)
+    if (!cur) byWorld.set(w.world, { latest: w, oldest: w })
+    else {
+      if (w.ts_ms > cur.latest.ts_ms) cur.latest = w
+      if (w.ts_ms < cur.oldest.ts_ms) cur.oldest = w
+    }
+  }
+
+  return (
+    <div className="grid gap-4 xl:grid-cols-2">
+      <Card>
+        <CardHeader>
+          <CardTitle>Ổ đĩa (24h gần nhất)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {disks.length === 0 ? (
+            <p className="text-sm text-muted">Chưa có sample disk.</p>
+          ) : (
+            <ul className="space-y-3">
+              {disks.map((d) => {
+                const usedPct = d.total_bytes ? 100 - (d.free_bytes / d.total_bytes) * 100 : 0
+                return (
+                  <li key={d.path}>
+                    <div className="flex items-center justify-between text-sm">
+                      <code className="font-mono text-xs text-fg">{d.path}</code>
+                      <span className="text-xs text-muted tabular-nums">
+                        còn {fmtBytes(d.free_bytes)} / {fmtBytes(d.total_bytes)}
+                      </span>
+                    </div>
+                    <div className="mt-1 h-2 overflow-hidden rounded-full bg-surface-2">
+                      <div
+                        className={cn('h-full rounded-full', usedPct > 90 ? 'bg-red-500' : usedPct > 75 ? 'bg-amber-500' : 'bg-emerald-500')}
+                        style={{ width: `${Math.min(100, usedPct)}%` }}
+                      />
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>World size (7 ngày)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {byWorld.size === 0 ? (
+            <p className="text-sm text-muted">Chưa có sample world size.</p>
+          ) : (
+            <ul className="divide-y divide-[var(--border)] text-sm">
+              {[...byWorld.values()].map(({ latest, oldest }) => {
+                const delta = latest.size_bytes - oldest.size_bytes
+                return (
+                  <li key={latest.world} className="flex items-center justify-between py-2">
+                    <span className="font-mono text-xs text-fg">{latest.world}</span>
+                    <span className="tabular-nums text-muted">
+                      {fmtBytes(latest.size_bytes)}{' '}
+                      {oldest.ts_ms !== latest.ts_ms && (
+                        <span className={cn('ml-1 text-[11px]', delta >= 0 ? 'text-amber-500' : 'text-emerald-500')}>
+                          {delta >= 0 ? '+' : ''}
+                          {fmtBytes(delta)}
+                        </span>
+                      )}
+                    </span>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+const AdvancedTab = ({
+  samples,
+  batches,
+  onOpenSample,
+}: {
+  samples: SampleRow[] | null
+  batches: BatchRow[] | null
+  onOpenSample: (s: SampleRow) => void
+}) => {
+  if (!samples || !batches) return <Skeleton className="h-40" />
+  return (
+    <div className="grid gap-4 xl:grid-cols-2">
+      <Card>
+        <CardHeader>
+          <CardTitle>Samples gần đây</CardTitle>
+        </CardHeader>
+        <CardContent className="max-h-96 overflow-y-auto">
+          <ul className="divide-y divide-[var(--border)] text-sm">
+            {samples.map((s) => (
+              <li key={s.id}>
+                <button type="button" onClick={() => onOpenSample(s)} className="flex w-full items-center justify-between gap-2 py-2 text-left hover:opacity-80">
+                  <code className="font-mono text-xs text-primary">#{s.id}</code>
+                  <span className="rounded-full bg-surface-2 px-2 text-[11px] uppercase text-muted">{s.kind}</span>
+                  <span className="ml-auto text-xs tabular-nums text-muted">{fmtDateTimeMs(s.ts_ms)}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Batches ingest</CardTitle>
+        </CardHeader>
+        <CardContent className="max-h-96 overflow-y-auto">
+          <ul className="divide-y divide-[var(--border)] text-sm">
+            {batches.map((b) => (
+              <li key={b.batch_id} className="flex items-center justify-between gap-2 py-2" title={`boot ${b.boot_id ?? '—'} · received ${fmtDateTimeMs(b.received_at_ms)}`}>
+                <span className="text-xs tabular-nums text-muted">seq {b.seq ?? '—'}</span>
+                <span className={cn('text-xs font-semibold tabular-nums', b.rejected_count > 0 ? 'text-red-500' : 'text-emerald-500')}>
+                  {b.accepted_count}/{b.record_count}
+                </span>
+                <span className="text-[11px] text-muted">{fmtDateTimeMs(b.received_at_ms)}</span>
+                {b.replay && <span className="rounded-full bg-amber-500/10 px-1.5 text-[10px] text-amber-500">replay</span>}
+              </li>
+            ))}
+          </ul>
+        </CardContent>
+      </Card>
     </div>
   )
 }

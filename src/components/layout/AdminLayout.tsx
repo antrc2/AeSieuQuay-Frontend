@@ -18,14 +18,61 @@ import { cn } from '@/lib/utils'
  * ngay tại chỗ** (backend cũng trả shell với status 403), KHÔNG bounce sang
  * /dang-nhap — Forbidden đã có sẵn lối "Đăng nhập lại".
  */
-const NAV = [
-  { to: '/admin', label: 'Tổng quan', end: true, icon: '📊' },
-  { to: '/admin/clusters', label: 'Cụm máy chủ', end: false, icon: '🗂️' },
-  { to: '/admin/servers', label: 'Server', end: false, icon: '🖥️' },
-  { to: '/admin/game-modes', label: 'Máy chủ', end: false, icon: '🎮' },
-  { to: '/admin/keys', label: 'API key', end: false, icon: '🔑' },
-  { to: '/admin/monitor', label: 'Monitor', end: false, icon: '📈' },
+/** Sidebar chia nhóm — mỗi nhóm một label nhỏ, items là NavLink hiện có. */
+const NAV_GROUPS: { label: string; items: { to: string; label: string; end?: boolean; icon: string }[] }[] = [
+  {
+    label: 'Tổng quan',
+    items: [{ to: '/admin', label: 'Dashboard', end: true, icon: '📊' }],
+  },
+  {
+    label: 'Hạ tầng',
+    items: [
+      { to: '/admin/clusters', label: 'Cụm máy chủ', icon: '🗂️' },
+      { to: '/admin/servers', label: 'Server', icon: '🖥️' },
+      { to: '/admin/keys', label: 'API key', icon: '🔑' },
+    ],
+  },
+  {
+    label: 'Nội dung',
+    items: [{ to: '/admin/game-modes', label: 'Máy chủ game', icon: '🎮' }],
+  },
+  {
+    label: 'Tài chính',
+    items: [
+      { to: '/admin/bank-deposits', label: 'Nạp bank', icon: '🏦' },
+      { to: '/admin/points-history', label: 'Lịch sử points', icon: '🪙' },
+      { to: '/admin/card-transactions', label: 'Thẻ cào', icon: '🎫' },
+    ],
+  },
+  {
+    label: 'Người dùng',
+    items: [{ to: '/admin/users', label: 'Tài khoản', icon: '👥' }],
+  },
+  {
+    label: 'Giám sát',
+    items: [{ to: '/admin/monitor', label: 'Monitor', icon: '📈' }],
+  },
 ]
+
+const NAV = NAV_GROUPS.flatMap((g) => g.items)
+
+const NavItem = ({ item }: { item: { to: string; label: string; end?: boolean; icon: string } }) => (
+  <NavLink
+    to={item.to}
+    end={item.end}
+    className={({ isActive }) =>
+      cn(
+        'flex shrink-0 items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium transition-colors',
+        isActive ? 'bg-primary-soft text-primary' : 'text-muted hover:bg-surface-2 hover:text-fg',
+      )
+    }
+  >
+    <span aria-hidden className="w-4 text-center text-base leading-none opacity-80">
+      {item.icon}
+    </span>
+    {item.label}
+  </NavLink>
+)
 
 export const AdminLayout = () => {
   const { user, loading } = useAuth()
@@ -70,28 +117,28 @@ export const AdminLayout = () => {
             </div>
           </div>
 
-          <nav
-            aria-label="Menu quản trị"
-            className="mt-3 flex gap-1 overflow-x-auto pb-1 lg:mt-6 lg:min-h-0 lg:flex-1 lg:flex-col lg:gap-0.5 lg:overflow-y-auto lg:pb-0"
-          >
-            {NAV.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.end}
-                className={({ isActive }) =>
-                  cn(
-                    'flex shrink-0 items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium transition-colors',
-                    isActive
-                      ? 'bg-primary-soft text-primary'
-                      : 'text-muted hover:bg-surface-2 hover:text-fg',
-                  )
-                }
-              >
-                <span aria-hidden className="w-4 text-center text-base leading-none opacity-80">{item.icon}</span>
-                {item.label}
-              </NavLink>
-            ))}
+          <nav aria-label="Menu quản trị" className="mt-3 lg:mt-5 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
+            {/* mobile: 1 hàng dọc ngang cuộn được, không label nhóm */}
+            <div className="flex gap-1 overflow-x-auto pb-1 lg:hidden">
+              {NAV.map((item) => (
+                <NavItem key={item.to} item={item} />
+              ))}
+            </div>
+            {/* desktop: chia nhóm có label */}
+            <div className="hidden space-y-4 lg:block">
+              {NAV_GROUPS.map((group) => (
+                <div key={group.label}>
+                  <p className="px-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-muted opacity-70">
+                    {group.label}
+                  </p>
+                  <div className="space-y-0.5">
+                    {group.items.map((item) => (
+                      <NavItem key={item.to} item={item} />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
           </nav>
 
           {/* Chân sidebar: user + lối ra (desktop) */}

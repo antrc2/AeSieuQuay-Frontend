@@ -75,7 +75,8 @@ Shape khuyến nghị:
     "images": [{ "id": 1, "src": "https://...", "alt": "..." }],
     "slideshow_interval": 4000
   },
-  "server_info": { "ip": "...", "online": true, "players": { "online": 120, "max": 500 }, "version": "1.21.11" },
+  "server_info": { "ip": "...", "online": true, "players": { "online": 120, "max": 500 }, "version": "1.21.11",
+    "tps": { "avg_1m": 19.8 }, "uptime": { "percent_7d": 99.4, "window_hours": 168 }, "servers": { "total": 6, "online": 5 } },
   "stats": { /* ClusterStats — backend override server_info.players từ cùng nguồn; null → UI ẩn strip */ },
   "game_modes": { "title": "Máy chủ", "subtitle": "...", "modes": [{ "slug": "sinh-ton", "name": "Sinh tồn", "tagline": "...", "short_desc": "...", "status": "hot", "image": "https://..." }] },
   "highlights": { "title": "...", "items": [{ "icon": "⚡", "title": "...", "desc": "..." }] },

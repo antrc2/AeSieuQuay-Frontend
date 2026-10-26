@@ -208,6 +208,10 @@ export const homePageMock = {
     online: true,
     players: { online: 210, max: 1000 },
     version: '1.21.11',
+    // FRONTEND-3 §6 — cùng nguồn ClusterStats (backend override).
+    tps: { avg_1m: 19.8 },
+    uptime: { percent_7d: 99.4, window_hours: 168 },
+    servers: { total: 4, online: 3 },
   },
   game_modes: {
     title: 'Máy chủ',

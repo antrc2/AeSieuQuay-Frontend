@@ -57,6 +57,10 @@ export interface ServerInfo {
   online?: boolean | null
   players?: { online: number; max: number } | null
   version?: string | null
+  /** Frontend-3 §6 — backend nhét ClusterStats tương ứng vào server_info (push-only, không ping). */
+  tps?: { avg_1m: number } | null
+  uptime?: { percent_7d: number | null; window_hours: number } | null
+  servers?: { total: number; online: number } | null
 }
 
 export interface GameModeSummary {

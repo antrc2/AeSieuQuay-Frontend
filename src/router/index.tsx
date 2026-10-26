@@ -18,6 +18,10 @@ import { lazy } from 'react'
 import AdminMonitorPage from '@/pages/admin/AdminMonitorPage'
 import AdminMonitorDetailPage from '@/pages/admin/AdminMonitorDetailPage'
 import AdminGameModesPage from '@/pages/admin/AdminGameModesPage'
+import AdminBankDepositsPage from '@/pages/admin/AdminBankDepositsPage'
+import AdminPointsHistoryPage from '@/pages/admin/AdminPointsHistoryPage'
+import AdminCardTransactionsPage from '@/pages/admin/AdminCardTransactionsPage'
+import AdminUsersPage from '@/pages/admin/AdminUsersPage'
 import { LegacyRedirect, LegacySlugRedirect, RootLayout } from '@/router/RouteHelpers'
 
 /** Editor HTML admin kéo theo CodeMirror (~450KB) — chỉ tải khi admin mở trang soạn. */
@@ -65,6 +69,10 @@ export const router = createBrowserRouter([
           { path: 'clusters', element: <AdminClustersPage /> },
           { path: 'servers', element: <AdminServersPage /> },
           { path: 'game-modes', element: <AdminGameModesPage /> },
+          { path: 'bank-deposits', element: <AdminBankDepositsPage /> },
+          { path: 'points-history', element: <AdminPointsHistoryPage /> },
+          { path: 'card-transactions', element: <AdminCardTransactionsPage /> },
+          { path: 'users', element: <AdminUsersPage /> },
           {
             path: 'game-modes/:id/content',
             element: (
