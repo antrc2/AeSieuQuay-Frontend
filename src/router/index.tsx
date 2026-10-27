@@ -4,6 +4,7 @@ import { createBrowserRouter } from 'react-router-dom'
 import HomePage from '@/pages/landing/HomePage'
 import AuthPage from '@/pages/auth/AuthPage'
 import NapThePage from '@/pages/topup/NapThePage'
+import TransferPage from '@/pages/transfer/TransferPage'
 import GameModesListPage from '@/pages/game/GameModesListPage'
 import GameModeDetailPage from '@/pages/game/GameModeDetailPage'
 import NotFound from '@/pages/errors/NotFound'
@@ -18,6 +19,11 @@ import { lazy } from 'react'
 import AdminMonitorPage from '@/pages/admin/AdminMonitorPage'
 import AdminMonitorDetailPage from '@/pages/admin/AdminMonitorDetailPage'
 import AdminGameModesPage from '@/pages/admin/AdminGameModesPage'
+import AdminBankDepositsPage from '@/pages/admin/AdminBankDepositsPage'
+import AdminPointsHistoryPage from '@/pages/admin/AdminPointsHistoryPage'
+import AdminCardTransactionsPage from '@/pages/admin/AdminCardTransactionsPage'
+import AdminPromotionsPage from '@/pages/admin/AdminPromotionsPage'
+import AdminUsersPage from '@/pages/admin/AdminUsersPage'
 import { LegacyRedirect, LegacySlugRedirect, RootLayout } from '@/router/RouteHelpers'
 
 /** Editor HTML admin kéo theo CodeMirror (~450KB) — chỉ tải khi admin mở trang soạn. */
@@ -52,6 +58,11 @@ export const router = createBrowserRouter([
         path: '/nap-the',
         element: <NapThePage />,
       },
+      // FRONTEND-4 §3.1 — trang user thường trong SiteLayout, window.DATA (page:'transfer').
+      {
+        path: '/chuyen-xu',
+        element: <TransferPage />,
+      },
       {
         path: '/forbidden',
         element: <Forbidden />,
@@ -65,6 +76,11 @@ export const router = createBrowserRouter([
           { path: 'clusters', element: <AdminClustersPage /> },
           { path: 'servers', element: <AdminServersPage /> },
           { path: 'game-modes', element: <AdminGameModesPage /> },
+          { path: 'bank-deposits', element: <AdminBankDepositsPage /> },
+          { path: 'points-history', element: <AdminPointsHistoryPage /> },
+          { path: 'card-transactions', element: <AdminCardTransactionsPage /> },
+          { path: 'promotions', element: <AdminPromotionsPage /> },
+          { path: 'users', element: <AdminUsersPage /> },
           {
             path: 'game-modes/:id/content',
             element: (

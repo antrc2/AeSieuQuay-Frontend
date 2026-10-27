@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 
 import { useSeo } from '@/hooks/useSeo'
 import {
+  listBankDeposits,
   listClusters,
   listServers,
   monitorOverview,
@@ -30,6 +31,7 @@ export const AdminOverviewPage = () => {
   const [overview, setOverview] = useState<MonitorOverview | null>(null)
   const [summaries, setSummaries] = useState<MonitorServerSummary[] | null>(null)
   const [monitorFailed, setMonitorFailed] = useState(false)
+  const [unmatchedCount, setUnmatchedCount] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [updatedAt, setUpdatedAt] = useState<number | null>(null)
   const aliveRef = useRef(true)
@@ -41,6 +43,10 @@ export const AdminOverviewPage = () => {
       if (!aliveRef.current) return
       setClusters(c)
       setServers(s)
+      // quick-link "Nạp chờ xử lý" — chỉ cần total, limit 1 cho nhẹ (§2.1)
+      listBankDeposits({ status: 'unmatched', limit: 1 })
+        .then((r) => aliveRef.current && setUnmatchedCount(r.total))
+        .catch(() => undefined)
       try {
         const [o, m] = await Promise.all([monitorOverview(), monitorServers()])
         if (!aliveRef.current) return
@@ -185,6 +191,20 @@ export const AdminOverviewPage = () => {
         )
       )}
 
+      {/* Đường vào nhanh khu lịch sử tiền + users (§2.1 quick-link) */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <QuickLink
+          to="/admin/bank-deposits"
+          icon="🏦"
+          label="Nạp bank"
+          badge={unmatchedCount ? `Nạp chờ xử lý: ${unmatchedCount}` : undefined}
+          tone={unmatchedCount ? 'warn' : undefined}
+        />
+        <QuickLink to="/admin/points-history" icon="🪙" label="Lịch sử points" />
+        <QuickLink to="/admin/card-transactions" icon="🎫" label="Thẻ cào" />
+        <QuickLink to="/admin/users" icon="👥" label="Tài khoản" />
+      </div>
+
       {/* Lưới server monitor */}
       <SectionHeader
         title="Server monitor"
@@ -232,6 +252,21 @@ const Metric = ({ label, value, tone }: { label: string; value: string; tone?: '
     <p className="text-[10px] font-semibold uppercase tracking-wide text-muted">{label}</p>
     <p className={cn('text-sm font-bold tabular-nums', tone === 'warn' ? 'text-amber-500' : 'text-fg')}>{value}</p>
   </div>
+)
+
+const QuickLink = ({ to, icon, label, badge, tone }: { to: string; icon: string; label: string; badge?: string; tone?: 'warn' }) => (
+  <Link
+    to={to}
+    className="flex items-center gap-2.5 rounded-2xl border border-border-c bg-surface px-4 py-3 text-sm font-semibold text-fg transition-colors hover:border-primary/60"
+  >
+    <span aria-hidden className="text-lg">
+      {icon}
+    </span>
+    <span className="min-w-0">
+      <span className="block truncate">{label}</span>
+      {badge && <span className={cn('block text-[11px] font-medium', tone === 'warn' ? 'text-amber-500' : 'text-muted')}>{badge}</span>}
+    </span>
+  </Link>
 )
 
 export default AdminOverviewPage

@@ -40,6 +40,13 @@ Router (`<Link>`, `useNavigate`)** trong toàn khu `/admin/**`.
 | `/admin/monitor/<server_key>` | `AdminMonitorDetailPage` | `monitor/servers/<n>` + `/metrics` (chart SVG nội bộ) + `/events` + `/players/online` + `/exceptions` + `/plugins` |
 | `/admin/game-modes` | `AdminGameModesPage` | CRUD `/api/admin/game-modes` (bảng + form basic; select `cluster_id` từ `listClusters`) |
 | `/admin/game-modes/<id>/content` | `AdminGameModeContentPage` | `GET/PATCH game-modes/<id>` (`content_html`) + `POST /api/admin/upload` (multipart → S3, trả `{key,url}`); CodeMirror 6, lazy chunk riêng |
+| `/admin/bank-deposits` | `AdminBankDepositsPage` | `GET /admin/bank-deposits` (+deep link `?status=`/`?q=`) · `POST …/<id>/requeue {username?}` là action DUY NHẤT; badge `DepositStatusBadge` theo ma trận §1.3, poll 3s khi còn cmd `pending/claimed` |
+| `/admin/points-history` | `AdminPointsHistoryPage` | 2 tab `?tab=`: Transfers (`/admin/points/transfers` + detail drawer saga) · Commands (`/points/commands`, filter server points_enabled, chip `nạp bank #` → deep link `?q=<command_id>`); refresh TAY, không poll |
+| `/admin/card-transactions` | `AdminCardTransactionsPage` | `GET /admin/card-transactions?status&q&user_id`; 3 StatCard tổng hợp client-side; tự refresh 10s khi còn `pending`; code thẻ luôn masked |
+| `/admin/users` | `AdminUsersPage` | `GET /api/users?q&sort&order` (admin-only) — search debounce 300ms, sort header; click row → `GET /api/users/<id>` drawer: `money_summary` + reuse `BankDepositsTable`/`PointTransfersTable` với `user_id=`. CHỈ ĐỌC — đổi role/mật khẩu chưa có API |
+| `/admin/monitor/<server>` | + tab Uptime / Disk & Worlds / Nâng cao | `uptime-periods` (thanh 7 ngày + %), `disks` + `worlds` (delta size), `samples`/`batches` (click row → modal JSON); top playtime cạnh "Đang online" |
+
+Sidebar admin chia nhóm: **Tổng quan · Hạ tầng · Nội dung · Tài chính · Người dùng · Giám sát**.
 
 Toàn bộ gọi qua `src/api/admin.ts` (duy nhất). **Mặc định — kể cả `npm run dev` —
 gọi thẳng API thật** `http://localhost:5000/api/admin/*` (backend đã chạy; CORS

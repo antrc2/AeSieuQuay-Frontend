@@ -208,6 +208,10 @@ export const homePageMock = {
     online: true,
     players: { online: 210, max: 1000 },
     version: '1.21.11',
+    // FRONTEND-3 §6 — cùng nguồn ClusterStats (backend override).
+    tps: { avg_1m: 19.8 },
+    uptime: { percent_7d: 99.4, window_hours: 168 },
+    servers: { total: 4, online: 3 },
   },
   game_modes: {
     title: 'Máy chủ',
@@ -281,12 +285,132 @@ export const homePageMock = {
   footer: DEFAULT_FOOTER,
 }
 
-/* ================== TRANG NẠP THẺ ================== */
+/* ================== TRANG NẠP THẺ (FRONTEND-4 §1 — window.DATA shape mới) ==================
+ * Mock dựng sẵn `promotion` + `my` (user đã đăng nhập) + telcos thật shape
+ * CardFeeTelco để test toàn bộ block lịch sử. Muốn test khách vãng lai:
+ * sửa `my: null`. Muốn test cổng lỗi: sửa `card.telcos: []` → fallback
+ * card-options.js + cảnh báo.
+ */
+
+/** Phí HIỂN THỊ CHO USER = user_fee_rate 10% (chủ server chốt 27/10): cổng chiết khấu
+ *  sâu hơn nhưng admin bù chênh (admin_adjustment) — UI nạp thẻ KHÔNG lộ 21% của cổng. */
+const USER_FEE_PERCENT = 10
+const mkFeeValues = (feePercent, vndPerXu) =>
+  [50000, 100000, 200000, 300000, 500000].map((amount) => {
+    const real = Math.floor((amount * (100 - feePercent)) / 100)
+    return { amount, fee_percent: feePercent, real_receive_vnd: real, xu: Math.floor(real / vndPerXu) }
+  })
+
+/* Tỷ giá chuẩn chủ server chốt 27/10: 1.000đ = 1 Xu (khớp BANK_VND_PER_XU_FALLBACK site.js). */
+const MOCK_VND_PER_XU = 1000
 
 export const topupPageMock = {
   title: 'Nạp thẻ',
-  subtitle: 'Chọn hình thức nạp phù hợp với bạn',
-  cards: [],
+  subtitle: 'Chọn hình thức nạp phù hợp với bạn — Thẻ cào hoặc Chuyển khoản ngân hàng',
+  card: {
+    enabled: true,
+    vnd_per_xu: MOCK_VND_PER_XU,
+    user_fee_rate: 10,
+    telcos: [
+      { telco: 'VIETTEL', label: 'Viettel', min: 10000, max: 1000000, values: mkFeeValues(USER_FEE_PERCENT, MOCK_VND_PER_XU) },
+      { telco: 'MOBIFONE', label: 'Mobifone', min: 10000, max: 500000, values: mkFeeValues(USER_FEE_PERCENT, MOCK_VND_PER_XU) },
+      { telco: 'VINAPHONE', label: 'Vinaphone', min: 10000, max: 500000, values: mkFeeValues(USER_FEE_PERCENT, MOCK_VND_PER_XU) },
+      { telco: 'ZING', label: 'Zing', min: 10000, max: 500000, values: mkFeeValues(USER_FEE_PERCENT, MOCK_VND_PER_XU) },
+    ],
+  },
+  // VietQR chuẩn cứng: OCB · HNC61025015012 · NGUYEN NGOC AN (FRONTEND-4 §2 cập nhật 27/10).
+  bank: {
+    enabled: true,
+    vnd_per_xu: MOCK_VND_PER_XU,
+    min_amount_vnd: 10000,
+    credit_server_key: 'lobby-1',
+    receiving: { bank: 'OCB', account_number: 'HNC61025015012', account_name: 'NGUYEN NGOC AN' },
+    content_format: 'ten ingame chinh xac, khong them Prefix/Sau',
+  },
+  promotion: {
+    name: 'Mừng ra mắt server — cộng 20% Xu',
+    bonus_percent: 20,
+    ends_at: new Date(Date.now() + 3 * 86_400_000).toISOString(),
+    slots_left: 6,
+    applied: false,
+    applies_to: 'all',
+  },
+  // Đã đăng nhập: có lịch sử trộn 2 kênh + 1 row có bonus khuyến mãi.
+  my: {
+    user: { username: 'AnTrc2', realname: 'An Trc' },
+    card_history: [
+      {
+        request_id: 'r-aaaa-1111', telco: 'VIETTEL', amount_vnd: 100000, xu_amount: 90,
+        status: 'success', gateway_message: 'Thành công', in_game: true,
+        card_code_masked: '****5678', serial: '654321098765', created_at: new Date(Date.now() - 30 * 60_000).toISOString(),
+        promotion_id: null, bonus_xu: null,
+      },
+      {
+        request_id: 'r-cccc-3333', telco: 'VINAPHONE', amount_vnd: 200000, xu_amount: 216,
+        status: 'success', gateway_message: 'Thành công', in_game: false,
+        card_code_masked: '****9900', serial: '998877665544', created_at: new Date(Date.now() - 45 * 60_000).toISOString(),
+        promotion_id: 2, bonus_xu: 36,
+      },
+      {
+        request_id: 'r-dddd-4444', telco: 'VIETTEL', amount_vnd: 50000, xu_amount: null,
+        status: 'failed', gateway_message: 'Thẻ đúng nhưng sai mệnh giá khai báo', in_game: false,
+        card_code_masked: '****4321', serial: '556677889900', created_at: new Date(Date.now() - 2 * 86_400_000).toISOString(),
+        promotion_id: null, bonus_xu: null,
+      },
+    ],
+    bank_history: [
+      {
+        id: 1, amount_vnd: 500000, xu_amount: 500, status: 'credited',
+        credit_command_status: 'done', credit_command_error: null,
+        reference_code: 'OCB2610001', transaction_date_ms: Date.now() - 3_600_000,
+        promotion_id: null, bonus_xu: null, content: 'AnTrc2',
+      },
+      {
+        id: 2, amount_vnd: 10000, xu_amount: 12, status: 'credited',
+        credit_command_status: 'pending', credit_command_error: null,
+        reference_code: 'OCB2610006', transaction_date_ms: Date.now() - 8 * 3_600_000,
+        promotion_id: 2, bonus_xu: 2, content: 'AnTrc2',
+      },
+      {
+        id: 4, amount_vnd: 100000, xu_amount: 100, status: 'credited',
+        credit_command_status: 'failed', credit_command_error: 'player_not_found',
+        reference_code: 'OCB2610004', transaction_date_ms: Date.now() - 26 * 3_600_000,
+        promotion_id: null, bonus_xu: null, content: 'AnTrc2',
+      },
+    ],
+  },
+}
+
+/* ================== TRANG CHUYỂN XU /chuyen-xu (FRONTEND-4 §1) ==================
+ * `my.transfers` có MỘT row cho MỖI trạng thái để test đủ badge/stepper.
+ * Test khách: sửa `my: null`.
+ */
+
+const transferIso = (minsAgo) => new Date(Date.now() - minsAgo * 60_000).toISOString()
+
+export const transferPageMock = {
+  title: 'Chuyển Xu',
+  lobby: { server_key: 'lobby-1', name: 'Lobby' },
+  targets: [
+    { server_key: 'pvp-1', name: 'PvP 1' },
+    { server_key: 'survival-1', name: 'Survival 1' },
+    { server_key: 'skyblock-1', name: 'Skyblock 1' },
+    { server_key: 'minigame-1', name: 'Minigame 1' },
+  ],
+  limits: { min_amount: 10, max_amount: 1000000 },
+  command_ttl_seconds: 60,
+  my: {
+    user: { username: 'AnTrc2', realname: 'An Trc' },
+    transfers: [
+      { transfer_id: 'tr-0001-pending', to_server_key: 'pvp-1', amount: 100, status: 'pending', error: null, created_at: transferIso(1), completed_at: null },
+      { transfer_id: 'tr-0002-debited', to_server_key: 'skyblock-1', amount: 300, status: 'debited', error: null, created_at: transferIso(6), completed_at: null },
+      { transfer_id: 'tr-0003-refpending', to_server_key: 'minigame-1', amount: 500, status: 'refund_pending', error: 'credit expired: minigame-1 offline quá TTL', created_at: transferIso(50), completed_at: null },
+      { transfer_id: 'tr-0004-completed', to_server_key: 'survival-1', amount: 1200, status: 'completed', error: null, created_at: transferIso(200), completed_at: transferIso(199) },
+      { transfer_id: 'tr-0005-failed', to_server_key: 'pvp-1', amount: 50, status: 'failed', error: 'player_not_found', created_at: transferIso(320), completed_at: null },
+      { transfer_id: 'tr-0006-refunded', to_server_key: 'minigame-1', amount: 200, status: 'refunded', error: 'expired', created_at: transferIso(600), completed_at: null },
+      { transfer_id: 'tr-0007-reconcile', to_server_key: 'survival-1', amount: 800, status: 'needs_reconcile', error: 'agent uncertain quá timeout', created_at: transferIso(1440), completed_at: null },
+    ],
+  },
 }
 
 export default {
@@ -294,4 +418,5 @@ export default {
   machineListPageMock,
   machineDetailsMock,
   topupPageMock,
+  transferPageMock,
 }

@@ -424,6 +424,27 @@ const ServerInfoBar = ({ info = {} }: { info?: HomePayload['server_info'] }) => 
           </span>
           <span className="h-4 w-px bg-[var(--border)]" />
           <span className="text-muted">👥 {info.players ? `${info.players.online}/${info.players.max}` : '— / —'}</span>
+          {/* FRONTEND-3 §6.1 — số thật từ ClusterStats (null → ẩn hẳn, không bịa số) */}
+          {info.tps?.avg_1m != null && (
+            <>
+              <span className="h-4 w-px bg-[var(--border)]" />
+              <span className={cn('tabular-nums', info.tps.avg_1m < 18 ? 'text-amber-500' : 'text-muted')}>⚡ TPS {info.tps.avg_1m.toFixed(1)}</span>
+            </>
+          )}
+          {info.uptime?.percent_7d != null && (
+            <>
+              <span className="h-4 w-px bg-[var(--border)]" />
+              <span className="text-muted tabular-nums">🕐 Uptime 7 ngày {info.uptime.percent_7d.toFixed(1)}%</span>
+            </>
+          )}
+          {info.servers?.total != null && (
+            <>
+              <span className="h-4 w-px bg-[var(--border)]" />
+              <span className="text-muted tabular-nums">
+                🖥️ {info.servers.online}/{info.servers.total} node
+              </span>
+            </>
+          )}
           <span className="h-4 w-px bg-[var(--border)]" />
           <span className="text-muted">📦 {info.version ? `Phiên bản: ${info.version}` : 'Phiên bản: —'}</span>
         </div>
@@ -493,8 +514,8 @@ const GameModes = ({
           <p className="mt-2 text-muted">{section.subtitle}</p>
         )}
       </div>
-      {/* Stat cụm thật — ẩn khi backend chưa trả stats */}
-      <ClusterStatsStrip stats={stats} compact className="mb-6 justify-center" />
+      {/* Stat cụm thật — non-compact (FRONTEND-3 §6.2: lộ cả TPS + uptime); ẩn khi chưa có stats */}
+      <ClusterStatsStrip stats={stats} className="mb-6 justify-center" />
 
       {!isCarousel ? (
         /* ===== Grid căn giữa (≤ 3 mode) ===== */
