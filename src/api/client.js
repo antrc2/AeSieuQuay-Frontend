@@ -107,9 +107,20 @@ const redirectTo = (path) => {
  *   lai phải được xem trang. /user/me thuộc nhóm này — trước đây nó nằm trong
  *   NO_REFRESH nên access token hết hạn 30' là mất phiên giả (bug #2):
  *   giờ nó ĐƯỢC thử /auth/refresh, chỉ im lặng khi refresh cũng hết hạn.
+ * FRONTEND-4 §3.2: các API tiền của trang user (nap-the/chuyen-xu: action +
+ * poll + balance-check) cũng IM LẶNG khi hết phiên — trang hiển thị nút
+ * "Đăng nhập" tại chỗ, KHÔNG tự redirect (giữ principle trang public xem được).
  */
 const NO_REFRESH_ENDPOINTS = ['/auth/login', '/auth/register', '/auth/refresh', '/auth/logout']
-const SILENT_401_ENDPOINTS = ['/user/me']
+const SILENT_401_ENDPOINTS = [
+  '/user/me',
+  '/points/balance-check',
+  '/points/transfers',
+  '/card/charge',
+  '/card/check',
+  '/card/history',
+  '/bank/deposits',
+]
 
 const shouldSkipRefresh = (url = '') =>
   NO_REFRESH_ENDPOINTS.some((path) => String(url).startsWith(path))

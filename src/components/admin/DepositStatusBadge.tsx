@@ -1,9 +1,26 @@
 import { Badge } from '@/components/ui/badge'
 import { fmtXu } from '@/lib/format'
-import type { BankDepositAdmin } from '@/api/admin'
+
+/**
+ * Input tối giản để badge DÙNG CHUNG admin + trang user /nap-the (FRONTEND-4 §2.3):
+ * BankDepositAdmin (đầy đủ) và BankDepositRow (subset window.DATA) đều khớp cấu trúc.
+ */
+export interface DepositLike {
+  status: string
+  xu_amount?: number | null
+  credit_command_status?: string | null
+  credit_command_error?: string | null
+  credit_command_attempts?: number | null
+  credit_result_balance?: number | null
+  credit_attempts?: number
+  sandbox?: boolean
+  note?: string | null
+  content?: string
+  username?: string | null
+}
 
 /** Bảng màu đúng §1.3 admin-history-api.md. */
-export const depositBadge = (d: BankDepositAdmin) => {
+export const depositBadge = (d: DepositLike) => {
   const cmd = d.credit_command_status
 
   if (d.status === 'credited') {
@@ -24,14 +41,14 @@ export const depositBadge = (d: BankDepositAdmin) => {
 }
 
 /** Điều kiện hiện nút Requeue (§1.2): pending/claimed bị backend 400 — ẩn luôn. */
-export const canRequeue = (d: BankDepositAdmin) => {
+export const canRequeue = (d: DepositLike) => {
   if (d.sandbox) return false
   if (d.status === 'unmatched' || d.status === 'matched') return true
   if (d.status === 'credited') return d.credit_command_status === 'failed' || d.credit_command_status === 'expired' || d.credit_command_status === 'uncertain'
   return false
 }
 
-export const DepositStatusBadge = ({ deposit }: { deposit: BankDepositAdmin }) => {
+export const DepositStatusBadge = ({ deposit }: { deposit: DepositLike }) => {
   const b = depositBadge(deposit)
   return (
     <span className="inline-flex flex-wrap items-center gap-1.5" title={b.tip}>

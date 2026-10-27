@@ -11,15 +11,28 @@
 export const DEFAULT_DISCORD_URL = 'https://discord.gg/tBH4zEpK2S'
 
 /**
- * VietQR nhận nạp tiền qua ngân hàng.
- * Khi user đã đăng nhập, frontend thêm `?addInfo=<realname>`.
+ * VietQR nhận nạp tiền qua ngân hàng — CHUẨN CỨNG chủ server chốt 27/10 (FRONTEND-4 §2):
+ * OCB / HNC61025015012 / NGUYEN NGOC AN, tỷ giá 1.000đ = 1 Xu.
+ * Đây là FALLBACK: ưu tiên build URL từ `payload.bank` (window.DATA); constants ở đây
+ * phải trùng giá trị backend cấu hình, đừng để trỏ ngân hàng khác.
+ * Khi user đã đăng nhập, frontend thêm `?addInfo=<ten nap>&accountName=<chủ TK>`.
  */
-export const BANK_QR_BASE_URL = 'https://img.vietqr.io/image/MB-0838411897-compact.svg'
+export const BANK_RECEIVING_FALLBACK = {
+  bank: 'OCB',
+  account_number: 'HNC61025015012',
+  account_name: 'NGUYEN NGOC AN',
+}
+
+export const BANK_VND_PER_XU_FALLBACK = 1000
+
+export const BANK_QR_BASE_URL = 'https://img.vietqr.io/image/OCB-HNC61025015012-compact2.svg'
 
 export const DEFAULT_MENU = [
   { label: 'Trang chủ', to: '/' },
   { label: 'Máy chủ', to: '/may-chu' },
   { label: 'Nạp thẻ', to: '/nap-the' },
+  // FRONTEND-4 §3.1 — trang tiện ích chuyển xu (SSR page, điều hướng <a href> full reload).
+  { label: 'Chuyển xu', to: '/chuyen-xu' },
 ]
 
 export const DEFAULT_SERVER_INFO = {
@@ -36,6 +49,7 @@ export const DEFAULT_FOOTER = {
       links: [
         { label: 'Máy chủ', to: '/may-chu' },
         { label: 'Nạp thẻ', to: '/nap-the' },
+        { label: 'Chuyển xu', to: '/chuyen-xu' },
       ],
     },
     {
@@ -65,7 +79,7 @@ const ROUTE_ALIASES = {
   '/che-do-choi': '/may-chu',
 }
 
-const ROUTE_PREFIXES = ['/may-chu', '/nap-the', '/dang-nhap', '/dang-ky']
+const ROUTE_PREFIXES = ['/may-chu', '/nap-the', '/chuyen-xu', '/dang-nhap', '/dang-ky']
 
 /** Chỉ giữ link nội bộ trỏ tới route thật (hoặc hash). */
 const isKnownRoute = (to = '') => {

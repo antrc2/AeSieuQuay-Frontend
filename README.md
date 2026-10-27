@@ -63,6 +63,23 @@ src/
 └── theme/        # Theme management
 ```
 
+## Luật dữ liệu trang user (FRONTEND-4 §0)
+
+```
+read  = window.DATA (SSR backend nhúng payload theo src/data/contract.ts)
+write = POST /api/...  (chỉ ACTION: /card/charge, /card/check, /points/transfers)
+live  = poll tối thiểu GET /api/... CHỈ cho giao dịch vừa action, tới khi terminal rồi DỪNG
+```
+
+- Trang user (`/`, `/may-chu*`, `/nap-the`, `/chuyen-xu`, …) KHÔNG fetch danh sách /
+  biểu phí / balance bằng axios lúc mở trang. Ví dụ `/nap-the`: biểu phí thẻ
+  (`payload.card.telcos`), info bank (`payload.bank`), event khuyến mãi
+  (`payload.promotion`) và lịch sử của user (`payload.my`) đều nằm trong `window.DATA`.
+- Ngoại lệ bất khả kháng duy nhất: `/chuyen-xu` gọi `POST /points/balance-check` +
+  poll 1s (≤20s) lúc mở trang — số dư thật nằm PlayerPoints in-game, SSR không đoán được.
+- Điều hướng giữa trang user dùng `<a href>` (full reload → nhận `window.DATA` mới),
+  không `<Link>` SPA. Khu `/admin/**` ngược lại: luôn gọi `/api/admin/*` qua `src/api/admin.ts`.
+
 ## Biến môi trường
 
 Tạo file `.env.development` và `.env.production`:

@@ -16,12 +16,62 @@ import { oneDark } from '@codemirror/theme-one-dark'
 
 import { useSeo } from '@/hooks/useSeo'
 import { getGameMode, updateGameMode, uploadAdminImage, type AdminGameMode } from '@/api/admin'
+import { ApiError } from '@/api/client'
 import { showApiError, showSuccess } from '@/utils/swal'
 import { PageHeader } from '@/components/admin/blocks'
+import Modal from '@/components/admin/Modal'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/States'
 import { cn } from '@/lib/utils'
+import { fmtIsoVN } from '@/lib/format'
+
+/* ================= Diff theo dòng (FRONTEND-4 §6 — không cần lib) ================= */
+
+interface DiffRow {
+  l: string | null // bản của tôi
+  r: string | null // bản server
+  t: 'same' | 'del' | 'add'
+}
+
+const MAX_DIFF_LINES = 800
+
+/** LCS theo dòng; tài liệu >800 dòng → so sánh thô từng dòng (đủ cho cảnh báo trùng sửa). */
+export function diffLines(mine: string, server: string): DiffRow[] {
+  const A = mine.split('\n')
+  const B = server.split('\n')
+  if (A.length > MAX_DIFF_LINES || B.length > MAX_DIFF_LINES) {
+    const n = Math.max(A.length, B.length)
+    return Array.from({ length: n }, (_, i) => {
+      const l = i < A.length ? A[i] : null
+      const r = i < B.length ? B[i] : null
+      return { l, r, t: l === r ? ('same' as const) : 'del' as const }
+    })
+  }
+  const m = A.length
+  const n = B.length
+  const dp: Uint32Array[] = Array.from({ length: m + 1 }, () => new Uint32Array(n + 1))
+  for (let i = m - 1; i >= 0; i--) for (let j = n - 1; j >= 0; j--) dp[i][j] = A[i] === B[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1])
+  const rows: DiffRow[] = []
+  let i = 0
+  let j = 0
+  while (i < m && j < n) {
+    if (A[i] === B[j]) {
+      rows.push({ l: A[i], r: B[j], t: 'same' })
+      i++
+      j++
+    } else if (dp[i + 1][j] >= dp[i][j + 1]) {
+      rows.push({ l: A[i], r: null, t: 'del' })
+      i++
+    } else {
+      rows.push({ l: null, r: B[j], t: 'add' })
+      j++
+    }
+  }
+  while (i < m) rows.push({ l: A[i++], r: null, t: 'del' })
+  while (j < n) rows.push({ l: null, r: B[j++], t: 'add' })
+  return rows
+}
 
 /* ================= CodeMirror host ================= */
 
@@ -115,8 +165,25 @@ export const AdminGameModeContentPage = () => {
   const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState(false)
 
+  /* FRONTEND-4 §6 — optimistic locking: giữ version bản đang soạn, gửi khi lưu. */
+  const [baseVersion, setBaseVersion] = useState<number | null>(null)
+  const [conflict, setConflict] = useState<{ version: number; updatedAt: string | null; serverDoc: string | null } | null>(null)
+  const [showDiff, setShowDiff] = useState(false)
+  const [applying, setApplying] = useState(false)
+
   const editorRef = useRef<HtmlEditorHandle>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  /** Nạp một bản GameModeOut vào editor (load ban đầu / tải bản mới nhất / sau lưu). */
+  const applyMode = useCallback((m: AdminGameMode) => {
+    setMode(m)
+    const html = m.content_html ?? ''
+    setSavedDoc(html)
+    setDoc(html)
+    setPreview(html)
+    setBaseVersion(typeof m.content_version === 'number' ? m.content_version : 0)
+    editorRef.current?.setValue(html)
+  }, [])
 
   useEffect(() => {
     let alive = true
@@ -124,11 +191,7 @@ export const AdminGameModeContentPage = () => {
     getGameMode(modeId)
       .then((m) => {
         if (!alive) return
-        setMode(m)
-        const html = m.content_html ?? ''
-        setSavedDoc(html)
-        setDoc(html)
-        setPreview(html)
+        applyMode(m)
       })
       .catch(async (err) => {
         if (!alive) return
@@ -175,20 +238,65 @@ export const AdminGameModeContentPage = () => {
     try {
       // Response là GameModeOut với content_html ĐÃ sanitize (nh3) —
       // reset editor về bản canonical để admin thấy kết quả thật.
-      const updated = await updateGameMode(mode.id, { content_html: doc })
-      const clean = updated?.content_html ?? ''
-      setSavedDoc(clean)
-      setDoc(clean)
-      setPreview(clean)
-      editorRef.current?.setValue(clean)
-      setMode(updated)
+      const updated = await updateGameMode(mode.id, { content_html: doc, base_content_version: baseVersion })
+      applyMode(updated ?? { ...mode, content_html: doc, content_version: (baseVersion ?? 0) + 1 })
       await showSuccess('Đã lưu nội dung', 'HTML đã được sanitize server-side (thẻ/script ngoài allowlist bị loại).')
     } catch (err) {
-      await showApiError(err, 'Không lưu được nội dung')
+      if (err instanceof ApiError && err.status === 409) {
+        // backend-4 §6: envelope.data = { content_version, updated_at } — mở modal 3 lựa chọn.
+        const d = (err.data?.data ?? {}) as { content_version?: number; updated_at?: string | null }
+        let serverDoc: string | null = null
+        try {
+          const latest = await getGameMode(mode.id)
+          serverDoc = latest?.content_html ?? ''
+          if (typeof d.content_version !== 'number' && typeof latest?.content_version === 'number') d.content_version = latest.content_version
+          d.updated_at = d.updated_at ?? latest?.updated_at ?? null
+        } catch {
+          /* không lấy được bản server — modal vẫn dùng được (chỉ thiếu diff) */
+        }
+        setConflict({ version: d.content_version ?? 0, updatedAt: d.updated_at ?? null, serverDoc })
+        setShowDiff(false)
+      } else {
+        await showApiError(err, 'Không lưu được nội dung')
+      }
     } finally {
       setSaving(false)
     }
-  }, [mode, doc, saving, uploading])
+  }, [mode, doc, saving, uploading, baseVersion, applyMode])
+
+  /* ===== 3 lựa chọn khi 409 (FRONTEND-4 §6) ===== */
+
+  /** 1) Tải bản mới nhất — cảnh báo mất nháp nếu dirty. */
+  const conflictLoadLatest = useCallback(async () => {
+    if (!mode || applying) return
+    if (dirty && !window.confirm('Bản nháp của bạn sẽ bị thay bằng bản mới nhất từ server — tiếp tục?')) return
+    setApplying(true)
+    try {
+      const latest = conflict?.serverDoc != null ? null : await getGameMode(mode.id)
+      applyMode(latest ?? { ...mode, content_html: conflict?.serverDoc ?? '', content_version: conflict?.version ?? 0, updated_at: conflict?.updatedAt ?? null })
+      setConflict(null)
+    } catch (err) {
+      await showApiError(err, 'Không tải được bản mới nhất')
+    } finally {
+      setApplying(false)
+    }
+  }, [mode, conflict, dirty, applying, applyMode])
+
+  /** 3) Ghi đè — PATCH lại với base_content_version = version vừa nhận từ 409. */
+  const conflictOverwrite = useCallback(async () => {
+    if (!mode || !conflict || applying) return
+    setApplying(true)
+    try {
+      const updated = await updateGameMode(mode.id, { content_html: doc, base_content_version: conflict.version })
+      applyMode(updated ?? { ...mode, content_html: doc, content_version: conflict.version + 1 })
+      setConflict(null)
+      await showSuccess('Đã ghi đè', 'Bạn đã ghi đè có chủ đích — version tăng tiếp.')
+    } catch (err) {
+      await showApiError(err, 'Ghi đè thất bại')
+    } finally {
+      setApplying(false)
+    }
+  }, [mode, conflict, doc, applying, applyMode])
 
   /* Ctrl/Cmd+S từ CodeMirror keymap bắn ra */
   useEffect(() => {
@@ -295,6 +403,108 @@ export const AdminGameModeContentPage = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* ===== Modal 409 — 3 lựa chọn (FRONTEND-4 §6) ===== */}
+      <Modal
+        open={conflict !== null}
+        onClose={() => {
+          setConflict(null)
+          setShowDiff(false)
+        }}
+        title="Nội dung đã bị thay đổi ở nơi khác"
+        description={
+          conflict
+            ? `Bản trên server đang ở version #${conflict.version}${conflict.updatedAt ? ` (lưu lúc ${fmtIsoVN(conflict.updatedAt)})` : ''}. Bản của bạn dựa trên version cũ hơn.`
+            : undefined
+        }
+        className="max-w-3xl"
+        footer={
+          showDiff ? (
+            <Button
+              variant="outline"
+              onClick={() =>
+                setShowDiff(false)
+              }
+            >
+              ← Quay lại lựa chọn
+            </Button>
+          ) : (
+            <Button variant="ghost" disabled={applying} onClick={() => setConflict(null)}>
+              Đóng (soạn tiếp)
+            </Button>
+          )
+        }
+      >
+        {conflict && !showDiff ? (
+          <div className="space-y-2">
+            <button
+              type="button"
+              disabled={applying}
+              onClick={conflictLoadLatest}
+              className="w-full rounded-xl border border-border-c bg-surface-2 px-4 py-3 text-left text-sm transition-colors hover:bg-[var(--border)] disabled:opacity-60"
+            >
+              <b className="block font-bold text-fg">1. Tải bản mới nhất</b>
+              <span className="text-muted">Nạp nội dung + version mới từ server vào editor{dirty ? ' (CẢNH BÁO: mất nháp chưa lưu của bạn)' : ''}.</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowDiff(true)}
+              disabled={conflict.serverDoc == null}
+              className="w-full rounded-xl border border-border-c bg-surface-2 px-4 py-3 text-left text-sm transition-colors hover:bg-[var(--border)] disabled:opacity-60"
+            >
+              <b className="block font-bold text-fg">2. Xem diff rồi quyết định</b>
+              <span className="text-muted">
+                {conflict.serverDoc == null ? 'Không tải được bản server để so sánh.' : 'Đối chiếu bản của tôi với bản server theo dòng — đóng để quay lại soạn.'}
+              </span>
+            </button>
+            <button
+              type="button"
+              disabled={applying || !dirty}
+              onClick={conflictOverwrite}
+              className="w-full rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-left text-sm transition-colors hover:bg-red-500/20 disabled:opacity-60"
+            >
+              <b className="block font-bold text-red-500">3. Ghi đè (nguy hiểm)</b>
+              <span className="text-muted">
+                Lưu bản của bạn đè lên bản server bằng version vừa nhận #{conflict.version} — thay đổi của người/phiên khác sẽ MẤT.
+                {!dirty && ' (Nháp của bạn trùng bản đã lưu — không có gì để ghi đè.)'}
+              </span>
+            </button>
+          </div>
+        ) : conflict ? (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {(
+              [
+                { key: 'l' as const, label: 'Bản của tôi (chưa lưu)', color: 'text-red-500' },
+                { key: 'r' as const, label: `Bản server #${conflict.version}`, color: 'text-emerald-500' },
+              ]
+            ).map((pane) => (
+              <div key={pane.key} className="min-w-0">
+                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted">{pane.label}</p>
+                <pre className="max-h-[55vh] overflow-auto rounded-xl border border-border-c bg-surface-2 p-2 text-[11px] leading-relaxed">
+                  {diffLines(doc, conflict.serverDoc ?? '')
+                    .filter((row) => (pane.key === 'l' ? row.l !== null : row.r !== null))
+                    .map((row, idx) => {
+                      const text = pane.key === 'l' ? row.l : row.r
+                      const changed = row.t !== 'same'
+                      return (
+                        <div
+                          key={idx}
+                          className={cn(
+                            'whitespace-pre-wrap break-all px-1',
+                            changed && (pane.key === 'l' ? 'bg-red-500/15 text-red-500' : 'bg-emerald-500/15 text-emerald-500'),
+                            !changed && 'text-muted',
+                          )}
+                        >
+                          {text === '' ? ' ' : text}
+                        </div>
+                      )
+                    })}
+                </pre>
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </Modal>
     </div>
   )
 }

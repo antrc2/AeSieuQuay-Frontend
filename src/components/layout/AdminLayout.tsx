@@ -40,6 +40,7 @@ const NAV_GROUPS: { label: string; items: { to: string; label: string; end?: boo
     label: 'Tài chính',
     items: [
       { to: '/admin/bank-deposits', label: 'Nạp bank', icon: '🏦' },
+      { to: '/admin/promotions', label: 'Khuyến mãi nạp', icon: '🎁' },
       { to: '/admin/points-history', label: 'Lịch sử points', icon: '🪙' },
       { to: '/admin/card-transactions', label: 'Thẻ cào', icon: '🎫' },
     ],

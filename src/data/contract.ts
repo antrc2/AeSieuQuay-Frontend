@@ -2,11 +2,11 @@
  * Contract dữ liệu giữa backend SSR và frontend.
  *
  * BACKEND CẦN CUNG CẤP:
- * - Mỗi URL SPA (`/`, `/may-chu`, `/may-chu/<slug>`, `/nap-the`, `/dang-nhap`,
- *   `/dang-ky`) trả HTML đầy đủ SEO + `<div id="root">` + script ở cuối body:
+ * - Mỗi URL SPA (`/`, `/may-chu`, `/may-chu/<slug>`, `/nap-the`, `/chuyen-xu`,
+ *   `/dang-nhap`, `/dang-ky`) trả HTML đầy đủ SEO + `<div id="root">` + script ở cuối body:
  *
  *     window.DATA = {
- *       page: 'home' | 'machine_list' | 'machine_detail' | 'topup' | 'auth',
+ *       page: 'home' | 'machine_list' | 'machine_detail' | 'topup' | 'transfer' | 'auth',
  *       payload: { ...dữ liệu riêng của trang... },
  *       site: { header, footer, server_info },   // nên có ở mọi trang
  *       seo: { title, description, canonical, og_image, robots },
@@ -19,6 +19,13 @@
  * - URL cũ `/che-do-choi*`: backend nên 301 sang `/may-chu*`.
  *
  * Frontend KHÔNG dùng mock ở production. Mock chỉ dùng khi phát triển.
+ *
+ * Luật data trang user (FRONTEND-4 §0):
+ *   read  = window.DATA (SSR backend-4 §2/§3)
+ *   write = POST /api/... (action: charge / check / transfer)
+ *   live  = poll GET tối thiểu CHỈ cho giao dịch vừa action, tới khi terminal thì DỪNG.
+ * Không trang user nào fetch danh sách/biểu phí/balance bằng axios lúc mở trang
+ * (ngoại lệ bất khả kháng: balance-check /chuyen-xu — số dư nằm PlayerPoints in-game).
  */
 
 import { getWindowData } from '@/config/env'
@@ -205,10 +212,142 @@ export interface MachineListPayload {
   modes?: MachineModeCard[]
 }
 
+/* ================= Trang tiền: /nap-the + /chuyen-xu (FRONTEND-4 §1) =================
+ * Luật mới (§0): trang user ĐỌC 100% từ window.DATA — biểu phí thẻ, info bank,
+ * event khuyến mãi, lịch sử của user đều nằm trong payload SSR. API còn lại
+ * CHỈ là action (charge/check/transfer) + poll giao dịch vừa action.
+ */
+
+export interface CardFeeValue {
+  amount: number
+  fee_percent: number
+  real_receive_vnd: number
+  xu: number
+}
+
+export interface CardFeeTelco {
+  telco: string
+  label: string
+  min: number
+  max: number
+  values: CardFeeValue[]
+}
+
+/**
+ * Info bank công khai — shape theo backend modules/api/bank/service.py::public_info
+ * (endpoint GET công khai cũ; từ FRONTEND-4 nằm trong window.DATA, không fetch).
+ */
+export interface BankPublicInfo {
+  enabled: boolean
+  vnd_per_xu: number
+  min_amount_vnd: number
+  credit_server_key: string
+  receiving: {
+    bank: string
+    account_number: string
+    account_name: string
+  }
+  content_format: string
+}
+
+export interface PromotionBanner {
+  name: string
+  bonus_percent: number
+  /** ISO — backend trả naive UTC như habit repo; hiển thị qua fmtIsoVN. */
+  ends_at: string
+  /** null khi unlimited-ish/unknown. */
+  slots_left: number | null
+  /** user này đã claim / hết suất → hiện "đã áp dụng / hết suất". */
+  applied: boolean
+  applies_to: 'card' | 'bank' | 'all'
+}
+
+export interface TopupMineUser {
+  username: string
+  realname: string
+}
+
+/** Subset CardTx (admin-history-api.md §4.1) an toàn cho user — code thẻ giữ masked. */
+export interface CardTxRow {
+  request_id: string
+  telco: string
+  amount_vnd: number
+  xu_amount: number | null
+  status: 'pending' | 'success' | 'failed' | 'error'
+  gateway_message: string | null
+  in_game: boolean
+  serial?: string | null
+  card_code_masked?: string | null
+  created_at: string | null
+  promotion_id?: number | null
+  bonus_xu?: number | null
+}
+
+/** Subset BankDepositAdmin — đủ cho DepositStatusBadge + render dòng lịch sử. */
+export interface BankDepositRow {
+  id: number
+  amount_vnd: number
+  xu_amount: number | null
+  status: string
+  credit_command_status: string | null
+  credit_command_error: string | null
+  reference_code: string | null
+  transaction_date_ms: number
+  promotion_id?: number | null
+  bonus_xu?: number | null
+  content?: string
+}
+
+export interface TopupMine {
+  user: TopupMineUser
+  card_history: CardTxRow[]
+  bank_history: BankDepositRow[]
+}
+
 export interface TopupPayload {
   title?: string
   subtitle?: string
-  cards?: unknown[]
+  card: {
+    enabled: boolean
+    vnd_per_xu: number
+    user_fee_rate: number
+    telcos: CardFeeTelco[]
+  }
+  bank: BankPublicInfo
+  promotion: PromotionBanner | null
+  /** null = chưa login (SSR resolve cookie optional). */
+  my: TopupMine | null
+}
+
+/* ---- /chuyen-xu ---- */
+
+export type TransferStatus =
+  | 'pending'
+  | 'debited'
+  | 'refund_pending'
+  | 'completed'
+  | 'failed'
+  | 'refunded'
+  | 'needs_reconcile'
+
+export interface TransferRow {
+  transfer_id: string
+  to_server_key: string
+  amount: number
+  status: TransferStatus
+  error: string | null
+  created_at: string | null
+  completed_at: string | null
+}
+
+export interface TransferPagePayload {
+  title?: string
+  lobby: { server_key: string; name: string }
+  /** Chỉ server role=game, points_enabled, đang hoạt động — KHÔNG có proxy/lobby làm đích. */
+  targets: Array<{ server_key: string; name: string }>
+  limits: { min_amount: number; max_amount: number }
+  command_ttl_seconds: number
+  my: { user: TopupMineUser; transfers: TransferRow[] } | null
 }
 
 /* ================= Envelope & result ================= */
@@ -218,6 +357,7 @@ export type PageKey =
   | 'machine_list'
   | 'machine_detail'
   | 'topup'
+  | 'transfer'
   | 'auth'
   | 'not_found'
 
@@ -261,8 +401,13 @@ export const isMachineListPayload = (value: unknown): value is MachineListPayloa
 export const isMachineDetailPayload = (value: unknown): value is MachineDetailPayload =>
   isObject(value) && typeof value.name === 'string' && typeof value.slug === 'string'
 
+/** Shape mới (FRONTEND-4 §1): card/telcos là nguồn phí; title nhận diện payload trần. */
 export const isTopupPayload = (value: unknown): value is TopupPayload =>
-  isObject(value) && ('cards' in value || 'title' in value)
+  isObject(value) && ('card' in value || 'bank' in value || 'title' in value)
+
+/** Payload trần /chuyen-xu: backend-4 trả phẳng { lobby, targets, ... } như /nap-the. */
+export const isTransferPayload = (value: unknown): value is TransferPagePayload =>
+  isObject(value) && isObject(value.lobby) && Array.isArray(value.targets)
 
 /**
  * Đọc `window.DATA` và chuẩn hoá về envelope.
@@ -295,6 +440,10 @@ export const readWindowData = (): WindowData | null => {
   }
   if (isMachineListPayload(raw)) {
     return { page: 'machine_list', payload: raw, notFound: false }
+  }
+  // /chuyen-xu TRƯỚC /nap-the: payload transfer cũng có `title` — phân biệt bằng lobby+targets.
+  if (isTransferPayload(raw)) {
+    return { page: 'transfer', payload: raw, notFound: false }
   }
   if (isTopupPayload(raw)) {
     return { page: 'topup', payload: raw, notFound: false }

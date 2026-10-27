@@ -100,6 +100,15 @@ const AuthButton = ({ className }) => {
           >
             Nạp thẻ
           </a>
+          {/* FRONTEND-4 §3.1 — <a href> chủ ý: full reload để nhận window.DATA mới. */}
+          <a
+            href="/chuyen-xu"
+            role="menuitem"
+            onClick={() => setOpen(false)}
+            className="block px-3 py-2 text-sm text-muted transition-colors hover:bg-surface-2 hover:text-fg"
+          >
+            Chuyển xu
+          </a>
           {user?.role_slug === 'admin' && (
             <a
               href="/admin"

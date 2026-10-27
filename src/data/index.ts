@@ -9,7 +9,7 @@
  */
 
 import { useMockData } from '@/config/env'
-import { homePageMock, machineDetailsMock, machineListPageMock, topupPageMock } from '@/mock-data/pages'
+import { homePageMock, machineDetailsMock, machineListPageMock, topupPageMock, transferPageMock } from '@/mock-data/pages'
 import { generateMachineDetail } from '@/mock-data/generate'
 
 import {
@@ -17,6 +17,8 @@ import {
   isMachineDetailPayload,
   isMachineListPayload,
   isObject,
+  isTopupPayload,
+  isTransferPayload,
   normalizeSlug,
   readWindowData,
   type DataResult,
@@ -25,6 +27,7 @@ import {
   type MachineListPayload,
   type SiteData,
   type TopupPayload,
+  type TransferPagePayload,
 } from './contract'
 import { resolveSiteData } from './site'
 
@@ -126,18 +129,67 @@ export const getMachineDetailData = (slug: string): DataResult<MachineDetailPayl
 
 /* ================= Nạp thẻ ================= */
 
+/**
+ * Backend-4 §2.1 trả `my` PHẲNG (`{username, realname, card_history, bank_history}`);
+ * contract FRONTEND-4 §1 chuẩn hoá về `my.user`. Reader chấp nhận cả hai shape
+ * để không vỡ khi backend chốt một trong hai.
+ */
+const normalizeTopupPayload = (raw: Record<string, unknown>): TopupPayload => {
+  const my = raw.my as Record<string, unknown> | null | undefined
+  if (my && !isObject(my.user)) {
+    return {
+      ...(raw as unknown as TopupPayload),
+      my: {
+        user: { username: String(my.username ?? ''), realname: String(my.realname ?? '') },
+        card_history: Array.isArray(my.card_history) ? my.card_history : [],
+        bank_history: Array.isArray(my.bank_history) ? my.bank_history : [],
+      },
+    }
+  }
+  return raw as unknown as TopupPayload
+}
+
 export const getTopupPageData = (): DataResult<TopupPayload> => {
-  if (useMockData) return ok(topupPageMock)
+  // Mock viết tay bằng JS → literal union bị suy diễn thành string; cast tại ranh giới mock.
+  if (useMockData) return ok(topupPageMock as unknown as TopupPayload)
 
   const w = readWindowData()
   if (!w) return missing()
   if (w.notFound || w.page === 'not_found') return notFound()
 
-  if (w.page === 'topup' && isObject(w.payload)) {
-    return ok(w.payload as TopupPayload, 'window')
+  if ((w.page === 'topup' || !w.page) && isTopupPayload(w.payload)) {
+    return ok(normalizeTopupPayload(w.payload as unknown as Record<string, unknown>), 'window')
   }
-  if (!w.page && isObject(w.payload)) {
-    return ok(w.payload as TopupPayload, 'window')
+
+  return missing()
+}
+
+/* ================= Chuyển xu (/chuyen-xu) ================= */
+
+/** Backend-4 §3.2 trả `my` phẳng `{username, transfers}` — chuẩn hoá giống topup. */
+const normalizeTransferPayload = (raw: Record<string, unknown>): TransferPagePayload => {
+  const my = raw.my as Record<string, unknown> | null | undefined
+  if (my && !isObject(my.user)) {
+    return {
+      ...(raw as unknown as TransferPagePayload),
+      my: {
+        user: { username: String(my.username ?? ''), realname: String(my.realname ?? '') },
+        transfers: Array.isArray(my.transfers) ? my.transfers : [],
+      },
+    }
+  }
+  return raw as unknown as TransferPagePayload
+}
+
+export const getTransferPageData = (): DataResult<TransferPagePayload> => {
+  if (useMockData) return ok(transferPageMock as unknown as TransferPagePayload)
+
+  const w = readWindowData()
+  if (!w) return missing()
+  if (w.notFound || w.page === 'not_found') return notFound()
+
+  if ((w.page === 'transfer' || !w.page) && isTransferPayload(w.payload)) {
+    return ok(normalizeTransferPayload(w.payload as unknown as Record<string, unknown>), 'window')
   }
 
   return missing()
@@ -151,4 +203,5 @@ export type {
   MachineListPayload,
   SiteData,
   TopupPayload,
+  TransferPagePayload,
 }

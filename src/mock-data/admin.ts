@@ -228,6 +228,7 @@ const state = {
       cluster_id: 1,
       content_html:
         '<h2>Sinh tồn</h2><p>Nội dung mẫu do admin soạn — class Tailwind lấy từ safelist, tag trần lấy style từ <code>.aqs-prose</code>.</p>',
+      content_version: 3, // backend-4 §6 optimistic locking — editor gửi lại khi lưu
       image_key: 'game-modes/sinh-ton.jpg',
       image_url: 'https://images.unsplash.com/photo-1601987077677-5346c0c57d3f?q=80&w=1974&auto=format&fit=crop',
       sort_order: 0,
@@ -252,6 +253,7 @@ const state = {
       commands: [],
       cluster_id: 1,
       content_html: '<h2>Skyblock</h2><p>Mỗi block đều quý giá.</p>',
+      content_version: 1,
       image_key: null,
       image_url: 'https://images.unsplash.com/photo-1464802686167-b939a6910659?q=80&w=2050&auto=format&fit=crop',
       sort_order: 1,
@@ -276,6 +278,7 @@ const state = {
       commands: [],
       cluster_id: 1,
       content_html: null, // test badge "Trống" + fallback trang user
+      content_version: 0,
       image_key: null,
       image_url: null,
       sort_order: 2,
@@ -295,14 +298,14 @@ const state = {
   ] as AnyObj[],
 
   bankDeposits: [
-    { id: 1, transaction_id: 'a1', reference_code: 'MB2610001', gateway: 'MB', amount_vnd: 500000, content: 'AnTrc2', status: 'credited', user_id: 16, username: 'AnTrc2', realname: 'An Trc', xu_amount: 2500, sandbox: false, note: null, credit_command_id: 'c1', credit_attempts: 1, credit_command_status: 'done', credit_command_attempts: 1, credit_command_error: null, credit_result_balance: 2350, transaction_date_ms: nowMs() - 3_600_000, created_at: msAgo(60), credited_at: msAgo(58) },
-    { id: 2, transaction_id: 'a2', reference_code: 'MB2610002', gateway: 'MB', amount_vnd: 200000, content: 'MinhTom', status: 'credited', user_id: 17, username: 'MinhTom', realname: 'Minh Tom', xu_amount: 1000, sandbox: false, note: null, credit_command_id: 'c2', credit_attempts: 1, credit_command_status: 'pending', credit_command_attempts: 0, credit_command_error: null, credit_result_balance: null, transaction_date_ms: nowMs() - 120_000, created_at: msAgo(2), credited_at: msAgo(2) },
-    { id: 3, transaction_id: 'a3', reference_code: 'VCB9988776', gateway: 'VCB', amount_vnd: 100000, content: 'nickkhongtontai', status: 'unmatched', user_id: null, username: null, realname: null, xu_amount: null, sandbox: false, note: 'không tìm thấy username trong authme', credit_command_id: null, credit_attempts: 0, credit_command_status: null, credit_command_attempts: null, credit_command_error: null, credit_result_balance: null, transaction_date_ms: nowMs() - 2 * 3_600_000, created_at: msAgo(120), credited_at: null },
-    { id: 4, transaction_id: 'a4', reference_code: 'MB2610004', gateway: 'MB', amount_vnd: 100000, content: 'pe_Sity', status: 'credited', user_id: 18, username: 'pe_Sity', realname: 'Bi Sity', xu_amount: 500, sandbox: false, note: null, credit_command_id: 'c4', credit_attempts: 1, credit_command_status: 'failed', credit_command_attempts: 3, credit_command_error: 'player_not_found', credit_result_balance: null, transaction_date_ms: nowMs() - 26 * 3_600_000, created_at: msAgo(26 * 60), credited_at: msAgo(26 * 60 - 2) },
-    { id: 5, transaction_id: 'a5', reference_code: 'MB2610005', gateway: 'MB', amount_vnd: 50000, content: 'GamerPro2012', status: 'matched', user_id: 19, username: 'GamerPro2012', realname: 'Pro Gamer', xu_amount: 250, sandbox: false, note: 'server points chưa bật', credit_command_id: null, credit_attempts: 0, credit_command_status: null, credit_command_attempts: null, credit_command_error: null, credit_result_balance: null, transaction_date_ms: nowMs() - 5 * 3_600_000, created_at: msAgo(300), credited_at: null },
-    { id: 6, transaction_id: 'a6', reference_code: 'MB2610006', gateway: 'MB', amount_vnd: 10000, content: 'AnTrc2', status: 'credited', user_id: 16, username: 'AnTrc2', realname: 'An Trc', xu_amount: 50, sandbox: true, note: null, credit_command_id: 'c6', credit_attempts: 1, credit_command_status: 'uncertain', credit_command_attempts: 1, credit_command_error: null, credit_result_balance: null, transaction_date_ms: nowMs() - 8 * 3_600_000, created_at: msAgo(480), credited_at: msAgo(479) },
-    { id: 7, transaction_id: 'a7', reference_code: 'TEST0007', gateway: 'MB', amount_vnd: 20000, content: 'test noii dung', status: 'rejected', user_id: null, username: null, realname: null, xu_amount: null, sandbox: true, note: 'nội dung không hợp lệ (test)', credit_command_id: null, credit_attempts: 0, credit_command_status: null, credit_command_attempts: null, credit_command_error: null, credit_result_balance: null, transaction_date_ms: nowMs() - 9 * 3_600_000, created_at: msAgo(540), credited_at: null },
-    { id: 8, transaction_id: 'a8', reference_code: null, gateway: 'VCB', amount_vnd: 5000, content: 'iken qua thap', status: 'received', user_id: null, username: null, realname: null, xu_amount: null, sandbox: false, note: null, credit_command_id: null, credit_attempts: 0, credit_command_status: null, credit_command_attempts: null, credit_command_error: null, credit_result_balance: null, transaction_date_ms: nowMs() - 10 * 3_600_000, created_at: msAgo(600), credited_at: null },
+    { id: 1, transaction_id: 'a1', reference_code: 'OCB2610001', gateway: 'OCB', amount_vnd: 500000, content: 'AnTrc2', status: 'credited', user_id: 16, username: 'AnTrc2', realname: 'An Trc', xu_amount: 500, sandbox: false, note: null, credit_command_id: 'c1', credit_attempts: 1, credit_command_status: 'done', credit_command_attempts: 1, credit_command_error: null, credit_result_balance: 2350, transaction_date_ms: nowMs() - 3_600_000, created_at: msAgo(60), credited_at: msAgo(58) },
+    { id: 2, transaction_id: 'a2', reference_code: 'OCB2610002', gateway: 'OCB', amount_vnd: 200000, content: 'MinhTom', status: 'credited', user_id: 17, username: 'MinhTom', realname: 'Minh Tom', xu_amount: 200, sandbox: false, note: null, credit_command_id: 'c2', credit_attempts: 1, credit_command_status: 'pending', credit_command_attempts: 0, credit_command_error: null, credit_result_balance: null, transaction_date_ms: nowMs() - 120_000, created_at: msAgo(2), credited_at: msAgo(2) },
+    { id: 3, transaction_id: 'a3', reference_code: 'OCB9988776', gateway: 'OCB', amount_vnd: 100000, content: 'nickkhongtontai', status: 'unmatched', user_id: null, username: null, realname: null, xu_amount: null, sandbox: false, note: 'không tìm thấy username trong authme', credit_command_id: null, credit_attempts: 0, credit_command_status: null, credit_command_attempts: null, credit_command_error: null, credit_result_balance: null, transaction_date_ms: nowMs() - 2 * 3_600_000, created_at: msAgo(120), credited_at: null },
+    { id: 4, transaction_id: 'a4', reference_code: 'OCB2610004', gateway: 'OCB', amount_vnd: 100000, content: 'pe_Sity', status: 'credited', user_id: 18, username: 'pe_Sity', realname: 'Bi Sity', xu_amount: 100, sandbox: false, note: null, credit_command_id: 'c4', credit_attempts: 1, credit_command_status: 'failed', credit_command_attempts: 3, credit_command_error: 'player_not_found', credit_result_balance: null, transaction_date_ms: nowMs() - 26 * 3_600_000, created_at: msAgo(26 * 60), credited_at: msAgo(26 * 60 - 2) },
+    { id: 5, transaction_id: 'a5', reference_code: 'OCB2610005', gateway: 'OCB', amount_vnd: 50000, content: 'GamerPro2012', status: 'matched', user_id: 19, username: 'GamerPro2012', realname: 'Pro Gamer', xu_amount: 50, sandbox: false, note: 'server points chưa bật', credit_command_id: null, credit_attempts: 0, credit_command_status: null, credit_command_attempts: null, credit_command_error: null, credit_result_balance: null, transaction_date_ms: nowMs() - 5 * 3_600_000, created_at: msAgo(300), credited_at: null },
+    { id: 6, transaction_id: 'a6', reference_code: 'OCB2610006', gateway: 'OCB', amount_vnd: 10000, content: 'AnTrc2', status: 'credited', user_id: 16, username: 'AnTrc2', realname: 'An Trc', xu_amount: 10, sandbox: true, note: null, credit_command_id: 'c6', credit_attempts: 1, credit_command_status: 'uncertain', credit_command_attempts: 1, credit_command_error: null, credit_result_balance: null, transaction_date_ms: nowMs() - 8 * 3_600_000, created_at: msAgo(480), credited_at: msAgo(479) },
+    { id: 7, transaction_id: 'a7', reference_code: 'TEST0007', gateway: 'OCB', amount_vnd: 20000, content: 'test noii dung', status: 'rejected', user_id: null, username: null, realname: null, xu_amount: null, sandbox: true, note: 'nội dung không hợp lệ (test)', credit_command_id: null, credit_attempts: 0, credit_command_status: null, credit_command_attempts: null, credit_command_error: null, credit_result_balance: null, transaction_date_ms: nowMs() - 9 * 3_600_000, created_at: msAgo(540), credited_at: null },
+    { id: 8, transaction_id: 'a8', reference_code: null, gateway: 'OCB', amount_vnd: 5000, content: 'iken qua thap', status: 'received', user_id: null, username: null, realname: null, xu_amount: null, sandbox: false, note: null, credit_command_id: null, credit_attempts: 0, credit_command_status: null, credit_command_attempts: null, credit_command_error: null, credit_result_balance: null, transaction_date_ms: nowMs() - 10 * 3_600_000, created_at: msAgo(600), credited_at: null },
   ] as AnyObj[],
 
   transfers: [
@@ -314,9 +317,9 @@ const state = {
   ] as AnyObj[],
 
   commands: [
-    { id: 'c1', transfer_id: null, type: 'credit', server_key: 'survival-1', player_uuid: uuid(), player_name: 'AnTrc2', amount: 2500, status: 'done', attempts: 1, ok: true, balance: 2350, balance_before: -150, error: null, expires_at_ms: nowMs() + 47 * 3_600_000, created_at_ms: nowMs() - 3_600_000, claimed_at_ms: nowMs() - 3_600_000 + 4000, completed_at_ms: nowMs() - 3_600_000 + 5200, deposit_id: 1 },
-    { id: 'c2', transfer_id: null, type: 'credit', server_key: 'survival-1', player_uuid: uuid(), player_name: 'MinhTom', amount: 1000, status: 'pending', attempts: 0, ok: null, balance: null, balance_before: null, error: null, expires_at_ms: nowMs() + 48 * 3_600_000, created_at_ms: nowMs() - 120_000, claimed_at_ms: null, completed_at_ms: null, deposit_id: 2 },
-    { id: 'c4', transfer_id: null, type: 'credit', server_key: 'survival-1', player_uuid: uuid(), player_name: 'pe_Sity', amount: 500, status: 'failed', attempts: 3, ok: false, balance: null, balance_before: null, error: 'player_not_found', expires_at_ms: nowMs() - 2 * 86_400_000, created_at_ms: nowMs() - 26 * 3_600_000, claimed_at_ms: nowMs() - 26 * 3_600_000 + 9000, completed_at_ms: nowMs() - 25 * 3_600_000, deposit_id: 4 },
+    { id: 'c1', transfer_id: null, type: 'credit', server_key: 'survival-1', player_uuid: uuid(), player_name: 'AnTrc2', amount: 500, status: 'done', attempts: 1, ok: true, balance: 2350, balance_before: -150, error: null, expires_at_ms: nowMs() + 47 * 3_600_000, created_at_ms: nowMs() - 3_600_000, claimed_at_ms: nowMs() - 3_600_000 + 4000, completed_at_ms: nowMs() - 3_600_000 + 5200, deposit_id: 1 },
+    { id: 'c2', transfer_id: null, type: 'credit', server_key: 'survival-1', player_uuid: uuid(), player_name: 'MinhTom', amount: 200, status: 'pending', attempts: 0, ok: null, balance: null, balance_before: null, error: null, expires_at_ms: nowMs() + 48 * 3_600_000, created_at_ms: nowMs() - 120_000, claimed_at_ms: null, completed_at_ms: null, deposit_id: 2 },
+    { id: 'c4', transfer_id: null, type: 'credit', server_key: 'survival-1', player_uuid: uuid(), player_name: 'pe_Sity', amount: 100, status: 'failed', attempts: 3, ok: false, balance: null, balance_before: null, error: 'player_not_found', expires_at_ms: nowMs() - 2 * 86_400_000, created_at_ms: nowMs() - 26 * 3_600_000, claimed_at_ms: nowMs() - 26 * 3_600_000 + 9000, completed_at_ms: nowMs() - 25 * 3_600_000, deposit_id: 4 },
     { id: 'tc-d1', transfer_id: 'tr-completed-0001', type: 'debit', server_key: 'lobby-1', player_uuid: null, player_name: 'AnTrc2', amount: 1200, status: 'done', attempts: 1, ok: true, balance: 1150, balance_before: 2350, error: null, expires_at_ms: nowMs() - 197 * 60_000 + 60_000, created_at_ms: nowMs() - 200 * 60_000, claimed_at_ms: nowMs() - 200 * 60_000, completed_at_ms: nowMs() - 199 * 60_000, deposit_id: null },
     { id: 'tc-c1', transfer_id: 'tr-completed-0001', type: 'credit', server_key: 'survival-1', player_uuid: null, player_name: 'AnTrc2', amount: 1200, status: 'done', attempts: 1, ok: true, balance: 2000, balance_before: 800, error: null, expires_at_ms: nowMs() - 197 * 60_000 + 60_000, created_at_ms: nowMs() - 200 * 60_000, claimed_at_ms: nowMs() - 198 * 60_000, completed_at_ms: nowMs() - 197 * 60_000, deposit_id: null },
     { id: 'tc-d2', transfer_id: 'tr-pending-0002', type: 'debit', server_key: 'lobby-1', player_uuid: null, player_name: 'MinhTom', amount: 300, status: 'done', attempts: 1, ok: true, balance: 600, balance_before: 900, error: null, expires_at_ms: nowMs() - 4 * 60_000, created_at_ms: nowMs() - 6 * 60_000, claimed_at_ms: nowMs() - 6 * 60_000, completed_at_ms: nowMs() - 5 * 60_000, deposit_id: null },
@@ -327,12 +330,28 @@ const state = {
     { id: 'look-xyz', transfer_id: null, type: 'look', server_key: 'survival-1', player_uuid: uuid(), player_name: 'Notch', amount: 0, status: 'done', attempts: 1, ok: true, balance: 410, balance_before: null, error: null, expires_at_ms: nowMs() - 30_000, created_at_ms: nowMs() - 90_000, claimed_at_ms: nowMs() - 60_000, completed_at_ms: nowMs() - 59_000, deposit_id: null },
   ] as AnyObj[],
 
+  /* P&L (FRONTEND-4 §5): real_amount = tiền thật về ví · user_receive = giá trị user nhận
+   * (card_value − 10% fee) · admin_adjustment = real_amount − user_receive (ÂM = admin bù). */
   cardTx: [
-    { id: 1, request_id: 'r-aaaa-1111', trans_id: 700123, user_id: 16, username: 'AnTrc2', telco: 'VIETTEL', card_type: 'the cào', serial: '654321098765', card_code_masked: '****5678', amount_vnd: 100000, real_amount: 80000, card_value: 100000, xu_amount: 400, status: 'success', gateway_code: 1, gateway_message: 'Thành công', in_game: true, created_at: msAgo(30), credited_at: msAgo(29), callback_at: msAgo(29) },
-    { id: 2, request_id: 'r-bbbb-2222', trans_id: 700124, user_id: 17, username: 'MinhTom', telco: 'MOBIFONE', card_type: 'the cào', serial: '112233445566', card_code_masked: '****1234', amount_vnd: 50000, real_amount: null, card_value: null, xu_amount: null, status: 'pending', gateway_code: 99, gateway_message: 'Đang chờ nhà cung cấp', in_game: false, created_at: msAgo(2), credited_at: null, callback_at: null },
-    { id: 3, request_id: 'r-cccc-3333', trans_id: 700125, user_id: 18, username: 'pe_Sity', telco: 'VINAPHONE', card_type: 'the cào', serial: '998877665544', card_code_masked: '****9900', amount_vnd: 200000, real_amount: 160000, card_value: 200000, xu_amount: 800, status: 'success', gateway_code: 1, gateway_message: 'Thành công', in_game: false, created_at: msAgo(45), credited_at: msAgo(44), callback_at: msAgo(44) },
-    { id: 4, request_id: 'r-dddd-4444', trans_id: null, user_id: 19, username: 'GamerPro2012', telco: 'VIETTEL', card_type: 'the cào', serial: '556677889900', card_code_masked: '****4321', amount_vnd: 50000, real_amount: null, card_value: 20000, xu_amount: null, status: 'failed', gateway_code: 2, gateway_message: 'Thẻ đúng nhưng sai mệnh giá khai báo', in_game: false, created_at: msAgo(120), credited_at: null, callback_at: msAgo(119) },
-    { id: 5, request_id: 'r-eeee-5555', trans_id: null, user_id: 17, username: 'MinhTom', telco: 'ZING', card_type: null, serial: '334455667788', card_code_masked: '****7777', amount_vnd: 100000, real_amount: null, card_value: null, xu_amount: null, status: 'error', gateway_code: 100, gateway_message: 'Lỗi đối soát từ cổng', in_game: false, created_at: msAgo(300), credited_at: null, callback_at: null },
+    { id: 1, request_id: 'r-aaaa-1111', trans_id: 700123, user_id: 16, username: 'AnTrc2', telco: 'VIETTEL', card_type: 'the cào', serial: '654321098765', card_code_masked: '****5678', amount_vnd: 100000, real_amount: 80000, card_value: 100000, user_receive: 90000, admin_adjustment: -10000, xu_amount: 108, status: 'success', gateway_code: 1, gateway_message: 'Thành công', in_game: true, requeue_count: 0, promotion_id: 2, bonus_xu: 18, created_at: msAgo(30), credited_at: msAgo(29), callback_at: msAgo(29) },
+    { id: 2, request_id: 'r-bbbb-2222', trans_id: 700124, user_id: 17, username: 'MinhTom', telco: 'MOBIFONE', card_type: 'the cào', serial: '112233445566', card_code_masked: '****1234', amount_vnd: 50000, real_amount: null, card_value: null, user_receive: null, admin_adjustment: null, xu_amount: null, status: 'pending', gateway_code: 99, gateway_message: 'Đang chờ nhà cung cấp', in_game: false, requeue_count: 0, promotion_id: null, bonus_xu: null, created_at: msAgo(2), credited_at: null, callback_at: null },
+    { id: 3, request_id: 'r-cccc-3333', trans_id: 700125, user_id: 18, username: 'pe_Sity', telco: 'VINAPHONE', card_type: 'the cào', serial: '998877665544', card_code_masked: '****9900', amount_vnd: 200000, real_amount: 160000, card_value: 200000, user_receive: 180000, admin_adjustment: -20000, xu_amount: 180, status: 'success', gateway_code: 1, gateway_message: 'Thành công', in_game: false, requeue_count: 1, promotion_id: null, bonus_xu: null, created_at: msAgo(45), credited_at: msAgo(44), callback_at: msAgo(44), credit_command_status: 'pending' },
+    { id: 4, request_id: 'r-dddd-4444', trans_id: null, user_id: 19, username: 'GamerPro2012', telco: 'VIETTEL', card_type: 'the cào', serial: '556677889900', card_code_masked: '****4321', amount_vnd: 50000, real_amount: null, card_value: 20000, user_receive: 18000, admin_adjustment: null, xu_amount: null, status: 'failed', gateway_code: 2, gateway_message: 'Thẻ đúng nhưng sai mệnh giá khai báo', in_game: false, requeue_count: 0, promotion_id: null, bonus_xu: null, created_at: msAgo(120), credited_at: null, callback_at: msAgo(119) },
+    { id: 5, request_id: 'r-eeee-5555', trans_id: null, user_id: 17, username: 'MinhTom', telco: 'ZING', card_type: null, serial: '334455667788', card_code_masked: '****7777', amount_vnd: 100000, real_amount: null, card_value: null, user_receive: null, admin_adjustment: null, xu_amount: null, status: 'error', gateway_code: 100, gateway_message: 'Lỗi đối soát từ cổng', in_game: false, requeue_count: 0, promotion_id: null, bonus_xu: null, created_at: msAgo(300), credited_at: null, callback_at: null },
+    // demo requeue: success + !in_game + cmd failed → nút "Tạo lại lệnh cộng Xu" hiện.
+    { id: 6, request_id: 'r-ffff-6666', trans_id: 700126, user_id: 16, username: 'AnTrc2', telco: 'GATE', card_type: 'the cào', serial: '778899001122', card_code_masked: '****8080', amount_vnd: 100000, real_amount: 79000, card_value: 100000, user_receive: 90000, admin_adjustment: -11000, xu_amount: 90, status: 'success', gateway_code: 1, gateway_message: 'Thành công', in_game: false, requeue_count: 0, promotion_id: null, bonus_xu: null, created_at: msAgo(15), credited_at: msAgo(14), callback_at: msAgo(14), credit_command_status: 'failed', credit_command_error: 'player_not_found' },
+    // demo tooltip pending lâu: tạo cách đây 15 phút.
+    { id: 7, request_id: 'r-gggg-7777', trans_id: 700127, user_id: 18, username: 'pe_Sity', telco: 'MOBIFONE', card_type: 'the cào', serial: '223344556677', card_code_masked: '****1919', amount_vnd: 30000, real_amount: null, card_value: null, user_receive: null, admin_adjustment: null, xu_amount: null, status: 'pending', gateway_code: 99, gateway_message: 'Đang chờ nhà cung cấp', in_game: false, requeue_count: 0, promotion_id: null, bonus_xu: null, created_at: msAgo(15), credited_at: null, callback_at: null },
+  ] as AnyObj[],
+
+  /* ---- FRONTEND-4 §4: event khuyến mãi nạp (topup_promotions) ----
+   * claimed_users mock = số user DISTINCT trong claims (backend tính subquery).
+   */
+  promotions: [
+    { id: 1, name: 'X2 Xu cuối tuần', applies_to: 'bank', bonus_percent: 100, starts_at: msAgo(60 * 60 * 24 * 3), ends_at: msAgo(60 * 60 * 24), max_users: 20, max_per_user: 1, is_active: true, claimed_users: 14, created_at: msAgo(60 * 24 * 10), updated_at: msAgo(60 * 24 * 10) }, // đã kết thúc
+    { id: 2, name: 'Mừng ra mắt server — +20% Xu', applies_to: 'all', bonus_percent: 20, starts_at: msAgo(60 * 24), ends_at: new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 19), max_users: 10, max_per_user: 1, is_active: true, claimed_users: 4, created_at: msAgo(60 * 30), updated_at: msAgo(60 * 2) }, // đang chạy
+    { id: 3, name: 'Sale Tết — +50% thẻ cào', applies_to: 'card', bonus_percent: 50, starts_at: new Date(Date.now() + 2 * 86_400_000).toISOString().slice(0, 19), ends_at: new Date(Date.now() + 9 * 86_400_000).toISOString().slice(0, 19), max_users: 100, max_per_user: 2, is_active: true, claimed_users: 0, created_at: msAgo(60 * 5), updated_at: msAgo(60 * 5) }, // sắp diễn ra
+    { id: 4, name: 'KM thử nghiệm (đã tắt)', applies_to: 'bank', bonus_percent: 10, starts_at: msAgo(60 * 24 * 20), ends_at: msAgo(60 * 24 * 15), max_users: 5, max_per_user: 1, is_active: false, claimed_users: 2, created_at: msAgo(60 * 24 * 25), updated_at: msAgo(60 * 24 * 16) }, // tắt
   ] as AnyObj[],
 }
 
@@ -903,6 +922,7 @@ export const adminMock = {
       commands: payload.commands ?? [],
       cluster_id: payload.cluster_id ?? 1,
       content_html: payload.content_html ?? null,
+      content_version: 0,
       image_key: null,
       image_url: null,
       sort_order: Number(payload.sort_order ?? 0),
@@ -924,6 +944,19 @@ export const adminMock = {
       m.slug = slug
     }
     if (patch.content_html !== undefined) {
+      // backend-4 §6 optimistic locking — content_html bắt buộc kèm base_content_version khớp.
+      const base = patch.base_content_version
+      if (base === undefined || base === null)
+        fail('Trùng sửa: vui lòng tải lại nội dung (thiếu base_content_version)', 400, 'bad_request')
+      if (Number(base) !== (m.content_version ?? 0)) {
+        const msg = 'Nội dung đã bị thay đổi bởi lần lưu khác — tải bản mới nhất hoặc ghi đè có chủ đích.'
+        throw new ApiError(msg, 409, {
+          success: false,
+          code: 'conflict',
+          message: msg,
+          data: { content_version: m.content_version ?? 0, updated_at: m.updated_at },
+        })
+      }
       // Mock sanitizer: backend (nh3) sẽ bỏ <script>/on* — mô phỏng để test round-trip.
       m.content_html =
         patch.content_html === null
@@ -931,6 +964,7 @@ export const adminMock = {
           : String(patch.content_html)
               .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
               .replace(/\son\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '')
+      m.content_version = (m.content_version ?? 0) + 1
     }
     for (const key of ['name', 'tagline', 'short_desc', 'desc', 'status', 'players_online', 'difficulty', 'features', 'highlights', 'images', 'rules', 'commands', 'cluster_id', 'sort_order', 'is_active']) {
       if (patch[key] !== undefined) (m as AnyObj)[key] = patch[key]
@@ -1069,6 +1103,71 @@ export const adminMock = {
     const page = Math.max(1, Number(q.page || 1))
     const size = Number(q.page_size || 20)
     return { total: rows.length, page, page_size: size, items: rows.slice((page - 1) * size, page * size).map((r) => ({ ...r })) }
+  },
+
+  /** backend-4 §1 — mirror điều kiện service requeue bank (xem docstring trong api/admin.ts). */
+  async requeueCardTransaction(id: number) {
+    await wait()
+    const t = state.cardTx.find((x) => x.id === id)
+    if (!t) fail('Giao dịch thẻ không tồn tại', 404, 'not_found')
+    if (t.status !== 'success') fail('Chỉ requeue được thẻ ĐÃ success (tiền đã mất cho cổng)', 400, 'bad_request')
+    const cmd = t.credit_command_status
+    if (cmd === 'pending' || cmd === 'claimed') fail('Lệnh cũ còn pending — chờ agent', 400, 'bad_request')
+    if (t.in_game && cmd !== 'failed' && cmd !== 'expired' && cmd !== 'uncertain')
+      fail('Thẻ đã vào game — không cần requeue', 400, 'bad_request')
+    // tạo CREDIT command mới tinh (pending) + flip in_game như backend; agent mock: 2.5s sau done.
+    const commandId = uuid()
+    state.commands.push({
+      id: commandId, transfer_id: null, type: 'credit', server_key: 'lobby-1',
+      player_uuid: uuid(), player_name: t.username, amount: t.xu_amount ?? 0, status: 'pending',
+      attempts: 0, ok: null, balance: null, balance_before: null, error: null,
+      expires_at_ms: nowMs() + 48 * 3_600_000, created_at_ms: nowMs(), claimed_at_ms: null, completed_at_ms: null, deposit_id: null,
+    })
+    t.credit_command_status = 'pending'
+    t.credit_command_error = null
+    t.in_game = true
+    t.credited_at = nowIso()
+    t.requeue_count = (t.requeue_count ?? 0) + 1
+    setTimeout(() => {
+      t.credit_command_status = 'done'
+    }, 2500)
+    return { ...t }
+  },
+
+  /* ================= khuyến mãi nạp (FRONTEND-4 §4 / backend-4 §4.5) ================= */
+
+  async listPromotions(q: AnyObj = {}) {
+    await wait()
+    const rows = [...state.promotions].sort((a, b) => (a.starts_at < b.starts_at ? 1 : -1))
+    return pagedAdmin(rows, q.page, q.limit ?? 20)
+  },
+
+  async createPromotion(payload: AnyObj) {
+    await wait()
+    const p = validatePromotion(payload, null)
+    const id = Math.max(0, ...state.promotions.map((x) => x.id)) + 1
+    const promo = { id, claimed_users: 0, created_at: nowIso(), updated_at: nowIso(), ...p }
+    state.promotions.push(promo)
+    return { ...promo }
+  },
+
+  async updatePromotion(id: number, patch: AnyObj) {
+    await wait()
+    const promo = state.promotions.find((x) => x.id === id)
+    if (!promo) fail(`Event ${id} không tồn tại`, 404, 'not_found')
+    const merged = validatePromotion({ ...promo, ...patch }, id)
+    Object.assign(promo, merged, { updated_at: nowIso() })
+    return { ...promo }
+  },
+
+  /** Soft-off: KHÔNG API hard-delete khi đã có claim (backend-4 §4.5). */
+  async deactivatePromotion(id: number) {
+    await wait()
+    const promo = state.promotions.find((x) => x.id === id)
+    if (!promo) fail(`Event ${id} không tồn tại`, 404, 'not_found')
+    promo.is_active = false
+    promo.updated_at = nowIso()
+    return { ...promo }
   },
 
   /* ================= users (FRONTEND-3 §5) ================= */
@@ -1227,6 +1326,44 @@ function findGameMode(modeId: number): AnyObj {
   const m = state.gameModes.find((x) => x.id === modeId)
   if (!m) fail(`Không tìm thấy máy chủ id=${modeId}`, 404, 'not_found')
   return m
+}
+
+/**
+ * Validation theo backend-4 §4.2: field bắt buộc + "duy nhất 1 event active
+ * trên cùng kênh tại 1 thời điểm" (card∩bank không chặn nhau, 'all' chặn hết)
+ * → 409 Conflict nêu rõ event xung đột (message showApiError hiển thị thẳng).
+ */
+function validatePromotion(input: AnyObj, excludeId: number | null) {
+  const name = String(input.name ?? '').trim()
+  if (!name) fail('name là bắt buộc', 422, 'validation_error')
+  const appliesTo = String(input.applies_to ?? 'all')
+  if (!['card', 'bank', 'all'].includes(appliesTo)) fail('applies_to phải là card|bank|all', 422, 'validation_error')
+  const bonus = Number(input.bonus_percent)
+  if (!Number.isFinite(bonus) || bonus <= 0 || bonus > 500) fail('bonus_percent phải trong (0, 500]', 422, 'validation_error')
+  const startsAt = String(input.starts_at ?? '').slice(0, 19)
+  const endsAt = String(input.ends_at ?? '').slice(0, 19)
+  if (!startsAt || !endsAt) fail('starts_at/ends_at là bắt buộc', 422, 'validation_error')
+  if (startsAt >= endsAt) fail('starts_at phải trước ends_at', 422, 'validation_error')
+  const maxUsers = Number(input.max_users)
+  if (!Number.isFinite(maxUsers) || maxUsers < 1) fail('max_users phải ≥ 1', 422, 'validation_error')
+  const isActive = input.is_active !== false
+  if (isActive) {
+    const sharesChannel = (a: string, b: string) => a === 'all' || b === 'all' || a === b
+    const clash = state.promotions.find(
+      (x) => x.id !== excludeId && x.is_active && sharesChannel(String(x.applies_to), appliesTo) && !(x.ends_at <= startsAt || x.starts_at >= endsAt),
+    )
+    if (clash) fail(`Trùng thời gian với event '#${clash.id} ${clash.name}'`, 409, 'conflict')
+  }
+  return {
+    name,
+    applies_to: appliesTo,
+    bonus_percent: bonus,
+    starts_at: startsAt,
+    ends_at: endsAt,
+    max_users: maxUsers,
+    max_per_user: Math.max(1, Number(input.max_per_user ?? 1)),
+    is_active: isActive,
+  }
 }
 
 /* ---------------- misc helpers ---------------- */

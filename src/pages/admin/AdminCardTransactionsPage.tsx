@@ -1,17 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { useSeo } from '@/hooks/useSeo'
-import { listCardTransactions, type CardTransactionAdmin, type PagedAdmin } from '@/api/admin'
-import { showApiError } from '@/utils/swal'
+import { listCardTransactions, requeueCardTransaction, type CardTransactionAdmin, type PagedAdmin } from '@/api/admin'
+import { showApiError, showSuccess } from '@/utils/swal'
 import { PageHeader, StatCard, TableWrap, Td, Th } from '@/components/admin/blocks'
 import Pagination from '@/components/admin/Pagination'
-import { CopyButton, Field, ctlCls } from '@/components/admin/form'
+import { CopyButton, Field, InlineConfirm, ctlCls } from '@/components/admin/form'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/States'
 import usePagedQuery from '@/hooks/usePagedQuery'
-import { fmtDateTimeMs, fmtIsoVN, fmtVnd, fmtXu, maskTail } from '@/lib/format'
+import { fmtDateTimeMs, fmtIsoVN, fmtVnd, fmtXu, isoToMs, maskTail } from '@/lib/format'
 
 const POLL_MS = 10_000
 const DAY_MS = 86_400_000
@@ -25,8 +25,22 @@ const isTodayVN = (iso: string | null) => {
   return vn(new Date(ms)) === vn(new Date())
 }
 
+/** pending lâu > 10 phút → tooltip gợi ý xử lý (FRONTEND-4 §5). */
+const PENDING_STALE_MS = 10 * 60_000
+const isStalePending = (t: CardTransactionAdmin) =>
+  t.status === 'pending' && Date.now() - isoToMs(t.created_at) > PENDING_STALE_MS
+
 const CardStatusBadge = ({ t }: { t: CardTransactionAdmin }) => {
-  if (t.status === 'pending') return <Badge variant="brand" className="animate-pulse" title="chờ cổng trả kết quả">chờ cổng</Badge>
+  if (t.status === 'pending')
+    return (
+      <Badge
+        variant="brand"
+        className="animate-pulse"
+        title={isStalePending(t) ? 'Cổng chậm >10 phút — bấm Kiểm tra (check) hoặc chờ callback' : 'chờ cổng trả kết quả'}
+      >
+        chờ cổng
+      </Badge>
+    )
   if (t.status === 'success')
     return t.in_game ? (
       <Badge variant="success">đã vào game</Badge>
@@ -34,6 +48,38 @@ const CardStatusBadge = ({ t }: { t: CardTransactionAdmin }) => {
       <Badge variant="warning" title="Gạch thành công nhưng chưa cộng Xu trong game">xong · chưa cộng?</Badge>
     )
   return <Badge variant="danger" title={t.gateway_message ?? undefined}>{t.status}</Badge>
+}
+
+/** Điều kiện hiện nút requeue Xu (FRONTEND-4 §5 / backend-4 §1). */
+export const canRequeueCard = (t: CardTransactionAdmin) => {
+  const cmd = t.credit_command_status
+  if (cmd === 'pending' || cmd === 'claimed') return false // backend 400 — ẩn luôn
+  return t.status === 'success' && (!t.in_game || cmd === 'failed' || cmd === 'expired' || cmd === 'uncertain')
+}
+
+/** Ô P&L: real_amount · user_receive · admin_adjustment (âm ĐỎ, dương XANH). */
+const PlCell = ({ t }: { t: CardTransactionAdmin }) => {
+  if (t.real_amount == null && t.user_receive == null && t.admin_adjustment == null)
+    return <span className="text-muted">—</span>
+  const adj = t.admin_adjustment
+  return (
+    <div className="space-y-0.5 text-xs tabular-nums">
+      <p title="Tiền thật về ví (cổng báo)">
+        <span className="text-muted">thực thu </span>
+        <b className="text-fg">{fmtVnd(t.real_amount)}</b>
+      </p>
+      <p title="VND user nhận = card_value − user_fee_rate">
+        <span className="text-muted">user nhận </span>
+        <b className="text-fg">{fmtVnd(t.user_receive ?? null)}</b>
+      </p>
+      <p title="chiết khấu thực − user_fee_rate (vd cổng 21% ⇒ lỗ 11k/100k). Âm = admin bù.">
+        <span className="text-muted">điều chỉnh </span>
+        <b className={adj == null ? 'text-muted' : adj < 0 ? 'text-red-500' : adj > 0 ? 'text-emerald-500' : 'text-fg'}>
+          {adj == null ? '—' : `${adj > 0 ? '+' : ''}${new Intl.NumberFormat('vi-VN').format(adj)}`}
+        </b>
+      </p>
+    </div>
+  )
 }
 
 export const AdminCardTransactionsPage = () => {
@@ -114,6 +160,24 @@ export const AdminCardTransactionsPage = () => {
     loadStats()
   }
 
+  /* §5 — "Tạo lại lệnh cộng Xu": InlineConfirm 2 bước → POST requeue → toast + merge row. */
+  const onRequeue = useCallback(
+    async (t: CardTransactionAdmin) => {
+      try {
+        const updated = await requeueCardTransaction(t.id)
+        setData((d) => (d ? { ...d, items: d.items.map((r) => (r.id === updated.id ? { ...r, ...updated } : r)) } : d))
+        await showSuccess(
+          'Đã tạo lại lệnh cộng Xu',
+          `Lệnh CREDIT mới (${updated.requeue_count != null ? `lần ${updated.requeue_count}` : 'đầu tiên'}) đang chờ agent lobby.`,
+        )
+        loadStats()
+      } catch (err) {
+        await showApiError(err, 'Requeue thất bại')
+      }
+    },
+    [loadStats],
+  )
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -158,7 +222,7 @@ export const AdminCardTransactionsPage = () => {
           ) : (
             <>
               <div className="px-6 pt-6">
-                <TableWrap className="min-w-[900px]">
+                <TableWrap className="min-w-[1080px]">
                   <thead>
                     <tr>
                       <Th>Thời gian</Th>
@@ -167,6 +231,7 @@ export const AdminCardTransactionsPage = () => {
                       <Th>Serial</Th>
                       <Th>Code</Th>
                       <Th>Mệnh giá → thực nhận</Th>
+                      <Th>P&amp;L</Th>
                       <Th>Xu</Th>
                       <Th>Trạng thái</Th>
                       <Th className="text-right">Đối soát</Th>
@@ -188,12 +253,38 @@ export const AdminCardTransactionsPage = () => {
                             <p className="text-xs font-semibold tabular-nums text-amber-500">→ {fmtVnd(t.real_amount)}</p>
                           )}
                         </Td>
-                        <Td className="tabular-nums text-muted">{t.xu_amount != null ? fmtXu(t.xu_amount) : '—'}</Td>
                         <Td>
-                          <CardStatusBadge t={t} />
+                          <PlCell t={t} />
+                        </Td>
+                        <Td className="tabular-nums text-muted">
+                          {t.xu_amount != null ? fmtXu(t.xu_amount) : '—'}
+                          {t.bonus_xu != null && t.bonus_xu > 0 && (
+                            <span className="ml-1 rounded-full bg-emerald-500/10 px-1.5 text-[10px] font-semibold text-emerald-500" title="Thưởng khuyến mãi nạp">
+                              +{t.bonus_xu} KM
+                            </span>
+                          )}
+                        </Td>
+                        <Td>
+                          <span className="inline-flex flex-wrap items-center gap-1.5">
+                            <CardStatusBadge t={t} />
+                            {(t.requeue_count ?? 0) > 0 && (
+                              <span className="rounded-full bg-surface-2 px-1.5 text-[10px] font-semibold text-muted" title={`Admin đã tạo lại lệnh cộng Xu ${t.requeue_count} lần`}>
+                                requeue ×{t.requeue_count}
+                              </span>
+                            )}
+                          </span>
                         </Td>
                         <Td className="text-right">
                           <div className="flex flex-col items-end gap-1">
+                            {canRequeueCard(t) && (
+                              <InlineConfirm
+                                tone="warning"
+                                label="↻ Tạo lại lệnh cộng Xu"
+                                confirmLabel="Tạo lại lệnh CREDIT?"
+                                warning="Chỉ queue lệnh mới — không cộng tay; claim KM giữ nguyên."
+                                onConfirm={() => onRequeue(t)}
+                              />
+                            )}
                             <CopyButton text={t.request_id} label="request" />
                             {t.trans_id != null && <CopyButton text={String(t.trans_id)} label="trans_id" />}
                           </div>

@@ -373,6 +373,8 @@ export interface AdminGameMode {
   status: 'hot' | 'new' | 'normal'
   cluster_id: number | null
   content_html: string | null
+  /** backend-4 §6 optimistic locking — editor giữ bản này để gửi kèm khi lưu content_html. */
+  content_version: number
   image_key: string | null
   image_url: string | null
   sort_order: number
@@ -404,7 +406,15 @@ export const createGameMode = async (body: Partial<AdminGameMode>): Promise<Admi
   return unwrap(await apiPost('/admin/game-modes', body))
 }
 
-export const updateGameMode = async (id: number, body: Partial<AdminGameMode>): Promise<AdminGameMode> => {
+/**
+ * PATCH game mode. Khi sửa `content_html` BẮT BUỘC kèm `base_content_version`
+ * (backend-4 §6): thiếu → 400, lệch → 409 envelope `{data:{content_version, updated_at}}`.
+ * Field khác (name/sort...) gửi không version — backend không chặn.
+ */
+export const updateGameMode = async (
+  id: number,
+  body: Partial<AdminGameMode> & { base_content_version?: number | null },
+): Promise<AdminGameMode> => {
   if (useAdminMock) return mock.updateGameMode(id, body)
   return unwrap(await apiPatch(`/admin/game-modes/${id}`, body))
 }
@@ -687,11 +697,22 @@ export interface CardTransactionAdmin {
   amount_vnd: number
   real_amount: number | null
   card_value: number | null
+  /** FRONTEND-4 §5 (admin-history §4): VND user nhận = card_value*(1−fee 10%). */
+  user_receive?: number | null
+  /** = real_amount − user_receive; ÂM = admin bù chiết khấu cổng. */
+  admin_adjustment?: number | null
   xu_amount: number | null
   status: 'pending' | 'success' | 'failed' | 'error'
   gateway_code: number | null
   gateway_message: string | null
   in_game: boolean
+  /** backend-4 §1: số lần admin tạo lại lệnh cộng Xu. */
+  requeue_count?: number
+  /** Optional — Out schema backend-4 có thể kèm trạng thái lệnh credit (giống bank). */
+  credit_command_status?: 'pending' | 'claimed' | 'done' | 'failed' | 'expired' | 'uncertain' | null
+  credit_command_error?: string | null
+  promotion_id?: number | null
+  bonus_xu?: number | null
   created_at: string | null
   credited_at: string | null
   callback_at: string | null
@@ -703,6 +724,73 @@ export const listCardTransactions = async (
 ): Promise<PagedAdmin<CardTransactionAdmin>> => {
   if (useAdminMock) return mock.listCardTransactions(query)
   return unwrap(await apiGet('/admin/card-transactions', { params: cleanParams(query) }))
+}
+
+/**
+ * FRONTEND-4 §5 / backend-4 §1: tạo lại LỆNH CỘNG XU cho thẻ đã success nhưng kẹt lobby
+ * (`in_game=false` hoặc cmd credit `failed|expired|uncertain`). Cmd cũ còn pending → 400.
+ * Chỉ queue — không cộng trực tiếp; claim KM giữ nguyên từ lệnh cũ.
+ */
+export const requeueCardTransaction = async (id: number): Promise<CardTransactionAdmin> => {
+  if (useAdminMock) return mock.requeueCardTransaction(id)
+  const data = unwrap(await apiPost(`/admin/card-transactions/${id}/requeue`))
+  return data?.tx ?? data
+}
+
+/* ================= Event khuyến mãi nạp (backend-4 §4.5) =================
+ * /api/admin/promotions — admin tạo/sửa/mềm-tắt; KHÔNG có delete hard khi đã có claim.
+ * 409 Conflict khi trùng thời gian với event active cùng kênh (message nêu rõ event xung đột).
+ */
+
+export type PromotionChannel = 'card' | 'bank' | 'all'
+
+export interface AdminPromotion {
+  id: number
+  name: string
+  applies_to: PromotionChannel
+  bonus_percent: number
+  /** naive datetime từ DB (giờ hệ thống repo) — hiển thị qua fmtIsoVN. */
+  starts_at: string
+  ends_at: string
+  max_users: number
+  max_per_user: number
+  is_active: boolean
+  /** số user DISTINCT đã nhận bonus (subquery backend). */
+  claimed_users: number
+  created_at?: string | null
+  updated_at?: string | null
+}
+
+export interface PromotionInput {
+  name: string
+  applies_to: PromotionChannel
+  bonus_percent: number
+  starts_at: string
+  ends_at: string
+  max_users: number
+  max_per_user?: number
+  is_active?: boolean
+}
+
+export const listPromotions = async (query: { page?: number; limit?: number } = {}): Promise<PagedAdmin<AdminPromotion>> => {
+  if (useAdminMock) return mock.listPromotions(query)
+  return unwrap(await apiGet('/admin/promotions', { params: cleanParams(query) }))
+}
+
+export const createPromotion = async (body: PromotionInput): Promise<AdminPromotion> => {
+  if (useAdminMock) return mock.createPromotion(body)
+  return unwrap(await apiPost('/admin/promotions', body))
+}
+
+export const updatePromotion = async (id: number, body: Partial<PromotionInput>): Promise<AdminPromotion> => {
+  if (useAdminMock) return mock.updatePromotion(id, body)
+  return unwrap(await apiPatch(`/admin/promotions/${id}`, body))
+}
+
+/** Soft-off (backend không expose delete khi đã có claim). */
+export const deactivatePromotion = async (id: number): Promise<AdminPromotion> => {
+  if (useAdminMock) return mock.deactivatePromotion(id)
+  return unwrap(await apiPost(`/admin/promotions/${id}/deactivate`))
 }
 
 /* ================= Users admin (backend-3 §2) ================= */
@@ -739,25 +827,11 @@ export const getUser = async (id: number): Promise<AdminUserDetail> => {
   return unwrap(await apiGet(`/users/${id}`))
 }
 
-/* ================= API phía USER (trang /nap-the — có JWT) ================= */
-
-export interface CardFeeRow {
-  telco: string
-  value: number
-  fees: number // % phí
-  penalty?: number
-}
-
-/** GET /api/card/fees → {user_fee_rate, payout_rate, fees:[{telco,value,fees,penalty}]} */
-export const getCardFees = async (): Promise<{ user_fee_rate: number; payout_rate: number; fees: CardFeeRow[] }> => {
-  const data = unwrap(await apiGet('/card/fees'))
-  return {
-    user_fee_rate: data?.user_fee_rate ?? 0,
-    payout_rate: data?.payout_rate ?? 1,
-    // Cổng gachthe1s trả {code, data:[...]} — chuẩn hoá về mảng thẳng.
-    fees: Array.isArray(data?.fees) ? data.fees : Array.isArray(data?.fees?.data) ? data.fees.data : [],
-  }
-}
+/* ================= API phía USER (trang /nap-the — có JWT) =================
+ * FRONTEND-4 §0/§1: biểu phí + info bank KHÔNG còn là API lúc mở trang —
+ * chúng nằm trong window.DATA. Ở đây chỉ còn 2 endpoint POLL mà trang /nap-the
+ * được phép gọi SAU khi action (merge giao dịch vừa nạp).
+ */
 
 /** GET /api/card/history — lịch sử thẻ của chính user. */
 export const getMyCardHistory = async (
@@ -766,16 +840,7 @@ export const getMyCardHistory = async (
   return unwrap(await apiGet('/card/history', { params: cleanParams({ page_size: 20, ...query }) }))
 }
 
-/** GET /api/bank/deposits — lịch sử bank của chính user. */
+/** GET /api/bank/deposits — lịch sử bank của chính user (poll sau khi user xác nhận đã chuyển). */
 export const getMyBankDeposits = async (query: { limit?: number; offset?: number } = {}): Promise<PagedAdmin<BankDepositAdmin>> => {
   return unwrap(await apiGet('/bank/deposits', { params: cleanParams(query) }))
-}
-
-/** GET /api/bank/info — vnd_per_xu để tính Xu dự kiến từ phí thẻ. */
-export const getBankInfo = async (): Promise<{ vnd_per_xu: number; min_amount_vnd: number; enabled: boolean } | null> => {
-  try {
-    return unwrap(await apiGet('/bank/info'))
-  } catch {
-    return null
-  }
 }
