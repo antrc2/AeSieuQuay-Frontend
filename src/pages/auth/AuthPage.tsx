@@ -8,6 +8,7 @@ import {
 import { useLocation } from 'react-router-dom'
 
 import SiteLayout from '@/components/layout/SiteLayout'
+import Turnstile from '@/components/Turnstile'
 import { apiPost } from '@/api/client'
 import { showApiError, showSuccess } from '@/utils/swal'
 import { cn } from '@/lib/utils'
@@ -22,7 +23,9 @@ const TABS: Array<{ id: Tab; label: string; path: string }> = [
 ]
 
 const inputCls =
-  'w-full rounded-xl border border-border-c bg-surface-2 px-4 py-2.5 text-fg placeholder:text-muted transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-[var(--ring)] disabled:opacity-60'
+  'w-full rounded-xl border border-border-c bg-surface-2 px-4 py-2.5 text-fg placeholder:text-muted/70 ' +
+  'transition-all focus:border-primary focus:bg-surface focus:outline-none focus:ring-4 focus:ring-[var(--ring)] ' +
+  'disabled:opacity-60'
 
 const USERNAME_RE = /^[a-zA-Z0-9_]*$/
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -33,25 +36,66 @@ type TextFieldProps = {
   id: string
   label: string
   hint?: string
+  icon?: ReactNode
   right?: ReactNode
 } & InputHTMLAttributes<HTMLInputElement>
 
-const TextField = ({ id, label, hint, right, className, ...props }: TextFieldProps) => (
+const TextField = ({ id, label, hint, icon, right, className, ...props }: TextFieldProps) => (
   <div>
-    <label htmlFor={id} className="mb-1.5 block text-sm font-medium text-fg">
+    <label htmlFor={id} className="mb-1.5 block text-sm font-semibold text-fg">
       {label}
     </label>
     <div className="relative">
-      <input id={id} className={cn(inputCls, right && 'pr-11', className)} {...props} />
-      {right && (
-        <div className="absolute inset-y-0 right-0 flex items-center">{right}</div>
+      {icon && (
+        <span aria-hidden className="pointer-events-none absolute inset-y-0 left-0 flex w-11 items-center justify-center text-muted">
+          {icon}
+        </span>
       )}
+      <input id={id} className={cn(inputCls, icon && 'pl-11', right && 'pr-11', className)} {...props} />
+      {right && <div className="absolute inset-y-0 right-0 flex items-center">{right}</div>}
     </div>
     {hint && <p className="mt-1 text-xs text-muted">{hint}</p>}
   </div>
 )
 
 type PasswordFieldProps = Omit<TextFieldProps, 'type' | 'right'>
+
+const EyeIcon = () => (
+  <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z" />
+    <circle cx="12" cy="12" r="3" />
+  </svg>
+)
+
+const EyeOffIcon = () => (
+  <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+    <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+    <path d="m1 1 22 22" />
+    <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24" />
+  </svg>
+)
+
+const UserIcon = () => (
+  <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+    <circle cx="12" cy="7" r="4" />
+  </svg>
+)
+
+const MailIcon = () => (
+  <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="2" y="4" width="20" height="16" rx="2" />
+    <path d="m22 7-10 6L2 7" />
+  </svg>
+)
+
+const LockIcon = () => (
+  <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="11" width="18" height="11" rx="2" />
+    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+  </svg>
+)
 
 const PasswordField = ({ id, label, hint, ...props }: PasswordFieldProps) => {
   const [show, setShow] = useState(false)
@@ -61,6 +105,7 @@ const PasswordField = ({ id, label, hint, ...props }: PasswordFieldProps) => {
       id={id}
       label={label}
       hint={hint}
+      icon={<LockIcon />}
       type={show ? 'text' : 'password'}
       right={
         <button
@@ -70,21 +115,7 @@ const PasswordField = ({ id, label, hint, ...props }: PasswordFieldProps) => {
           aria-label={show ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
           className="inline-flex h-full w-11 items-center justify-center rounded-r-xl text-muted transition-colors hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
         >
-          {show ? (
-            // Mắt gạch — đang hiện mật khẩu
-            <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
-              <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
-              <path d="m1 1 22 22" />
-              <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24" />
-            </svg>
-          ) : (
-            // Mắt thường — đang ẩn mật khẩu
-            <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z" />
-              <circle cx="12" cy="12" r="3" />
-            </svg>
-          )}
+          {show ? <EyeOffIcon /> : <EyeIcon />}
         </button>
       }
       {...props}
@@ -95,9 +126,10 @@ const PasswordField = ({ id, label, hint, ...props }: PasswordFieldProps) => {
 const ErrorAlert = ({ children }: { children: ReactNode }) => (
   <p
     role="alert"
-    className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-500"
+    className="animate-fade flex items-start gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2.5 text-sm font-medium text-red-500"
   >
-    {children}
+    <span aria-hidden className="mt-0.5">⚠</span>
+    <span>{children}</span>
   </p>
 )
 
@@ -105,7 +137,7 @@ const SubmitButton = ({ loading, idle, busy }: { loading: boolean; idle: string;
   <button
     type="submit"
     disabled={loading}
-    className="w-full rounded-xl bg-primary py-2.5 font-semibold text-white shadow-sm shadow-primary/25 transition-all hover:bg-primary-strong active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+    className="btn-gradient w-full rounded-xl py-3 text-sm font-bold tracking-wide disabled:cursor-not-allowed disabled:opacity-60"
   >
     {loading ? busy : idle}
   </button>
@@ -123,10 +155,19 @@ const FormFooter = ({ text, action, href }: { text: string; action: string; href
   </p>
 )
 
+/** Nhãn nhỏ báo trạng thái captcha — chỉ hiện khi widget được bật (đã có sitekey). */
+const CaptchaNote = ({ token, attempted }: { token: string; attempted: boolean }) => (
+  <p className={cn('text-right text-[11px] font-medium', token ? 'text-emerald-500' : attempted ? 'text-red-500' : 'text-muted')}>
+    {token ? '✓ Đã xác minh captcha' : attempted ? '⚠ Vui lòng hoàn thành captcha' : 'Được bảo vệ bởi Cloudflare Turnstile'}
+  </p>
+)
+
 /* ================= Form đăng nhập ================= */
 
 const LoginForm = () => {
   const [form, setForm] = useState({ username: '', password: '' })
+  const [captchaToken, setCaptchaToken] = useState('')
+  const [attempted, setAttempted] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -138,6 +179,7 @@ const LoginForm = () => {
   const onSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setError('')
+    setAttempted(true)
 
     const username = form.username.trim()
 
@@ -150,10 +192,11 @@ const LoginForm = () => {
     }
 
     if (!form.password) return setError('Vui lòng nhập mật khẩu')
+    if (!captchaToken) return setError('Vui lòng hoàn thành captcha (Cloudflare Turnstile)')
 
     setLoading(true)
     try {
-      const res = await apiPost('/auth/login', { username, password: form.password })
+      const res = await apiPost('/auth/login', { username, password: form.password, turnstile_token: captchaToken })
       await showSuccess(
         'Đăng nhập thành công',
         res?.message || `Xin chào ${res?.data?.user?.realname || username}!`,
@@ -173,6 +216,7 @@ const LoginForm = () => {
         id="login-username"
         name="username"
         label="Tên đăng nhập hoặc email"
+        icon={<UserIcon />}
         value={form.username}
         onChange={onChange}
         placeholder="vd: AeSieuQuay123"
@@ -189,6 +233,12 @@ const LoginForm = () => {
         autoComplete="current-password"
         disabled={loading}
       />
+
+      {/* Cloudflare Turnstile captcha */}
+      <div className="space-y-1">
+        <Turnstile onToken={setCaptchaToken} />
+        <CaptchaNote token={captchaToken} attempted={attempted} />
+      </div>
 
       {error && <ErrorAlert>{error}</ErrorAlert>}
 
@@ -208,6 +258,8 @@ const RegisterForm = () => {
     password: '',
     confirmPassword: '',
   })
+  const [captchaToken, setCaptchaToken] = useState('')
+  const [attempted, setAttempted] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -219,6 +271,7 @@ const RegisterForm = () => {
   const onSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setError('')
+    setAttempted(true)
 
     const username = form.username.trim()
 
@@ -236,6 +289,7 @@ const RegisterForm = () => {
     if (!form.password) return setError('Vui lòng nhập mật khẩu')
     if (form.password.length < 6) return setError('Mật khẩu phải có ít nhất 6 ký tự')
     if (form.password !== form.confirmPassword) return setError('Mật khẩu nhập lại không khớp')
+    if (!captchaToken) return setError('Vui lòng hoàn thành captcha (Cloudflare Turnstile)')
 
     setLoading(true)
     try {
@@ -243,6 +297,7 @@ const RegisterForm = () => {
         username,
         email: form.email.trim() || undefined,
         password: form.password,
+        turnstile_token: captchaToken,
       })
       await showSuccess(
         'Đăng ký thành công',
@@ -263,6 +318,7 @@ const RegisterForm = () => {
         id="register-username"
         name="username"
         label="Tên đăng nhập *"
+        icon={<UserIcon />}
         value={form.username}
         onChange={onChange}
         placeholder="vd: AeSieuQuay123"
@@ -275,6 +331,7 @@ const RegisterForm = () => {
         name="email"
         type="email"
         label="Email (không bắt buộc)"
+        icon={<MailIcon />}
         value={form.email}
         onChange={onChange}
         placeholder="your@email.com"
@@ -303,6 +360,12 @@ const RegisterForm = () => {
         disabled={loading}
       />
 
+      {/* Cloudflare Turnstile captcha */}
+      <div className="space-y-1">
+        <Turnstile onToken={setCaptchaToken} />
+        <CaptchaNote token={captchaToken} attempted={attempted} />
+      </div>
+
       {error && <ErrorAlert>{error}</ErrorAlert>}
 
       <SubmitButton loading={loading} idle="Tạo tài khoản" busy="Đang đăng ký..." />
@@ -311,6 +374,55 @@ const RegisterForm = () => {
     </form>
   )
 }
+
+/* ================= Panel trái — giới thiệu server ================= */
+
+const FEATURES = [
+  { icon: '⛏️', title: 'Sinh tồn & Skyblock', desc: 'Nhiều thế giới, kinh tế riêng, land claim chống xâm phạm.' },
+  { icon: '⚔️', title: 'PvP & Minigame', desc: 'Arena balance, sự kiện cuối tuần, bảng xếp hạng xu.' },
+  { icon: '🛡️', title: 'Anti-che hiện đại', desc: 'Máy chủ 24/7, giám sát TPS realtime, đội admin trực liên tục.' },
+]
+
+const AuthSidePanel = () => (
+  <aside className="relative hidden overflow-hidden lg:flex lg:w-[44%] lg:flex-col lg:justify-between">
+    {/* Nền gradient + aurora */}
+    <div aria-hidden className="absolute inset-0 bg-[linear-gradient(160deg,#0b1120_0%,#101a33_55%,#151034_100%)]" />
+    <div aria-hidden className="aurora absolute inset-0 opacity-70" />
+    <div aria-hidden className="grid-lines absolute inset-0" />
+
+    {/* Khối nội dung */}
+    <div className="relative z-10 p-12 xl:p-16">
+      <a href="/" className="inline-flex items-center gap-2 text-white">
+        <span className="grid h-10 w-10 place-items-center rounded-xl bg-[var(--grad-brand)] text-lg font-black shadow-[var(--shadow-glow)]">
+          A
+        </span>
+        <span className="text-lg font-extrabold tracking-tight">SV AeSieuQuay</span>
+      </a>
+
+      <h2 className="mt-14 max-w-md text-3xl font-extrabold leading-tight tracking-tight text-white xl:text-4xl">
+        Gia nhập cộng đồng <span className="text-gradient-brand">AeSieuQuay</span> — nơi block kể thành câu chuyện
+      </h2>
+      <p className="mt-4 max-w-md text-sm leading-relaxed text-slate-400">
+        Máy chủ Minecraft Việt Nam vận hành 24/7. Đăng nhập để quản lý nhân vật, nạp thẻ, chuyển xu và theo dõi
+        thứ hạng của bạn.
+      </p>
+    </div>
+
+    <div className="relative z-10 space-y-4 p-12 pt-0 xl:p-16 xl:pt-0">
+      {FEATURES.map((f) => (
+        <div key={f.title} className="flex items-start gap-3.5 rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm">
+          <span aria-hidden className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[var(--grad-brand)] text-lg">
+            {f.icon}
+          </span>
+          <div>
+            <p className="text-sm font-bold text-white">{f.title}</p>
+            <p className="mt-0.5 text-xs leading-relaxed text-slate-400">{f.desc}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  </aside>
+)
 
 /* ================= Trang xác thực (tab Đăng nhập / Đăng ký) ================= */
 
@@ -331,67 +443,67 @@ export const AuthPage = () => {
         noindex: true,
       }}
     >
-      <section className="relative flex min-h-[70vh] items-center justify-center overflow-hidden px-4 py-12 sm:py-16">
-        {/* Nền trang trí */}
-        <div aria-hidden className="pointer-events-none absolute inset-0">
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_55%_45%_at_50%_-5%,rgba(30,144,255,0.22),transparent),radial-gradient(ellipse_40%_40%_at_85%_25%,rgba(124,58,237,0.14),transparent)]" />
-          <div
-            className="absolute inset-0 opacity-[0.04]"
-            style={{
-              backgroundImage:
-                'linear-gradient(var(--fg) 1px, transparent 1px), linear-gradient(90deg, var(--fg) 1px, transparent 1px)',
-              backgroundSize: '44px 44px',
-            }}
-          />
+      <section className="relative flex min-h-[calc(100vh-4rem)] overflow-hidden">
+        {/* Nền mobile: aurora + lưới (panel desktop có nền riêng) */}
+        <div aria-hidden className="pointer-events-none absolute inset-0 lg:hidden">
+          <div className="aurora absolute inset-0" />
+          <div className="grid-lines absolute inset-0" />
         </div>
 
-        <div className="relative w-full max-w-md">
-          <div className="rounded-3xl border border-border-c bg-surface p-6 shadow-2xl shadow-black/10 sm:p-8">
-            {/* Tabs — dùng <a href> để full reload, lấy window.DATA mới */}
-            <nav
-              aria-label="Đăng nhập hoặc đăng ký"
-              className="grid grid-cols-2 gap-1 rounded-xl border border-border-c bg-surface-2 p-1"
-            >
-              {TABS.map((t) => {
-                const active = tab === t.id
-                return (
-                  <a
-                    key={t.id}
-                    href={t.path}
-                    aria-current={active ? 'page' : undefined}
-                    className={cn(
-                      'rounded-lg px-4 py-2 text-center text-sm font-semibold transition-all',
-                      active
-                        ? 'bg-primary text-white shadow-sm shadow-primary/30'
-                        : 'text-muted hover:bg-surface hover:text-fg',
-                    )}
-                  >
-                    {t.label}
-                  </a>
-                )
-              })}
-            </nav>
+        {/* Panel trái — chỉ desktop */}
+        <AuthSidePanel />
 
-            {/* Tiêu đề */}
-            <div className="mt-6 text-center">
-              <h1 className="text-2xl font-extrabold tracking-tight text-fg">
-                {tab === 'login' ? 'Chào mừng trở lại' : 'Tạo tài khoản mới'}
-              </h1>
-              <p className="mt-1.5 text-sm text-muted">
-                {tab === 'login'
-                  ? 'Đăng nhập để tiếp tục hành trình cùng AeSieuQuay.'
-                  : 'Chỉ mất một phút để bắt đầu chơi cùng cộng đồng AE.'}
-              </p>
+        {/* Cột form */}
+        <div className="relative z-10 flex flex-1 items-center justify-center px-4 py-12 sm:py-16">
+          <div className="w-full max-w-md">
+            <div className="surface-raised animate-rise rounded-3xl p-6 sm:p-8">
+              {/* Tabs — dùng <a href> để full reload, lấy window.DATA mới */}
+              <nav
+                aria-label="Đăng nhập hoặc đăng ký"
+                className="grid grid-cols-2 gap-1 rounded-2xl border border-border-c bg-surface-2 p-1"
+              >
+                {TABS.map((t) => {
+                  const active = tab === t.id
+                  return (
+                    <a
+                      key={t.id}
+                      href={t.path}
+                      aria-current={active ? 'page' : undefined}
+                      className={cn(
+                        'rounded-xl px-4 py-2 text-center text-sm font-semibold transition-all',
+                        active
+                          ? 'btn-gradient shadow-none'
+                          : 'text-muted hover:bg-surface hover:text-fg',
+                      )}
+                    >
+                      {t.label}
+                    </a>
+                  )
+                })}
+              </nav>
+
+              {/* Tiêu đề */}
+              <div className="mt-6 text-center">
+                <h1 className="text-2xl font-extrabold tracking-tight text-fg">
+                  {tab === 'login' ? 'Chào mừng trở lại 👋' : 'Tạo tài khoản mới ✨'}
+                </h1>
+                <p className="mt-1.5 text-sm text-muted">
+                  {tab === 'login'
+                    ? 'Đăng nhập để tiếp tục hành trình cùng AeSieuQuay.'
+                    : 'Chỉ mất một phút để bắt đầu chơi cùng cộng đồng AE.'}
+                </p>
+              </div>
+
+              <div className="animate-fade">
+                {tab === 'login' ? <LoginForm /> : <RegisterForm />}
+              </div>
             </div>
 
-            <div className="animate-[fadeIn_.2s_ease]">
-              {tab === 'login' ? <LoginForm /> : <RegisterForm />}
-            </div>
+            <p className="mt-6 text-center text-xs leading-relaxed text-muted">
+              Bằng việc tiếp tục, bạn đồng ý với nội quy và hướng dẫn của server. · Bảo mật bởi{' '}
+              <span className="font-semibold text-fg">Cloudflare Turnstile</span>
+            </p>
           </div>
-
-          <p className="mt-6 text-center text-xs leading-relaxed text-muted">
-            Bằng việc tiếp tục, bạn đồng ý với nội quy và hướng dẫn của server.
-          </p>
         </div>
       </section>
     </SiteLayout>

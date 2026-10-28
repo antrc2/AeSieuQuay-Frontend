@@ -3,11 +3,11 @@ import type { ButtonHTMLAttributes } from 'react'
 import { cn } from '@/lib/utils'
 
 const variants = {
-  primary: 'bg-primary text-white shadow-sm shadow-primary/25 hover:bg-primary-strong active:scale-[0.98]',
-  secondary: 'bg-surface-2 text-fg hover:bg-[var(--border)] active:scale-[0.98]',
-  outline: 'border border-border-c bg-transparent text-fg hover:bg-surface-2 active:scale-[0.98]',
+  primary: 'btn-gradient',
+  secondary: 'bg-surface-2 text-fg border border-border-c hover:bg-[var(--border)] hover:border-primary/40 active:scale-[0.98]',
+  outline: 'border border-border-c bg-transparent text-fg hover:border-primary/50 hover:bg-primary-soft hover:text-primary active:scale-[0.98]',
   ghost: 'bg-transparent text-muted hover:bg-surface-2 hover:text-fg',
-  destructive: 'bg-red-600 text-white hover:bg-red-500 active:scale-[0.98]',
+  destructive: 'bg-red-600 text-white shadow-sm shadow-red-600/30 hover:bg-red-500 active:scale-[0.98]',
 }
 
 const sizes = {
