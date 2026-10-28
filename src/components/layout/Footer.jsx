@@ -21,8 +21,13 @@ export const Footer = ({ columns = [], socials = [], copyright = '', ip = '' }) 
   const serverIp = ip || DEFAULT_SERVER_INFO.ip
 
   return (
-    <footer className="mt-24 border-t border-border-c bg-surface">
-      <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
+    <footer className="relative mt-24 overflow-hidden border-t border-border-c bg-surface">
+      {/* Nền glow hiện đại */}
+      <div aria-hidden className="pointer-events-none absolute inset-0 opacity-70">
+        <div className="absolute -top-24 left-1/4 h-64 w-64 rounded-full bg-primary/10 blur-3xl" />
+        <div className="absolute -bottom-24 right-1/4 h-64 w-64 rounded-full bg-accent/10 blur-3xl" />
+      </div>
+      <div className="relative mx-auto max-w-7xl px-4 py-14 sm:px-6">
         {/* Khu vực chính */}
         <div className="grid gap-10 sm:grid-cols-2 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
           {/* Logo + mô tả + IP */}
@@ -39,7 +44,7 @@ export const Footer = ({ columns = [], socials = [], copyright = '', ip = '' }) 
                 type="button"
                 title="Nhấn để sao chép IP"
                 onClick={() => navigator.clipboard?.writeText(serverIp)}
-                className="mt-4 inline-flex items-center gap-2 rounded-lg border border-border-c bg-surface-2 px-3 py-1.5 font-mono text-xs text-fg transition-colors hover:border-primary/50"
+                className="mt-4 inline-flex items-center gap-2 rounded-xl border border-border-c bg-surface-2 px-3.5 py-2 font-mono text-xs text-fg shadow-sm transition-all hover:border-primary/60 hover:shadow-glow"
               >
                 📋 {serverIp}
               </button>
@@ -49,7 +54,7 @@ export const Footer = ({ columns = [], socials = [], copyright = '', ip = '' }) 
           {/* Các cột liên kết */}
           {cols.map((col) => (
             <nav key={col.title} aria-label={col.title}>
-              <h4 className="mb-3 text-xs font-bold uppercase tracking-wider text-fg">
+              <h4 className="mb-4 inline-block border-b-2 border-primary/40 pb-1 text-xs font-bold uppercase tracking-widest text-fg">
                 {col.title}
               </h4>
               <ul className="space-y-2.5">
@@ -57,8 +62,9 @@ export const Footer = ({ columns = [], socials = [], copyright = '', ip = '' }) 
                   <li key={link.to}>
                     <a
                       href={link.to}
-                      className="text-sm text-muted transition-colors hover:text-primary"
+                      className="group inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-primary"
                     >
+                      <span aria-hidden className="h-1 w-1 rounded-full bg-primary/0 transition-all group-hover:bg-primary" />
                       {link.label}
                     </a>
                   </li>
@@ -70,7 +76,7 @@ export const Footer = ({ columns = [], socials = [], copyright = '', ip = '' }) 
           {/* Cộng đồng — chỉ render khi có link thật */}
           {socialsList.length > 0 && (
             <nav aria-label="Cộng đồng">
-              <h4 className="mb-3 text-xs font-bold uppercase tracking-wider text-fg">
+              <h4 className="mb-4 inline-block border-b-2 border-accent/40 pb-1 text-xs font-bold uppercase tracking-widest text-fg">
                 Cộng đồng
               </h4>
               <ul className="space-y-2.5">

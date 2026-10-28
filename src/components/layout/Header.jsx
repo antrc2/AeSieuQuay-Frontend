@@ -42,8 +42,8 @@ const AuthButton = ({ className }) => {
       <a
         href="/dang-nhap"
         className={cn(
-          'inline-flex h-9 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold text-white',
-          'bg-primary shadow-sm shadow-primary/25 transition-all hover:bg-primary-strong active:scale-[0.98]',
+          'inline-flex h-9 items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold text-[#04121f]',
+          'bg-primary shadow-lg shadow-primary/30 transition-all hover:bg-primary-strong hover:shadow-glow active:scale-[0.98]',
           className,
         )}
       >
@@ -83,7 +83,7 @@ const AuthButton = ({ className }) => {
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-11 z-50 w-48 overflow-hidden rounded-xl border border-border-c bg-surface py-1.5 shadow-xl shadow-black/10 animate-[toastIn_.18s_ease]"
+          className="glass absolute right-0 top-11 z-50 w-52 overflow-hidden rounded-2xl border border-border-c py-1.5 shadow-2xl shadow-black/25 animate-[toastIn_.18s_ease]"
         >
           {/* Thông tin nhanh */}
           <div className="px-3 pb-1.5">
@@ -165,17 +165,20 @@ export const Header = ({ menu = DEFAULT_MENU }) => {
   return (
     <header
       className={cn(
-        'sticky top-0 z-40 border-b transition-all duration-300',
+        'sticky top-0 z-40 transition-all duration-300',
         scrolled
-          ? 'border-border-c bg-bg/85 shadow-sm backdrop-blur-md'
-          : 'border-transparent bg-transparent',
+          ? 'glass border-b border-border-c shadow-lg shadow-black/5'
+          : 'border-b border-transparent bg-transparent',
       )}
     >
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
         <Logo size="sm" />
 
-        {/* Desktop menu */}
-        <nav className="hidden items-center gap-1 lg:flex" aria-label="Menu chính">
+        {/* Desktop menu — pill navigation hiện đại */}
+        <nav
+          className="hidden items-center gap-1 rounded-full border border-border-c/70 bg-surface/60 p-1 backdrop-blur-md lg:flex"
+          aria-label="Menu chính"
+        >
           {menu.map((item) => {
             const active =
               item.to === '/' ? location.pathname === '/' : location.pathname.startsWith(item.to)
@@ -185,9 +188,9 @@ export const Header = ({ menu = DEFAULT_MENU }) => {
                 href={item.to}
                 aria-current={active ? 'page' : undefined}
                 className={cn(
-                  'rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                  'relative rounded-full px-4 py-1.5 text-sm font-semibold transition-all duration-200',
                   active
-                    ? 'bg-primary-soft text-primary'
+                    ? 'bg-primary text-[#04121f] shadow-md shadow-primary/30'
                     : 'text-muted hover:bg-surface-2 hover:text-fg',
                 )}
               >
@@ -225,11 +228,11 @@ export const Header = ({ menu = DEFAULT_MENU }) => {
         </div>
       </div>
 
-      {/* Mobile menu */}
+      {/* Mobile menu — glass panel hiện đại */}
       {open && (
         <nav
           aria-label="Menu mobile"
-          className="border-t border-border-c bg-surface px-4 py-3 lg:hidden"
+          className="glass border-t border-border-c px-4 py-4 lg:hidden"
         >
           <div className="flex flex-col gap-2">
             
@@ -244,9 +247,9 @@ export const Header = ({ menu = DEFAULT_MENU }) => {
                 key={item.to}
                 href={item.to}
                 className={cn(
-                  'block rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+                  'block rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors',
                   active
-                    ? 'bg-primary-soft text-primary'
+                    ? 'bg-primary text-[#04121f] shadow-md shadow-primary/25'
                     : 'text-muted hover:bg-surface-2 hover:text-fg',
                 )}
               >

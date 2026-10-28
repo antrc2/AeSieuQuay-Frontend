@@ -30,7 +30,7 @@ export function ClusterStatsStrip({ stats, compact = false, className }: Props) 
       role="status"
       aria-label={`Trạng thái cụm ${stats.cluster.name}`}
     >
-      <span className="inline-flex items-center gap-1.5 rounded-full border border-border-c bg-surface px-3 py-1">
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-border-c bg-surface px-3.5 py-1.5 text-xs font-semibold shadow-sm backdrop-blur">
         <span
           className={cn(
             'h-2 w-2 rounded-full',
@@ -41,18 +41,18 @@ export function ClusterStatsStrip({ stats, compact = false, className }: Props) 
         {label}
       </span>
       {stats.players && (
-        <span className="rounded-full border border-border-c bg-surface px-3 py-1">
+        <span className="rounded-full border border-border-c bg-surface px-3.5 py-1.5 text-xs font-semibold tabular-nums shadow-sm">
           👥 {stats.players.online}/{stats.players.max} người chơi
         </span>
       )}
       {!compact && stats.tps && (
-        <span className="rounded-full border border-border-c bg-surface px-3 py-1">
-          TPS {fmt.tps(stats.tps.avg_1m)}
+        <span className="rounded-full border border-border-c bg-surface px-3.5 py-1.5 text-xs font-semibold tabular-nums shadow-sm">
+          ⚡ TPS {fmt.tps(stats.tps.avg_1m)}
         </span>
       )}
       {!compact && stats.uptime?.percent_7d != null && (
-        <span className="rounded-full border border-border-c bg-surface px-3 py-1">
-          Uptime 7 ngày {fmt.pct(stats.uptime.percent_7d)}
+        <span className="rounded-full border border-border-c bg-surface px-3.5 py-1.5 text-xs font-semibold tabular-nums shadow-sm">
+          🛡️ Uptime 7 ngày {fmt.pct(stats.uptime.percent_7d)}
         </span>
       )}
     </div>

@@ -8,6 +8,7 @@ import {
 import { useLocation } from 'react-router-dom'
 
 import SiteLayout from '@/components/layout/SiteLayout'
+import { Turnstile, getTurnstileSiteKey } from '@/components/ui/Turnstile'
 import { apiPost } from '@/api/client'
 import { showApiError, showSuccess } from '@/utils/swal'
 import { cn } from '@/lib/utils'
@@ -127,6 +128,7 @@ const FormFooter = ({ text, action, href }: { text: string; action: string; href
 
 const LoginForm = () => {
   const [form, setForm] = useState({ username: '', password: '' })
+  const [captcha, setCaptcha] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -150,10 +152,16 @@ const LoginForm = () => {
     }
 
     if (!form.password) return setError('Vui lòng nhập mật khẩu')
+    // Captcha (Cloudflare Turnstile) — chỉ bắt buộc khi widget đã được cấu hình site key
+    if (getTurnstileSiteKey() && !captcha) return setError('Vui lòng hoàn thành captcha')
 
     setLoading(true)
     try {
-      const res = await apiPost('/auth/login', { username, password: form.password })
+      const res = await apiPost('/auth/login', {
+        username,
+        password: form.password,
+        turnstile_token: captcha, // luôn gửi field này lên backend (rỗng nếu chưa verify xong)
+      })
       await showSuccess(
         'Đăng nhập thành công',
         res?.message || `Xin chào ${res?.data?.user?.realname || username}!`,
@@ -190,6 +198,8 @@ const LoginForm = () => {
         disabled={loading}
       />
 
+      <Turnstile onChange={setCaptcha} />
+
       {error && <ErrorAlert>{error}</ErrorAlert>}
 
       <SubmitButton loading={loading} idle="Đăng nhập" busy="Đang đăng nhập..." />
@@ -208,6 +218,7 @@ const RegisterForm = () => {
     password: '',
     confirmPassword: '',
   })
+  const [captcha, setCaptcha] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -236,6 +247,8 @@ const RegisterForm = () => {
     if (!form.password) return setError('Vui lòng nhập mật khẩu')
     if (form.password.length < 6) return setError('Mật khẩu phải có ít nhất 6 ký tự')
     if (form.password !== form.confirmPassword) return setError('Mật khẩu nhập lại không khớp')
+    // Captcha (Cloudflare Turnstile) — chỉ bắt buộc khi widget đã được cấu hình site key
+    if (getTurnstileSiteKey() && !captcha) return setError('Vui lòng hoàn thành captcha')
 
     setLoading(true)
     try {
@@ -243,6 +256,7 @@ const RegisterForm = () => {
         username,
         email: form.email.trim() || undefined,
         password: form.password,
+        turnstile_token: captcha, // luôn gửi field này lên backend (rỗng nếu chưa verify xong)
       })
       await showSuccess(
         'Đăng ký thành công',
@@ -302,6 +316,8 @@ const RegisterForm = () => {
         autoComplete="new-password"
         disabled={loading}
       />
+
+      <Turnstile onChange={setCaptcha} />
 
       {error && <ErrorAlert>{error}</ErrorAlert>}
 

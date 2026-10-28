@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+
+# Trang không nên index
+Disallow: /dang-nhap
+Disallow: /dang-ky
+Disallow: /forbidden
+Disallow: /api/
+
+# Backend nên sinh sitemap động cho danh sách máy chủ thật.
+Sitemap: https://aesieuquay.com/sitemap.xml

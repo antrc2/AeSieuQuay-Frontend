@@ -38,15 +38,6 @@ import { Skeleton } from '@/components/ui/States'
 import { fmtBytes, fmtDateTime, fmtDateTimeMs, fmtDuration, timeAgo } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
-const TABS = [
-  { id: 'overview', label: 'Tổng quan' },
-  { id: 'uptime', label: 'Uptime' },
-  { id: 'storage', label: 'Disk & Worlds' },
-  { id: 'advanced', label: 'Nâng cao' },
-] as const
-
-type TabId = (typeof TABS)[number]['id']
-
 const COLORS = { blue: '#3b82f6', violet: '#8b5cf6', emerald: '#10b981', amber: '#f59e0b', red: '#ef4444' }
 
 const RANGES = [
@@ -73,8 +64,7 @@ export const AdminMonitorDetailPage = () => {
   const [loading, setLoading] = useState(true)
   const aliveRef = useRef(true)
 
-  /* §8 — tab dữ liệu mở rộng (load-on-first-open, giữ cache khi đổi lại) */
-  const [tab, setTab] = useState<TabId>('overview')
+  /* §8 — dữ liệu mở rộng: hiển thị trực tiếp toàn bộ, không còn tab ẩn */
   const [uptime, setUptime] = useState<UptimePeriod[] | null>(null)
   const [disks, setDisks] = useState<DiskSample[] | null>(null)
   const [worlds, setWorlds] = useState<WorldSize[] | null>(null)
@@ -88,7 +78,7 @@ export const AdminMonitorDetailPage = () => {
     const to = Date.now()
     const from = to - range.ms
     try {
-      const [d, p, h, ev, pl, exc, pg] = await Promise.all([
+      const [d, p, h, ev, pl, exc, pg, up, dk, wd, tp, sm, bt] = await Promise.all([
         monitorServerDetail(server).catch(() => null),
         monitorMetrics(server, { kind: 'perf', granularity: range.granularity, from_ms: from, to_ms: to })
           .then((r) => r?.points ?? [])
@@ -100,6 +90,12 @@ export const AdminMonitorDetailPage = () => {
         monitorOnlinePlayers(server).catch(() => []),
         monitorExceptions(server, 5).catch(() => []),
         monitorPlugins(server).catch(() => null),
+        monitorUptimePeriods(server, 168).catch(() => []),
+        monitorDisks(server, 24).catch(() => []),
+        monitorWorlds(server, 168).catch(() => []),
+        monitorPlayersTop(server, 10).catch(() => []),
+        monitorSamples(server, { limit: 50 }).then((r) => r?.items ?? []).catch(() => []),
+        monitorBatches(server, 50).catch(() => []),
       ])
       if (!aliveRef.current) return
       setDetail(d)
@@ -109,6 +105,12 @@ export const AdminMonitorDetailPage = () => {
       setPlayers(Array.isArray(pl) ? pl : [])
       setExceptions(Array.isArray(exc) ? exc : [])
       setPluginCount(Array.isArray(pg) ? pg.length : d?.counts?.plugins ?? null)
+      setUptime(Array.isArray(up) ? up : [])
+      setDisks(Array.isArray(dk) ? dk : [])
+      setWorlds(Array.isArray(wd) ? wd : [])
+      setTopPlayers(Array.isArray(tp) ? tp : [])
+      setSamples(Array.isArray(sm) ? sm : [])
+      setBatches(Array.isArray(bt) ? bt : [])
       setNowSync(to)
     } finally {
       if (aliveRef.current) setLoading(false)
@@ -122,27 +124,6 @@ export const AdminMonitorDetailPage = () => {
       aliveRef.current = false
     }
   }, [load])
-
-  /* Tab dữ liệu lớn → fetch lần đầu mở tab, không nặng trang mặc định. */
-  useEffect(() => {
-    let alive = true
-    const grab = <T,>(getter: () => Promise<T>, setter: (v: T) => void) => {
-      getter().then((v) => alive && setter(v)).catch(() => alive && setter([] as never))
-    }
-    if (tab === 'uptime' && uptime === null) grab(() => monitorUptimePeriods(server, 168), setUptime)
-    if (tab === 'storage') {
-      if (disks === null) grab(() => monitorDisks(server, 24), setDisks)
-      if (worlds === null) grab(() => monitorWorlds(server, 168), setWorlds)
-    }
-    if (tab === 'advanced') {
-      if (samples === null) grab(() => monitorSamples(server, { limit: 50 }).then((r) => r.items), setSamples)
-      if (batches === null) grab(() => monitorBatches(server, 50), setBatches)
-    }
-    if (tab === 'overview' && topPlayers === null) grab(() => monitorPlayersTop(server, 10), setTopPlayers)
-    return () => {
-      alive = false
-    }
-  }, [tab, server, uptime, disks, worlds, samples, batches, topPlayers])
 
   const fmtX = (ms: number) =>
     range.granularity === 'minute'
@@ -232,30 +213,9 @@ export const AdminMonitorDetailPage = () => {
         </div>
       )}
 
-      <div className="flex gap-1 overflow-x-auto rounded-xl border border-border-c bg-surface-2 p-1" role="tablist">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            role="tab"
-            aria-selected={tab === t.id}
-            onClick={() => setTab(t.id)}
-            className={cn(
-              'shrink-0 rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-colors',
-              tab === t.id ? 'bg-primary text-white' : 'text-muted hover:text-fg',
-            )}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+      {/* Uptime — hiển thị trực tiếp, không còn tab ẩn */}
+      <UptimeTab periods={uptime} />
 
-      {tab === 'uptime' && <UptimeTab periods={uptime} />}
-      {tab === 'storage' && <StorageTab disks={disks} worlds={worlds} />}
-      {tab === 'advanced' && <AdvancedTab samples={samples} batches={batches} onOpenSample={setOpenSample} />}
-
-      {tab === 'overview' && (
-        <>
       <div className="grid gap-4 xl:grid-cols-1">
         {chart('TPS (1m)', [{ label: 'tpsbq', color: COLORS.emerald, data: line(perf, 'tps_avg') }])}
         {chart('MSPT', [
@@ -400,8 +360,12 @@ export const AdminMonitorDetailPage = () => {
           </CardContent>
         </Card>
       </div>
-        </>
-      )}
+
+      {/* Disk & Worlds — hiển thị trực tiếp */}
+      <StorageTab disks={disks} worlds={worlds} />
+
+      {/* Nâng cao: Samples & Batches — hiển thị trực tiếp */}
+      <AdvancedTab samples={samples} batches={batches} onOpenSample={setOpenSample} />
 
       {openSample && (
         <Modal open onClose={() => setOpenSample(null)} title={`Sample #${openSample.id} · ${openSample.kind}`} description={`${fmtDateTimeMs(openSample.ts_ms)} · seq ${openSample.seq ?? '—'}`}>
@@ -421,7 +385,16 @@ const UptimeTab = ({ periods }: { periods: UptimePeriod[] | null }) => {
   const [now] = useState(() => Date.now())
   if (!periods) return <Skeleton className="h-40" />
   if (periods.length === 0)
-    return <p className="text-sm text-muted">Chưa có khoảng uptime nào (bảng status_periods trống — cần server gửi đủ heartbeat/boot).</p>
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Uptime 7 ngày</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted">Chưa có khoảng uptime nào (bảng status_periods trống — cần server gửi đủ heartbeat/boot).</p>
+        </CardContent>
+      </Card>
+    )
 
   const from = now - UPTIME_WINDOW_MS
   const clamp = (p: UptimePeriod) => {

@@ -13,31 +13,32 @@
    ========================================= */
 
 :root {
-  /* Brand (giữ nguyên giữa 2 theme) */
-  --brand: #1e90ff;
-  --brand-strong: #0b5ed7;
-  --brand-soft: #1e90ff1a;
-  --accent: #7c3aed;
+  /* Brand — neon gaming (xanh electric → violet), giữ nguyên giữa 2 theme */
+  --brand: #2dd4ff;
+  --brand-strong: #0ea5e9;
+  --brand-soft: #2dd4ff1f;
+  --accent: #a855f7;
+  --accent-soft: #a855f71f;
 
-  /* Light mode */
-  --bg: #f6f8fb;
+  /* Light mode — trắng ngọc, viền sắc hơn một chút cho "glass" nổi */
+  --bg: #f3f6fc;
   --surface: #ffffff;
-  --surface-2: #eef2f7;
-  --fg: #0f172a;
-  --muted: #5b6b81;
-  --border: #e2e8f0;
-  --ring: #1e90ff40;
+  --surface-2: #eaeff7;
+  --fg: #0b1220;
+  --muted: #5c6b84;
+  --border: #dde5f0;
+  --ring: #2dd4ff59;
 }
 
 .dark {
-  /* Dark mode: xanh đen */
-  --bg: #070b14;
-  --surface: #0d1424;
-  --surface-2: #131c30;
-  --fg: #f1f5f9;
-  --muted: #94a3b8;
-  --border: #1e2a45;
-  --ring: #1e90ff60;
+  /* Dark mode — deep space navy, hợp không gian game */
+  --bg: #05070f;
+  --surface: #0b1220;
+  --surface-2: #121b2e;
+  --fg: #eef4ff;
+  --muted: #8fa0ba;
+  --border: #1c2942;
+  --ring: #2dd4ff66;
 }
 
 /* Map token -> Tailwind utilities: bg-bg, bg-surface, text-fg, border-border... */
@@ -52,7 +53,12 @@
   --color-primary-strong: var(--brand-strong);
   --color-primary-soft: var(--brand-soft);
   --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
   --color-warning: #f5a623;
+
+  /* Bo góc hiện đại + bóng sâu dùng chung */
+  --radius-xl2: 1.25rem;
+  --shadow-glow: 0 0 24px -6px color-mix(in oklab, var(--brand) 55%, transparent);
 }
 
 @layer base {
@@ -64,17 +70,34 @@
     color: var(--fg);
     font-family: 'Inter Variable', system-ui, 'Segoe UI', Tahoma, sans-serif;
     -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
   }
   ::selection {
     background: var(--brand);
-    color: #fff;
+    color: #04121f;
+  }
+  /* Thanh cuộn mảnh, theo theme — chi tiết "modern" rẻ tiền mà hiệu quả */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 999px;
+  }
+  h1, h2, h3, h4 {
+    letter-spacing: -0.02em;
   }
 }
 
 @layer utilities {
-  /* Tiêu đề gaming: gradient chữ */
+  /* Tiêu đề gaming: gradient chữ (cyan → electric blue → violet) */
   .text-gradient-brand {
-    background: linear-gradient(120deg, #58a6ff 0%, #1e90ff 45%, #7c3aed 100%);
+    background: linear-gradient(115deg, #67e8f9 0%, var(--brand) 40%, var(--accent) 100%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
@@ -82,6 +105,30 @@
   /* Overlay cho chữ trên ảnh */
   .img-overlay {
     background: linear-gradient(180deg, transparent 35%, rgba(2, 6, 18, 0.85) 100%);
+  }
+  /* Kính mờ hiện đại — dùng cho header, card nổi, modal */
+  .glass {
+    background: color-mix(in oklab, var(--surface) 68%, transparent);
+    backdrop-filter: blur(14px) saturate(1.4);
+    -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  }
+  /* Viền gradient 1px (bọc p-[1px] + inner rounded) */
+  .border-gradient {
+    background: linear-gradient(135deg, color-mix(in oklab, var(--brand) 70%, transparent), color-mix(in oklab, var(--accent) 70%, transparent));
+  }
+  /* Khối glow trang trí sau hero */
+  .aurora {
+    background:
+      radial-gradient(ellipse 60% 45% at 18% -10%, color-mix(in oklab, var(--brand) 30%, transparent), transparent),
+      radial-gradient(ellipse 45% 40% at 85% 10%, color-mix(in oklab, var(--accent) 22%, transparent), transparent),
+      radial-gradient(ellipse 50% 35% at 50% 110%, color-mix(in oklab, var(--brand) 12%, transparent), transparent);
+  }
+  /* Lưới ô vuông mờ — "block game" vibe */
+  .bg-grid {
+    background-image:
+      linear-gradient(var(--fg) 1px, transparent 1px),
+      linear-gradient(90deg, var(--fg) 1px, transparent 1px);
+    background-size: 44px 44px;
   }
   /* Hiệu ứng xuất hiện khi cuộn (tôn trọng reduced-motion) */
   .reveal {
@@ -122,6 +169,30 @@
   }
   to {
     opacity: 1;
+  }
+}
+
+@keyframes floatY {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--brand) 35%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 22px 2px color-mix(in oklab, var(--brand) 30%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .animate-float {
+    animation: floatY 7s ease-in-out infinite;
   }
 }
 

@@ -125,17 +125,12 @@ const Hero = ({ hero = {}, serverInfo = {} }: { hero?: HomePayload['hero']; serv
 
   return (
     <section className="relative overflow-hidden">
-      {/* Nền gradient + lưới mờ */}
-      <div className="absolute inset-0">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_-10%,rgba(30,144,255,0.35),transparent),radial-gradient(ellipse_40%_40%_at_80%_20%,rgba(124,58,237,0.22),transparent)]" />
-        <div
-          className="absolute inset-0 opacity-[0.04]"
-          style={{
-            backgroundImage:
-              'linear-gradient(var(--fg) 1px, transparent 1px), linear-gradient(90deg, var(--fg) 1px, transparent 1px)',
-            backgroundSize: '44px 44px',
-          }}
-        />
+      {/* Nền aurora + lưới ô vuông + blob trôi — phong cách gaming hiện đại */}
+      <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="aurora absolute inset-0" />
+        <div className="bg-grid absolute inset-0 opacity-[0.05]" />
+        <div className="animate-float absolute -left-24 top-24 h-72 w-72 rounded-full bg-primary/20 blur-3xl" />
+        <div className="animate-float absolute right-[-6rem] bottom-10 h-80 w-80 rounded-full bg-accent/20 blur-3xl [animation-delay:-3s]" />
       </div>
 
       <div className="relative mx-auto max-w-7xl px-4 pb-16 pt-20 sm:px-6 sm:pb-24 sm:pt-28">
@@ -144,13 +139,20 @@ const Hero = ({ hero = {}, serverInfo = {} }: { hero?: HomePayload['hero']; serv
           <div className="text-center lg:text-left">
             {/* Badge */}
             {hero.tagline && (
-              <span className="mb-5 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary-soft px-4 py-1.5 text-xs font-semibold text-primary">
-                🟩 {hero.tagline}
+              <span className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primary-soft px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-primary shadow-lg shadow-primary/10 backdrop-blur">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
+                </span>
+                {hero.tagline}
               </span>
             )}
 
-            <h1 className="mx-auto max-w-3xl text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl lg:mx-0 xl:text-6xl">
-              <span className="text-gradient-brand">{hero.name || 'SV AeSieuQuay'}</span>
+            <p className="mb-2 hidden text-xs font-bold uppercase tracking-[0.35em] text-muted lg:block">
+              Minecraft Server Việt Nam
+            </p>
+            <h1 className="mx-auto max-w-3xl text-4xl font-black leading-[1.05] tracking-tight sm:text-5xl lg:mx-0 xl:text-6xl">
+              <span className="text-gradient-brand drop-shadow-[0_0_28px_rgba(45,212,255,0.35)]">{hero.name || 'SV AeSieuQuay'}</span>
             </h1>
 
             {hero.description && (
@@ -164,16 +166,16 @@ const Hero = ({ hero = {}, serverInfo = {} }: { hero?: HomePayload['hero']; serv
               <button
                 type="button"
                 onClick={() => setPlayModalOpen(true)}
-                className="w-full max-w-[240px] rounded-xl bg-primary px-8 py-3 text-base font-semibold text-white shadow-lg shadow-primary/30 transition-all hover:bg-primary-strong active:scale-[0.98] sm:w-auto"
+                className="w-full max-w-[240px] rounded-xl bg-[linear-gradient(120deg,var(--brand),var(--accent))] px-8 py-3 text-base font-bold text-[#04121f] shadow-lg shadow-primary/40 transition-all hover:shadow-glow hover:brightness-110 active:scale-[0.98] sm:w-auto"
               >
-                {hero.cta?.primary || 'Chơi ngay'}
+                ⚔ {hero.cta?.primary || 'Chơi ngay'}
               </button>
               {hero.discord_url ? (
                 <a
                   href={hero.discord_url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full max-w-[240px] rounded-xl border border-border-c bg-surface px-8 py-3 text-base font-semibold text-fg transition-all hover:bg-surface-2 active:scale-[0.98] sm:w-auto"
+                  className="w-full max-w-[240px] rounded-xl border border-border-c bg-surface/70 px-8 py-3 text-base font-semibold text-fg backdrop-blur transition-all hover:border-primary/50 hover:bg-surface-2 active:scale-[0.98] sm:w-auto"
                 >
                   {hero.cta?.secondary || 'Tham gia Discord'}
                 </a>
@@ -312,14 +314,14 @@ const Hero = ({ hero = {}, serverInfo = {} }: { hero?: HomePayload['hero']; serv
 
       {playModalOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm animate-[fadeIn_.2s_ease]"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 backdrop-blur-md animate-[fadeIn_.2s_ease]"
           onClick={() => setPlayModalOpen(false)}
         >
           <div
             role="dialog"
             aria-modal="true"
             aria-labelledby="play-modal-title"
-            className="w-full max-w-md rounded-2xl border border-border-c bg-surface p-6 text-center shadow-2xl shadow-black/40 animate-[modalIn_.25s_ease] sm:p-8"
+            className="glass w-full max-w-md rounded-3xl border border-border-c p-6 text-center shadow-2xl shadow-black/40 animate-[modalIn_.25s_ease] sm:p-8"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary-soft text-primary">
@@ -340,7 +342,7 @@ const Hero = ({ hero = {}, serverInfo = {} }: { hero?: HomePayload['hero']; serv
               <button
                 type="button"
                 onClick={copyIp}
-                className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-primary-strong"
+                className="rounded-lg bg-primary px-3 py-1.5 text-xs font-bold text-[#04121f] shadow-md shadow-primary/30 transition-all hover:bg-primary-strong hover:shadow-glow"
               >
                 Sao chép
               </button>
@@ -355,7 +357,7 @@ const Hero = ({ hero = {}, serverInfo = {} }: { hero?: HomePayload['hero']; serv
               </button>
               <a
                 href="/dang-ky"
-                className="rounded-xl bg-primary px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-strong"
+                className="rounded-xl bg-primary px-6 py-2.5 text-sm font-bold text-[#04121f] shadow-md shadow-primary/30 transition-all hover:bg-primary-strong hover:shadow-glow"
               >
                 Tạo tài khoản
               </a>
@@ -394,30 +396,35 @@ const ServerInfoBar = ({ info = {} }: { info?: HomePayload['server_info'] }) => 
 
   return (
     <section className="mx-auto -mt-6 max-w-4xl px-4 sm:px-6">
-      <div className="flex flex-col items-center gap-4 rounded-2xl border border-border-c bg-surface p-4 shadow-lg shadow-black/5 sm:flex-row sm:justify-between sm:p-5">
+      <div className="glass flex flex-col items-center gap-4 rounded-2xl border border-border-c p-4 shadow-xl shadow-black/10 ring-1 ring-inset ring-white/5 sm:flex-row sm:justify-between sm:p-5">
         {/* IP + copy */}
         <button
           type="button"
           onClick={copyIp}
           title="Nhấn để sao chép IP"
-          className="group flex items-center gap-3 rounded-xl bg-surface-2 px-4 py-2.5 transition-colors hover:bg-[var(--border)]"
+          className="group flex items-center gap-3 rounded-xl border border-border-c bg-surface-2 px-4 py-2.5 shadow-inner transition-all hover:border-primary/60 hover:shadow-glow"
         >
-          <code className="font-mono text-sm font-semibold text-fg sm:text-base">{info.ip}</code>
+          <code className="font-mono text-sm font-bold text-primary sm:text-base">{info.ip}</code>
           <span className="text-muted transition-transform group-hover:scale-110">📋</span>
         </button>
 
         {/* Trạng thái */}
         <div className="flex flex-wrap items-center justify-center gap-3 text-sm">
           <span className="flex items-center gap-2">
-            <span
-              className={`h-2.5 w-2.5 rounded-full ${
-                unknown
-                  ? 'bg-gray-400 animate-pulse'
-                  : isOnline
-                    ? 'bg-emerald-500'
-                    : 'bg-red-500'
-              }`}
-            />
+            <span className="relative flex h-2.5 w-2.5">
+              {!unknown && isOnline && (
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-70" />
+              )}
+              <span
+                className={`relative inline-flex h-2.5 w-2.5 rounded-full ${
+                  unknown
+                    ? 'bg-gray-400 animate-pulse'
+                    : isOnline
+                      ? 'bg-emerald-500 shadow-[0_0_8px_rgba(52,211,153,0.9)]'
+                      : 'bg-red-500'
+                }`}
+              />
+            </span>
             <span className="text-muted">
               {unknown ? 'Chưa có dữ liệu' : isOnline ? 'Online' : 'Offline'}
             </span>
