@@ -1,4 +1,5 @@
 import Logo from '@/components/Logo'
+import { Copy } from 'lucide-react'
 import { DEFAULT_FOOTER, DEFAULT_SERVER_INFO } from '@/data/site'
 
 /**
@@ -21,8 +22,13 @@ export const Footer = ({ columns = [], socials = [], copyright = '', ip = '' }) 
   const serverIp = ip || DEFAULT_SERVER_INFO.ip
 
   return (
-    <footer className="mt-24 border-t border-border-c bg-surface">
-      <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
+    <footer className="relative mt-24 overflow-hidden border-t border-border-c bg-surface">
+      {/* Ambient glow tinh tế đầu footer */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-32" aria-hidden>
+        <span className="ambient-orb left-[15%] top-[-60px] h-32 w-96 opacity-60" style={{ background: 'var(--glow-primary)' }} />
+        <span className="ambient-orb right-[10%] top-[-70px] h-32 w-80 opacity-50" style={{ background: 'var(--glow-accent)' }} />
+      </div>
+      <div className="relative mx-auto max-w-7xl px-4 py-12 sm:px-6">
         {/* Khu vực chính */}
         <div className="grid gap-10 sm:grid-cols-2 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
           {/* Logo + mô tả + IP */}
@@ -39,9 +45,10 @@ export const Footer = ({ columns = [], socials = [], copyright = '', ip = '' }) 
                 type="button"
                 title="Nhấn để sao chép IP"
                 onClick={() => navigator.clipboard?.writeText(serverIp)}
-                className="mt-4 inline-flex items-center gap-2 rounded-lg border border-border-c bg-surface-2 px-3 py-1.5 font-mono text-xs text-fg transition-colors hover:border-primary/50"
+                className="group/ip mt-4 inline-flex items-center gap-2 rounded-xl border border-border-c bg-surface-2 px-3 py-2 font-mono text-xs text-fg transition-all hover:border-primary/50 hover:shadow-[0_0_16px_-6px_var(--glow-primary)] active:scale-[0.98]"
               >
-                📋 {serverIp}
+                <Copy className="h-3.5 w-3.5 text-muted transition-colors group-hover/ip:text-primary" />
+                {serverIp}
               </button>
             )}
           </div>

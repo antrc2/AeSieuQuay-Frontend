@@ -158,6 +158,21 @@ export const AdminServersPage = () => {
                       <p className={s.points_enabled ? 'text-emerald-500' : 'text-muted'}>
                         Points: {s.role === 'proxy' ? '—' : s.points_enabled ? 'bật' : 'tắt'}
                       </p>
+                      {/* doc v2 §5 — 2 flag widget home / chuyển xu */}
+                      {s.display_public && (
+                        <div>
+                          <Badge variant="brand" title="Server nguồn widget Trạng thái máy chủ trang home (toàn hệ thống tối đa 1)">
+                            🏠 Public
+                          </Badge>
+                        </div>
+                      )}
+                      {s.lobby_display && (
+                        <div>
+                          <Badge variant="success" title="Lobby của cụm dùng cho trang /chuyen-xu (tối đa 1/cụm)">
+                            💱 Lobby chuyển xu
+                          </Badge>
+                        </div>
+                      )}
                       {s.maintenance_mode && <Badge variant="warning">maintenance</Badge>}
                     </Td>
                     <Td className="space-y-1">
@@ -217,6 +232,9 @@ type ServerForm = {
   maintenance_mode: boolean
   is_active: boolean
   sort_order: string
+  // doc v2 §5 — flag widget (null = server chưa từng được chọn, backend coi như false)
+  display_public: boolean
+  lobby_display: boolean
 }
 
 export const ServerFormModal = ({
@@ -247,6 +265,8 @@ export const ServerFormModal = ({
     maintenance_mode: server?.maintenance_mode ?? false,
     is_active: server ? server.is_active : true,
     sort_order: server ? String(server.sort_order) : '0',
+    display_public: server?.display_public ?? false,
+    lobby_display: server?.lobby_display ?? false,
   }))
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [busy, setBusy] = useState(false)
@@ -283,6 +303,9 @@ export const ServerFormModal = ({
       points_enabled: form.role === 'proxy' ? false : form.points_enabled,
       maintenance_mode: form.maintenance_mode,
       sort_order: Number(form.sort_order || 0),
+      // doc v2 §5: luôn gửi 2 flag (null/false = bỏ chọn; backend tự gỡ server cũ khi bật server mới)
+      display_public: form.display_public,
+      lobby_display: form.lobby_display,
     }
     if (isEdit) body.is_active = form.is_active
     try {
@@ -414,6 +437,19 @@ export const ServerFormModal = ({
               </label>
             )}
           </div>
+        </Field>
+        {/* doc v2 §5 — 2 flag widget; thay đổi flag tự invalidate cache home/status phía backend */}
+        <Field label="Widget trang chủ" hint="Server nguồn cho block 'Trạng thái máy chủ' — toàn hệ thống tối đa 1, bật server mới sẽ tự gỡ server cũ.">
+          <label className="flex h-9 cursor-pointer items-center gap-2 text-sm">
+            <input type="checkbox" checked={form.display_public} onChange={(e) => set('display_public', e.target.checked)} className="h-4 w-4 accent-[var(--primary)]" />
+            display_public 🏠
+          </label>
+        </Field>
+        <Field label="Lobby chuyển xu" hint="Lobby của cụm hiển thị trên /chuyen-xu — tối đa 1 mỗi cụm.">
+          <label className="flex h-9 cursor-pointer items-center gap-2 text-sm">
+            <input type="checkbox" checked={form.lobby_display} onChange={(e) => set('lobby_display', e.target.checked)} className="h-4 w-4 accent-[var(--primary)]" />
+            lobby_display 💱
+          </label>
         </Field>
       </div>
     </Modal>

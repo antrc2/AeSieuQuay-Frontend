@@ -1,4 +1,18 @@
 import { NavLink, Outlet } from 'react-router-dom'
+import {
+  LayoutDashboard,
+  Layers,
+  Server,
+  KeyRound,
+  Gamepad2,
+  Landmark,
+  Gift,
+  Coins,
+  Ticket,
+  Users,
+  Activity,
+  Home,
+} from 'lucide-react'
 
 import Logo from '@/components/Logo'
 import ThemeToggle from '@/components/theme/ThemeToggle'
@@ -19,59 +33,71 @@ import { cn } from '@/lib/utils'
  * /dang-nhap — Forbidden đã có sẵn lối "Đăng nhập lại".
  */
 /** Sidebar chia nhóm — mỗi nhóm một label nhỏ, items là NavLink hiện có. */
-const NAV_GROUPS: { label: string; items: { to: string; label: string; end?: boolean; icon: string }[] }[] = [
+const NAV_GROUPS: { label: string; items: { to: string; label: string; end?: boolean; icon: typeof LayoutDashboard }[] }[] = [
   {
     label: 'Tổng quan',
-    items: [{ to: '/admin', label: 'Dashboard', end: true, icon: '📊' }],
+    items: [{ to: '/admin', label: 'Dashboard', end: true, icon: LayoutDashboard }],
   },
   {
     label: 'Hạ tầng',
     items: [
-      { to: '/admin/clusters', label: 'Cụm máy chủ', icon: '🗂️' },
-      { to: '/admin/servers', label: 'Server', icon: '🖥️' },
-      { to: '/admin/keys', label: 'API key', icon: '🔑' },
+      { to: '/admin/clusters', label: 'Cụm máy chủ', icon: Layers },
+      { to: '/admin/servers', label: 'Server', icon: Server },
+      { to: '/admin/keys', label: 'API key', icon: KeyRound },
     ],
   },
   {
     label: 'Nội dung',
-    items: [{ to: '/admin/game-modes', label: 'Máy chủ game', icon: '🎮' }],
+    items: [{ to: '/admin/game-modes', label: 'Máy chủ game', icon: Gamepad2 }],
   },
   {
     label: 'Tài chính',
     items: [
-      { to: '/admin/bank-deposits', label: 'Nạp bank', icon: '🏦' },
-      { to: '/admin/promotions', label: 'Khuyến mãi nạp', icon: '🎁' },
-      { to: '/admin/points-history', label: 'Lịch sử points', icon: '🪙' },
-      { to: '/admin/card-transactions', label: 'Thẻ cào', icon: '🎫' },
+      { to: '/admin/bank-deposits', label: 'Nạp bank', icon: Landmark },
+      { to: '/admin/promotions', label: 'Khuyến mãi nạp', icon: Gift },
+      { to: '/admin/points-history', label: 'Lịch sử points', icon: Coins },
+      { to: '/admin/card-transactions', label: 'Thẻ cào', icon: Ticket },
     ],
   },
   {
     label: 'Người dùng',
-    items: [{ to: '/admin/users', label: 'Tài khoản', icon: '👥' }],
+    items: [{ to: '/admin/users', label: 'Tài khoản', icon: Users }],
   },
   {
     label: 'Giám sát',
-    items: [{ to: '/admin/monitor', label: 'Monitor', icon: '📈' }],
+    items: [{ to: '/admin/monitor', label: 'Monitor', icon: Activity }],
   },
 ]
 
 const NAV = NAV_GROUPS.flatMap((g) => g.items)
 
-const NavItem = ({ item }: { item: { to: string; label: string; end?: boolean; icon: string } }) => (
+const NavItem = ({ item }: { item: { to: string; label: string; end?: boolean; icon: typeof LayoutDashboard } }) => (
   <NavLink
     to={item.to}
     end={item.end}
     className={({ isActive }) =>
       cn(
-        'flex shrink-0 items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium transition-colors',
-        isActive ? 'bg-primary-soft text-primary' : 'text-muted hover:bg-surface-2 hover:text-fg',
+        'group/nav relative flex shrink-0 items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium transition-all duration-150',
+        isActive
+          ? 'bg-gradient-to-r from-primary/15 via-primary/8 to-transparent text-primary'
+          : 'text-muted hover:bg-white/[0.04] hover:text-fg dark:hover:bg-white/[0.04]',
       )
     }
   >
-    <span aria-hidden className="w-4 text-center text-base leading-none opacity-80">
-      {item.icon}
-    </span>
-    {item.label}
+    {({ isActive }) => (
+      <>
+        {/* Vạch active glow bên trái */}
+        <span
+          aria-hidden
+          className={cn(
+            'absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-primary transition-all',
+            isActive ? 'opacity-100 shadow-[0_0_8px_rgba(99,102,241,0.7)]' : 'opacity-0',
+          )}
+        />
+        <item.icon aria-hidden className={cn('h-4 w-4 shrink-0 transition-colors', isActive ? 'text-primary' : 'opacity-70 group-hover/nav:opacity-100')} />
+        {item.label}
+      </>
+    )}
   </NavLink>
 )
 
@@ -104,9 +130,9 @@ export const AdminLayout = () => {
     <div className="min-h-screen bg-bg text-fg">
       <div className="mx-auto flex max-w-[1400px] flex-col gap-4 px-3 py-4 sm:px-5 lg:flex-row lg:gap-6 lg:px-6 lg:py-6">
         {/* Sidebar: sticky trên desktop, nav ngang trên mobile */}
-        <aside className="shrink-0 lg:sticky lg:top-6 lg:flex lg:h-[calc(100vh-3rem)] lg:w-56 lg:flex-col">
-          <div className="flex items-center justify-between gap-3 lg:block">
-            <div className="flex min-w-0 items-center gap-2.5">
+        <aside className="shrink-0 lg:sticky lg:top-6 lg:flex lg:h-[calc(100vh-3rem)] lg:w-60 lg:flex-col">
+          <div className="flex items-center justify-between gap-3 rounded-2xl border border-border-c bg-surface/80 p-3 backdrop-blur-xl lg:block lg:border-none lg:bg-transparent lg:p-0 lg:backdrop-blur-none">
+            <div className="flex min-w-0 items-center gap-2.5 lg:px-1">
               <Logo size="sm" textOnly linkTo={null} className="shrink-0" />
               <div className="min-w-0">
                 <p className="truncate text-sm font-extrabold leading-tight tracking-tight text-fg">Quản trị</p>
@@ -118,7 +144,10 @@ export const AdminLayout = () => {
             </div>
           </div>
 
-          <nav aria-label="Menu quản trị" className="mt-3 lg:mt-5 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
+          <nav
+            aria-label="Menu quản trị"
+            className="mt-3 lg:mt-5 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:rounded-2xl lg:border lg:border-border-c lg:bg-surface/70 lg:p-2.5 lg:backdrop-blur-xl"
+          >
             {/* mobile: 1 hàng dọc ngang cuộn được, không label nhóm */}
             <div className="flex gap-1 overflow-x-auto pb-1 lg:hidden">
               {NAV.map((item) => (
@@ -129,7 +158,7 @@ export const AdminLayout = () => {
             <div className="hidden space-y-4 lg:block">
               {NAV_GROUPS.map((group) => (
                 <div key={group.label}>
-                  <p className="px-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-muted opacity-70">
+                  <p className="px-3 pb-1 text-[10px] font-bold uppercase tracking-[0.12em] text-muted opacity-70">
                     {group.label}
                   </p>
                   <div className="space-y-0.5">
@@ -144,8 +173,8 @@ export const AdminLayout = () => {
 
           {/* Chân sidebar: user + lối ra (desktop) */}
           <div className="mt-4 hidden border-t border-border-c pt-4 lg:block">
-            <div className="flex items-center gap-2.5 rounded-xl bg-surface-2 px-3 py-2.5">
-              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary text-sm font-bold text-white">
+            <div className="flex items-center gap-2.5 rounded-xl border border-border-c bg-surface-2/60 px-3 py-2.5 backdrop-blur">
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-gradient-to-br from-primary to-primary-strong text-sm font-bold text-white shadow-[0_0_12px_rgba(99,102,241,0.35)]">
                 {displayName.charAt(0).toUpperCase()}
               </span>
               <div className="min-w-0">
@@ -155,8 +184,11 @@ export const AdminLayout = () => {
             </div>
             <div className="mt-2 flex items-center justify-between px-1">
               {/* Ra khỏi khu admin: full reload về trang thường */}
-              <a href="/" className="text-sm font-medium text-muted transition-colors hover:text-fg">
-                ← Về website
+              <a
+                href="/"
+                className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-sm font-medium text-muted transition-colors hover:bg-surface-2 hover:text-fg"
+              >
+                <Home className="h-3.5 w-3.5" /> Về website
               </a>
               <ThemeToggle />
             </div>

@@ -10,7 +10,7 @@ export function ServerConCard({ mode }: { mode: GameModeSummary }) {
   return (
     <a
       href={`/may-chu/${mode.slug}`}
-      className="group block h-full overflow-hidden rounded-2xl border border-border-c bg-surface transition hover:-translate-y-0.5 hover:border-primary/60"
+      className="card-lift group block h-full overflow-hidden rounded-2xl border border-border-c bg-surface"
     >
       {mode.image ? (
         <img

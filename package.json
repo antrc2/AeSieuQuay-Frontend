@@ -26,6 +26,8 @@
     "axios": "^1.20.0",
     "codemirror": "^6.0.2",
     "date-fns": "^4.4.0",
+    "framer-motion": "^14.7.1",
+    "lucide-react": "^1.64.0",
     "postcss": "^8.5.31",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",

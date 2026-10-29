@@ -79,6 +79,10 @@ interface MockServer {
   auto_created: boolean
   points_enabled: boolean
   sort_order: number
+  /** doc v2 §5 — server nguồn widget home (toàn hệ thống tối đa 1) */
+  display_public: boolean | null
+  /** doc v2 §5 — lobby của cụm cho /chuyen-xu (tối đa 1/cụm) */
+  lobby_display: boolean | null
   created_at: string | null
   updated_at: string | null
 }
@@ -153,6 +157,10 @@ const state = {
       server_impl: 'Paper',
       max_players: 200,
       sort_order: 1,
+      // doc v2 §5 mock: lobby-1 đang là nguồn widget home (admin_picked=true)
+      // VÀ lobby chuyển xu của cụm 1 — test cả 2 badge cột Flags.
+      display_public: true,
+      lobby_display: true,
     }),
     mkServer({
       id: 3,
@@ -376,6 +384,8 @@ function mkServer(p: Partial<MockServer> & { id: number }): MockServer {
     auto_created: false,
     points_enabled: p.role === 'proxy' ? false : true,
     sort_order: p.id,
+    display_public: null,
+    lobby_display: null,
     created_at: msAgo(60 * 24 * 20),
     updated_at: msAgo(60 * 24 * 2),
     ...p,
@@ -623,6 +633,26 @@ export const adminMock = {
     for (const field of ['name', 'group_slug', 'host', 'port', 'mc_version', 'server_impl', 'motd', 'max_players', 'description', 'image_url', 'monitoring_enabled', 'maintenance_mode', 'is_active', 'sort_order']) {
       if (patch[field] !== undefined) (s as AnyObj)[field] = patch[field]
     }
+    // doc v2 §5 — semantics do backend guarantee, mock mô phỏng lại:
+    // display_public: toàn hệ thống tối đa 1 (bật server mới tự gỡ server cũ)
+    if (patch.display_public !== undefined) {
+      const on = patch.display_public === true
+      if (!on) s.display_public = null
+      else {
+        for (const x of state.servers) if (x.id !== s.id && x.display_public) x.display_public = null
+        s.display_public = true
+      }
+    }
+    // lobby_display: tối đa 1/cụm, chỉ role lobby
+    if (patch.lobby_display !== undefined) {
+      const on = patch.lobby_display === true
+      if (on && (patch.role ?? s.role) !== 'lobby') fail('lobby_display chỉ áp dụng cho server role lobby', 400, 'bad_request')
+      if (!on) s.lobby_display = null
+      else {
+        for (const x of state.servers) if (x.id !== s.id && x.cluster_id === s.cluster_id && x.lobby_display) x.lobby_display = null
+        s.lobby_display = true
+      }
+    }
     if (s.role === 'proxy') s.points_enabled = false
     s.updated_at = nowIso()
     return serverView(s)
@@ -634,6 +664,25 @@ export const adminMock = {
     s.is_active = false
     s.updated_at = nowIso()
     return null
+  },
+
+  /* ================= cache refresh (doc v2 §6) ================= */
+
+  /** Mock cooldown Y HỆ THỐNG như Redis lock thật: bấm dồn dập trong 15s → 429. */
+  _cacheLockUntil: 0 as number,
+  async refreshPublicCache() {
+    await wait()
+    const now = Date.now()
+    if (now < adminMock._cacheLockUntil) {
+      fail('Vừa làm xong, chờ ít giây rồi bấm lại', 429, 'too_many_requests')
+    }
+    adminMock._cacheLockUntil = now + 15_000
+    return {
+      refreshed: ['web:home', 'web:stats:*', 'web:status:*', 'web:donators'],
+      errors: {},
+      lock_ttl_seconds: 15,
+      message: 'Đã làm mới 4 khối cache',
+    }
   },
 
   /* ================= server keys ================= */

@@ -70,6 +70,12 @@ export interface AdminServer {
   monitor_key_rotated_at: string | null
   points_key_rotated_at: string | null
   sort_order: number
+  /** doc v2 §5: server NGUỒN cho widget `server_status` trang home.
+   *  Toàn hệ thống tối đa 1 (backend guarantee — bật server mới tự gỡ server cũ).
+   *  `null`/`false` = bỏ chọn. Thay đổi flag tự invalidate cache home. */
+  display_public: boolean | null
+  /** doc v2 §5: lobby của CỤM dùng cho trang /chuyen-xu (tối đa 1/cụm). */
+  lobby_display: boolean | null
   created_at: string | null
   updated_at: string | null
 }
@@ -99,6 +105,10 @@ export interface ServerDraft {
   monitoring_enabled?: boolean
   points_enabled?: boolean | null
   sort_order?: number
+  /** doc v2 §5 — xem `AdminServer.display_public` */
+  display_public?: boolean | null
+  /** doc v2 §5 — xem `AdminServer.lobby_display` */
+  lobby_display?: boolean | null
 }
 
 export interface ClusterCreateBody {
@@ -154,6 +164,19 @@ export const deleteCluster = async (id: number): Promise<null> => {
 
 /* ================= Servers ================= */
 
+/** doc v2 §6: response `POST /api/admin/cache/refresh`. Backend LUÔN trả 200
+ *  kể cả khi một producer lỗi — phần hỏng nằm trong `errors` (map key → message). */
+export interface CacheRefreshResult {
+  /** các key Redis đã set lại, vd. ["web:home", "web:stats:*", "web:status:*", "web:donators"] */
+  refreshed: string[]
+  /** rỗng = tất cả OK; mỗi entry = một khối cache producer lỗi */
+  errors: Record<string, string>
+  /** anti-spam lock Redis — FE dùng đúng số này cho cooldown nút (fallback 15) */
+  lock_ttl_seconds: number
+  /** envelope.message backend (vd "Đã làm mới 4 khối cache") — FE toast nguyên văn */
+  message?: string
+}
+
 export interface ServerListQuery {
   cluster_id?: number | ''
   role?: string
@@ -186,6 +209,30 @@ export const deleteServer = async (id: number): Promise<null> => {
   if (useAdminMock) return mock.deleteServer(id)
   await apiDelete(`/admin/servers/${id}`)
   return null
+}
+
+/* ================= Cache refresh (doc v2 §6) ================= */
+
+/**
+ * POST /api/admin/cache/refresh — "Làm mới dữ liệu" trang admin.
+ * KHÔNG phải clear: backend chủ động query DB + SET lại toàn bộ cache public,
+ * request kế tiếp ăn cache fresh ngay (không có cửa sổ cache lạnh).
+ *
+ * Anti-spam: Redis lock `lock_ttl_seconds` (15s) — bấm dồn dập → 429
+ * `too_many_requests`. FE guard bằng cooldown + sessionStorage trước khi gọi.
+ * Luôn HTTP 200 kể cả một phần producer lỗi — lỗi nằm trong `data.errors`.
+ */
+export const refreshPublicCache = async (): Promise<CacheRefreshResult> => {
+  if (useAdminMock) return mock.refreshPublicCache()
+  // Interceptor client trả thẳng ENVELOPE `{ success, code, message, data }`
+  // (khác `unwrap()` các hàm khác — ở đây cần cả `message` để toast nguyên văn).
+  const env: any = await apiPost('/admin/cache/refresh')
+  return {
+    refreshed: env?.data?.refreshed ?? [],
+    errors: env?.data?.errors ?? {},
+    lock_ttl_seconds: Number(env?.data?.lock_ttl_seconds) || 15,
+    message: env?.message ?? '',
+  }
 }
 
 /* ================= Server keys ================= */

@@ -8,6 +8,7 @@ import {
   listServers,
   monitorOverview,
   monitorServers,
+  refreshPublicCache,
   type AdminCluster,
   type AdminServer,
   type MonitorOverview,
@@ -20,8 +21,22 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/States'
 import { fmtBytes, fmtNumber, fmtTime, timeAgo } from '@/lib/format'
 import { cn } from '@/lib/utils'
+import { showApiError, showSuccess } from '@/utils/swal'
 
 const REFRESH_MS = 15_000
+
+/* doc v2 §6 — cooldown nút "Làm mới dữ liệu" khớp Redis lock backend (15s).
+   Persist qua sessionStorage: F5 hoặc chuyển tab admin không mất khoá. */
+const CACHE_LOCK_KEY = 'admin:cache-refresh-lock-until'
+const DEFAULT_LOCK_TTL_S = 15
+
+const readCacheLockUntil = (): number => {
+  try {
+    return Number(sessionStorage.getItem(CACHE_LOCK_KEY)) || 0
+  } catch {
+    return 0
+  }
+}
 
 export const AdminOverviewPage = () => {
   useSeo({ title: 'Quản trị — Tổng quan — SV AeSieuQuay', noindex: true })
@@ -35,6 +50,61 @@ export const AdminOverviewPage = () => {
   const [loading, setLoading] = useState(true)
   const [updatedAt, setUpdatedAt] = useState<number | null>(null)
   const aliveRef = useRef(true)
+
+  /* ---- cache refresh button state (doc v2 §6) ---- */
+  const [cacheBusy, setCacheBusy] = useState(false)
+  const [lockUntil, setLockUntil] = useState<number>(readCacheLockUntil)
+  const [lockLeft, setLockLeft] = useState(0)
+
+  // tick countdown cooldown (kể cả khi quay lại tab từ sessionStorage lock)
+  useEffect(() => {
+    if (lockUntil <= Date.now()) {
+      setLockLeft(0)
+      return
+    }
+    const tick = () => setLockLeft(Math.max(0, Math.ceil((lockUntil - Date.now()) / 1000)))
+    tick()
+    const t = setInterval(tick, 1000)
+    return () => clearInterval(t)
+  }, [lockUntil])
+
+  const doCacheRefresh = async () => {
+    if (cacheBusy || lockLeft > 0) return
+    setCacheBusy(true)
+    try {
+      const res = await refreshPublicCache()
+      const ttl = res.lock_ttl_seconds || DEFAULT_LOCK_TTL_S
+      const until = Date.now() + ttl * 1000
+      setLockUntil(until)
+      try {
+        sessionStorage.setItem(CACHE_LOCK_KEY, String(until))
+      } catch {
+        /* private mode — cooldown chỉ sống trong memory, không sao */
+      }
+      const errorEntries = Object.entries(res.errors ?? {})
+      if (errorEntries.length > 0) {
+        // một phần producer lỗi → backend vẫn trả 200; FE toast cảnh báo + list errors
+        const { default: Swal } = await import('sweetalert2')
+        void Swal.fire({
+          icon: 'warning',
+          title: 'Làm mới một phần',
+          html:
+            `<p>${res.refreshed.length} khối OK · ${errorEntries.length} lỗi:</p>` +
+            `<ul style="text-align:left;font-size:13px;margin-top:8px">` +
+            errorEntries.map(([k, msg]) => `<li><code>${k}</code>: ${msg}</li>`).join('') +
+            '</ul>',
+          timer: 4000,
+        })
+      } else {
+        await showSuccess(res.message || `Đã làm mới ${res.refreshed.length} khối cache`, '')
+      }
+      load() // kéo lại dữ liệu admin sau khi cache public fresh
+    } catch (err) {
+      await showApiError(err, 'Không làm mới được cache')
+    } finally {
+      setCacheBusy(false)
+    }
+  }
 
   const load = useCallback(async () => {
     try {
@@ -114,9 +184,20 @@ export const AdminOverviewPage = () => {
           </span>
         }
         actions={
-          <Button variant="outline" onClick={load}>
-            Làm mới ngay
-          </Button>
+          <div className="flex items-center gap-2">
+            {/* doc v2 §6 — "Làm mới dữ liệu": set lại toàn bộ cache public, cooldown = lock_ttl_seconds */}
+            <Button
+              variant="secondary"
+              onClick={doCacheRefresh}
+              disabled={cacheBusy || lockLeft > 0}
+              title={lockLeft > 0 ? `Chống spam — còn ${lockLeft}s` : 'Truy vấn DB và set lại cache trang công khai (home/stats/status/donators)'}
+            >
+              {cacheBusy ? 'Đang làm mới…' : lockLeft > 0 ? `Làm mới dữ liệu (${lockLeft}s)` : '♻️ Làm mới dữ liệu'}
+            </Button>
+            <Button variant="outline" onClick={load}>
+              Làm mới ngay
+            </Button>
+          </div>
         }
       />
 

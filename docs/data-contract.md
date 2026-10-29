@@ -178,6 +178,18 @@ Backend **phải trả HTTP 404** cho trường hợp này. Frontend render tran
 
 Không cần payload riêng; vẫn nên gửi `site` để Header/Footer đúng.
 
+**Yêu cầu bắt buộc cho Turnstile (doc v2 §3):** backend nhét `captcha` vào payload trang auth:
+
+```jsonc
+{ "page": "auth", "payload": { "captcha": { "site_key": "0xAAA...|null" } } }
+```
+
+- `site_key === null` (hoặc thiếu block) = captcha TẮT → FE ẩn widget, submit thẳng (dev).
+- FE (`getCaptchaConfig()` trong `src/data/index.ts`) đọc cả 2 shape: payload phẳng
+  `{ captcha: {...} }` lẫn envelope `{ page: 'auth', payload: { captcha } }`.
+- Form login/register gửi kèm `captcha_token` trong body khi widget bật; xử lý mã lỗi
+  `400 captcha_failed` (reset widget) và `503 captcha_unavailable` (giới hạn retry).
+
 ## 4. SEO
 
 - Backend render `<title>`, `meta[name=description]`, `link[rel=canonical]`, OG/Twitter,

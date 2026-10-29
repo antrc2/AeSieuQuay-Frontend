@@ -6,7 +6,10 @@ import DataUnavailable from '@/components/ui/DataUnavailable'
 import { getHomePageData, type HomePayload } from '@/data'
 import { cn } from '@/lib/utils'
 import ClusterStatsStrip from '@/components/stats/ClusterStatsStrip'
+import ServerStatusWidget from '@/components/stats/ServerStatusWidget'
+import TopDonators from '@/components/donators/TopDonators'
 import ServerConCard from '@/components/game/ServerConCard'
+import { formatAddress } from '@/lib/siteAddress'
 
 /* ================= Helpers ================= */
 
@@ -57,7 +60,7 @@ const SURROUND_SLOTS = [
   'bottom-[14%] right-[2%] w-16 -rotate-3 xl:w-20',
 ]
 
-const Hero = ({ hero = {}, serverInfo = {} }: { hero?: HomePayload['hero']; serverInfo?: HomePayload['server_info'] }) => {
+const Hero = ({ hero = {}, serverStatus, serverInfo = {} }: { hero?: HomePayload['hero']; serverStatus?: HomePayload['server_status']; serverInfo?: HomePayload['server_info'] }) => {
 
   // Ảnh thật (URL https:// đầy đủ) — 0 ảnh → gradient, 1 ảnh → 1 card, > 1 → coverflow
   const rawSlides = (hero.images ?? []).filter((img) => img.src) as Array<{
@@ -94,8 +97,11 @@ const Hero = ({ hero = {}, serverInfo = {} }: { hero?: HomePayload['hero']; serv
     }
   }, [playModalOpen])
 
+  // Doc v2 §1: IP lấy từ server_status (fallback server_info), chỉ nối :port khi ≠ 25565.
+  const displayIp = formatAddress(serverStatus?.ip ?? serverInfo?.ip, serverStatus?.port)
+
   const copyIp = async () => {
-    const ip = serverInfo?.ip
+    const ip = displayIp
     if (!ip) return
     try {
       await navigator.clipboard.writeText(ip)
@@ -125,17 +131,12 @@ const Hero = ({ hero = {}, serverInfo = {} }: { hero?: HomePayload['hero']; serv
 
   return (
     <section className="relative overflow-hidden">
-      {/* Nền gradient + lưới mờ */}
-      <div className="absolute inset-0">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_-10%,rgba(30,144,255,0.35),transparent),radial-gradient(ellipse_40%_40%_at_80%_20%,rgba(124,58,237,0.22),transparent)]" />
-        <div
-          className="absolute inset-0 opacity-[0.04]"
-          style={{
-            backgroundImage:
-              'linear-gradient(var(--fg) 1px, transparent 1px), linear-gradient(90deg, var(--fg) 1px, transparent 1px)',
-            backgroundSize: '44px 44px',
-          }}
-        />
+      {/* Nền ambient: glow orbs trôi chậm + lưới mờ (dark-first) */}
+      <div className="absolute inset-0" aria-hidden>
+        <span className="ambient-orb animate-float-slow left-[-10%] top-[-20%] h-[420px] w-[420px]" style={{ background: 'var(--glow-primary)' }} />
+        <span className="ambient-orb animate-float-slow right-[-8%] top-[10%] h-[360px] w-[360px] [animation-delay:-4s]" style={{ background: 'var(--glow-accent)' }} />
+        <div className="bg-grid absolute inset-0" />
+        <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-b from-transparent to-bg" />
       </div>
 
       <div className="relative mx-auto max-w-7xl px-4 pb-16 pt-20 sm:px-6 sm:pb-24 sm:pt-28">
@@ -144,12 +145,12 @@ const Hero = ({ hero = {}, serverInfo = {} }: { hero?: HomePayload['hero']; serv
           <div className="text-center lg:text-left">
             {/* Badge */}
             {hero.tagline && (
-              <span className="mb-5 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary-soft px-4 py-1.5 text-xs font-semibold text-primary">
+              <span className="mb-5 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary-soft px-4 py-1.5 text-xs font-semibold text-primary shadow-[0_0_20px_-6px_var(--glow-primary)]">
                 🟩 {hero.tagline}
               </span>
             )}
 
-            <h1 className="mx-auto max-w-3xl text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl lg:mx-0 xl:text-6xl">
+            <h1 className="glow-text mx-auto max-w-3xl text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl lg:mx-0 xl:text-6xl">
               <span className="text-gradient-brand">{hero.name || 'SV AeSieuQuay'}</span>
             </h1>
 
@@ -159,12 +160,36 @@ const Hero = ({ hero = {}, serverInfo = {} }: { hero?: HomePayload['hero']; serv
               </p>
             )}
 
+            {/* Dải IP nhanh — copy one-click theo doc v2 §1 */}
+            {displayIp && (
+              <button
+                type="button"
+                onClick={copyIp}
+                title={`Sao chép ${displayIp}`}
+                className="glass glow-ring mx-auto mt-6 flex max-w-md items-center justify-between gap-3 rounded-2xl px-4 py-2.5 text-left transition-all hover:scale-[1.01] active:scale-[0.99] lg:mx-0"
+              >
+                <span className="flex items-center gap-2.5">
+                  <span className={cn(
+                    'h-2.5 w-2.5 shrink-0 rounded-full',
+                    serverStatus?.status === 'online' && 'bg-emerald-500 shadow-[0_0_10px_2px_rgba(16,185,129,0.6)]',
+                    serverStatus?.status === 'offline' && 'bg-red-500',
+                    serverStatus?.status === 'maintenance' && 'bg-amber-400',
+                    !serverStatus && 'bg-muted',
+                  )} />
+                  <code className="font-mono text-sm font-semibold text-fg sm:text-base">{displayIp}</code>
+                </span>
+                <span className={cn('shrink-0 rounded-lg px-2.5 py-1 text-xs font-bold', ipCopied ? 'bg-emerald-500/15 text-emerald-500' : 'bg-primary text-white')}>
+                  {ipCopied ? 'Đã copies ✓' : 'Copy IP'}
+                </span>
+              </button>
+            )}
+
             {/* CTA */}
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row lg:justify-start">
               <button
                 type="button"
                 onClick={() => setPlayModalOpen(true)}
-                className="w-full max-w-[240px] rounded-xl bg-primary px-8 py-3 text-base font-semibold text-white shadow-lg shadow-primary/30 transition-all hover:bg-primary-strong active:scale-[0.98] sm:w-auto"
+                className="w-full max-w-[240px] rounded-xl bg-gradient-to-r from-primary to-accent px-8 py-3 text-base font-semibold text-white shadow-lg shadow-primary/30 transition-all hover:shadow-xl hover:shadow-primary/40 hover:brightness-110 active:scale-[0.98] sm:w-auto"
               >
                 {hero.cta?.primary || 'Chơi ngay'}
               </button>
@@ -335,7 +360,7 @@ const Hero = ({ hero = {}, serverInfo = {} }: { hero?: HomePayload['hero']; serv
             </p>
             <div className="mt-5 flex items-center gap-2 rounded-xl border border-border-c bg-surface-2 px-4 py-2.5">
               <code className="flex-1 text-center font-mono text-sm text-fg sm:text-base">
-                {serverInfo?.ip || '—'}
+                {displayIp || '—'}
               </code>
               <button
                 type="button"
@@ -368,92 +393,9 @@ const Hero = ({ hero = {}, serverInfo = {} }: { hero?: HomePayload['hero']; serv
   )
 }
 
-/* ========== Server info bar ========== */
-
-const ServerInfoBar = ({ info = {} }: { info?: HomePayload['server_info'] }) => {
-  const [copied, setCopied] = useState(false)
-
-  // Trạng thái server: online = true/false; players/version null = chưa có dữ liệu
-  const isOnline = info.online === true
-  const unknown = info.online == null
-
-  const copyIp = async () => {
-    try {
-      await navigator.clipboard.writeText(info.ip)
-    } catch {
-      const el = document.createElement('textarea')
-      el.value = info.ip
-      document.body.appendChild(el)
-      el.select()
-      document.execCommand('copy')
-      document.body.removeChild(el)
-    }
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2500)
-  }
-
-  return (
-    <section className="mx-auto -mt-6 max-w-4xl px-4 sm:px-6">
-      <div className="flex flex-col items-center gap-4 rounded-2xl border border-border-c bg-surface p-4 shadow-lg shadow-black/5 sm:flex-row sm:justify-between sm:p-5">
-        {/* IP + copy */}
-        <button
-          type="button"
-          onClick={copyIp}
-          title="Nhấn để sao chép IP"
-          className="group flex items-center gap-3 rounded-xl bg-surface-2 px-4 py-2.5 transition-colors hover:bg-[var(--border)]"
-        >
-          <code className="font-mono text-sm font-semibold text-fg sm:text-base">{info.ip}</code>
-          <span className="text-muted transition-transform group-hover:scale-110">📋</span>
-        </button>
-
-        {/* Trạng thái */}
-        <div className="flex flex-wrap items-center justify-center gap-3 text-sm">
-          <span className="flex items-center gap-2">
-            <span
-              className={`h-2.5 w-2.5 rounded-full ${
-                unknown
-                  ? 'bg-gray-400 animate-pulse'
-                  : isOnline
-                    ? 'bg-emerald-500'
-                    : 'bg-red-500'
-              }`}
-            />
-            <span className="text-muted">
-              {unknown ? 'Chưa có dữ liệu' : isOnline ? 'Online' : 'Offline'}
-            </span>
-          </span>
-          <span className="h-4 w-px bg-[var(--border)]" />
-          <span className="text-muted">👥 {info.players ? `${info.players.online}/${info.players.max}` : '— / —'}</span>
-          {/* FRONTEND-3 §6.1 — số thật từ ClusterStats (null → ẩn hẳn, không bịa số) */}
-          {info.tps?.avg_1m != null && (
-            <>
-              <span className="h-4 w-px bg-[var(--border)]" />
-              <span className={cn('tabular-nums', info.tps.avg_1m < 18 ? 'text-amber-500' : 'text-muted')}>⚡ TPS {info.tps.avg_1m.toFixed(1)}</span>
-            </>
-          )}
-          {info.uptime?.percent_7d != null && (
-            <>
-              <span className="h-4 w-px bg-[var(--border)]" />
-              <span className="text-muted tabular-nums">🕐 Uptime 7 ngày {info.uptime.percent_7d.toFixed(1)}%</span>
-            </>
-          )}
-          {info.servers?.total != null && (
-            <>
-              <span className="h-4 w-px bg-[var(--border)]" />
-              <span className="text-muted tabular-nums">
-                🖥️ {info.servers.online}/{info.servers.total} node
-              </span>
-            </>
-          )}
-          <span className="h-4 w-px bg-[var(--border)]" />
-          <span className="text-muted">📦 {info.version ? `Phiên bản: ${info.version}` : 'Phiên bản: —'}</span>
-        </div>
-      </div>
-
-      {copied && <Toast message="Đã sao chép IP server!" type="success" />}
-    </section>
-  )
-}
+/* ========== Server info bar (DELETED — Frontend Requirements v2 §1) ==========
+ * ServerInfoBar cũ đọc `server_info` nay được thay bằng <ServerStatusWidget />
+ * đọc khối động `window.DATA.server_status`. `server_info` chỉ còn là fallback ip. */
 
 /* ================= Chế độ chơi =================
  * ≤ 3 mode  → grid căn giữa
@@ -508,7 +450,7 @@ const GameModes = ({
       {/* Tiêu đề — luôn căn giữa */}
       <div className="mb-4 text-center">
         <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
-          {section?.title ?? 'Máy chủ'}
+          <span className="text-gradient-brand">{section?.title ?? 'Máy chủ'}</span>
         </h2>
         {section?.subtitle && (
           <p className="mt-2 text-muted">{section.subtitle}</p>
@@ -602,16 +544,20 @@ const GameModes = ({
 
 const Highlights = ({ section }: { section?: HomePayload['highlights'] }) => (
   <section className="reveal mx-auto mt-20 max-w-6xl px-4 sm:px-6">
-    <h2 className="mb-8 text-center text-3xl font-extrabold tracking-tight sm:text-4xl">
-      {section?.title ?? 'Điểm nổi bật'}
+    <h2 className="text-center text-3xl font-extrabold tracking-tight sm:text-4xl">
+      <span className="text-gradient-brand">{section?.title ?? 'Điểm nổi bật'}</span>
     </h2>
+    <div className="mx-auto mt-3 mb-8 h-1 w-16 rounded-full bg-gradient-to-r from-primary to-accent" />
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {(section?.items ?? []).map((item) => (
         <div
           key={item.title}
-          className="rounded-2xl border border-border-c bg-surface p-5 transition-colors hover:border-primary/40"
+          className="card-lift group relative overflow-hidden rounded-2xl border border-border-c bg-surface p-5"
         >
-          <span className="text-3xl">{item.icon}</span>
+          <div className="absolute -right-6 -top-6 h-20 w-20 rounded-full bg-primary-soft opacity-0 blur-2xl transition-opacity group-hover:opacity-100" />
+          <span className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-surface-2 text-3xl transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-6">
+            {item.icon}
+          </span>
           <h3 className="mt-3 font-bold text-fg">{item.title}</h3>
           <p className="mt-1.5 text-sm leading-relaxed text-muted">{item.desc}</p>
         </div>
@@ -642,7 +588,7 @@ const Gallery = ({ gallery }: { gallery?: HomePayload['gallery'] }) => (
           <figure
             key={img.id ?? i}
             className={cn(
-              'group relative overflow-hidden rounded-xl bg-surface-2',
+              'group relative overflow-hidden rounded-xl border border-border-c/50 bg-surface-2 transition-all duration-300 hover:border-primary/40 hover:shadow-[0_12px_36px_-12px_var(--glow-primary)]',
               i % 5 === 0 ? 'col-span-2 aspect-[2/1]' : 'aspect-square',
             )}
           >
@@ -681,10 +627,15 @@ const Community = ({ community }: { community?: HomePayload['community'] }) => {
   return (
     <section className="reveal mx-auto mt-20 max-w-6xl px-4 sm:px-6">
       <div className="relative overflow-hidden rounded-3xl border border-border-c bg-surface p-8 text-center sm:p-14">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_50%_60%_at_50%_120%,rgba(124,58,237,0.18),transparent),radial-gradient(ellipse_40%_50%_at_20%_0%,rgba(30,144,255,0.15),transparent)]" />
+        <div className="pointer-events-none absolute inset-0" aria-hidden>
+          <span className="ambient-orb left-[5%] top-[-50%] h-72 w-72" style={{ background: 'var(--glow-primary)' }} />
+          <span className="ambient-orb bottom-[-50%] right-[5%] h-72 w-72" style={{ background: 'var(--glow-accent)' }} />
+        </div>
         <div className="relative">
           <span className="text-5xl">💬</span>
-          <h2 className="mt-4 text-3xl font-extrabold tracking-tight sm:text-4xl">{community.title}</h2>
+          <h2 className="mt-4 text-3xl font-extrabold tracking-tight sm:text-4xl">
+            <span className="text-gradient-brand">{community.title}</span>
+          </h2>
           <p className="mx-auto mt-3 max-w-lg text-muted">{community.description}</p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             {(community.socials ?? []).map((s) => (
@@ -694,9 +645,9 @@ const Community = ({ community }: { community?: HomePayload['community'] }) => {
                 target="_blank"
                 rel="noopener noreferrer"
                 className={cn(
-                  'inline-flex w-full max-w-[220px] items-center justify-center gap-2 rounded-xl px-7 py-3 text-base font-semibold transition-all active:scale-[0.98] sm:w-auto',
+                  'card-lift inline-flex w-full max-w-[220px] items-center justify-center gap-2 rounded-xl px-7 py-3 text-base font-semibold transition-all active:scale-[0.98] sm:w-auto',
                   s.icon === 'discord'
-                    ? 'bg-primary text-white shadow-lg shadow-primary/30 hover:bg-primary-strong'
+                    ? 'border-transparent bg-[#5865F2] text-white shadow-lg shadow-[#5865F2]/30 hover:brightness-110'
                     : 'border border-border-c bg-surface text-fg hover:bg-surface-2',
                 )}
               >
@@ -728,9 +679,10 @@ const Community = ({ community }: { community?: HomePayload['community'] }) => {
 
 /* ================= CTA cuối trang ================= */
 
-const FinalCTA = ({ serverInfo = {} }: { serverInfo?: HomePayload['server_info'] }) => {
+const FinalCTA = ({ ip: ipProp }: { ip?: string }) => {
   const [copied, setCopied] = useState(false)
-  const ip = serverInfo?.ip ?? ''
+  // Doc v2 §1: luôn hiển thị ":port" khi port ≠ 25565 (ip prop đã qua formatAddress ở caller).
+  const ip = ipProp ?? ''
 
   const copy = async () => {
     if (!ip) return
@@ -745,27 +697,49 @@ const FinalCTA = ({ serverInfo = {} }: { serverInfo?: HomePayload['server_info']
 
   return (
     <section className="reveal mx-auto mt-20 max-w-6xl px-4 sm:px-6">
-      <div className="relative overflow-hidden rounded-3xl bg-primary p-[1px]">
-        <div className="rounded-3xl bg-surface-2 p-8 text-center sm:p-14">
-          <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
-            Sẵn sàng vào game?
-          </h2>
-          <p className="mx-auto mt-3 max-w-md text-muted">
-            Sao chép IP, mở Minecraft và tham gia ngay — cùng cộng đồng AeSieuQuay.
-          </p>
-          <div className="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row">
+      <div className="border-gradient relative overflow-hidden rounded-3xl">
+        <div className="relative rounded-[calc(1.5rem-1px)] bg-surface p-8 text-center sm:p-14">
+          {/* Ambient glow phía trong card */}
+          <div className="pointer-events-none absolute inset-0" aria-hidden>
+            <span className="ambient-orb left-[10%] top-[-40%] h-72 w-72" style={{ background: 'var(--glow-primary)' }} />
+            <span className="ambient-orb bottom-[-50%] right-[8%] h-72 w-72" style={{ background: 'var(--glow-accent)' }} />
+          </div>
+          <div className="relative">
+            <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
+              Sẵn sàng vào <span className="text-gradient-brand">game?</span>
+            </h2>
+            <p className="mx-auto mt-3 max-w-md text-muted">
+              Sao chép IP, mở Minecraft và tham gia ngay — cùng cộng đồng AeSieuQuay.
+            </p>
+            {/* Ô IP lớn — click để copy */}
             <button
+              type="button"
               onClick={copy}
-              className="w-full max-w-[280px] rounded-xl bg-primary px-8 py-3 font-semibold text-white shadow-lg shadow-primary/30 transition-all hover:bg-primary-strong active:scale-[0.98] sm:w-auto"
+              title={`Sao chép ${ip}`}
+              className="mx-auto mt-7 flex items-center gap-3 rounded-2xl border border-border-c bg-surface-2 px-5 py-3 transition-all hover:border-primary/50 active:scale-[0.98]"
             >
-              📋 Sao chép IP
+              <code className="font-mono text-base font-bold text-fg sm:text-lg">{ip}</code>
+              <span className={cn(
+                'rounded-lg px-2.5 py-1 text-xs font-bold',
+                copied ? 'bg-emerald-500/15 text-emerald-500' : 'bg-primary text-white',
+              )}>
+                {copied ? '✓ Đã copies' : 'Copy'}
+              </span>
             </button>
-            <a
-              href="/dang-ky"
-              className="w-full max-w-[280px] rounded-xl border border-border-c bg-surface px-8 py-3 font-semibold text-fg transition-all hover:bg-surface-2 active:scale-[0.98] sm:w-auto"
-            >
-              Tạo tài khoản
-            </a>
+            <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
+              <button
+                onClick={copy}
+                className="w-full max-w-[280px] rounded-xl bg-gradient-to-r from-primary to-accent px-8 py-3 font-semibold text-white shadow-lg shadow-primary/30 transition-all hover:shadow-xl hover:brightness-110 active:scale-[0.98] sm:w-auto"
+              >
+                📋 Sao chép IP
+              </button>
+              <a
+                href="/dang-ky"
+                className="w-full max-w-[280px] rounded-xl border border-border-c bg-surface px-8 py-3 font-semibold text-fg transition-all hover:bg-surface-2 active:scale-[0.98] sm:w-auto"
+              >
+                Tạo tài khoản
+              </a>
+            </div>
           </div>
         </div>
       </div>
@@ -801,6 +775,8 @@ export const HomePage = () => {
 
   const data = result.data
   const hero: NonNullable<HomePayload['hero']> = data.hero ?? {}
+  // Doc v2 §1: server_status thắng server_info — IP cho FinalCTA lấy từ block mới, fallback key cũ.
+  const siteIp = formatAddress(data.server_status?.ip ?? data.server_info?.ip, data.server_status?.port)
   const siteUrl = typeof window !== 'undefined' ? window.location.origin : ''
   const socials = data.community?.socials ?? []
   const description =
@@ -835,13 +811,16 @@ export const HomePage = () => {
         ],
       }}
     >
-      <Hero hero={data.hero} serverInfo={data.server_info} />
-      {data.server_info && <ServerInfoBar info={data.server_info} />}
+      <Hero hero={data.hero} serverStatus={data.server_status} serverInfo={data.server_info} />
+      {/* Doc v2 §1: widget đọc khối động server_status; server_info chỉ fallback khi backend cũ. */}
+      <ServerStatusWidget status={data.server_status} legacyInfo={data.server_info} />
       {data.game_modes && <GameModes section={data.game_modes} stats={data.stats} />}
+      {/* Doc v2 §2: Top 5 đại gia — items rỗng/thiếu block → component tự ẩn. */}
+      <TopDonators block={data.top_donators} />
       {data.highlights?.items?.length ? <Highlights section={data.highlights} /> : null}
       {data.gallery ? <Gallery gallery={data.gallery} /> : null}
       {data.community ? <Community community={data.community} /> : null}
-      {data.server_info && <FinalCTA serverInfo={data.server_info} />}
+      {siteIp && <FinalCTA ip={siteIp} />}
     </SiteLayout>
   )
 }
