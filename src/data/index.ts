@@ -21,6 +21,7 @@ import {
   isTransferPayload,
   normalizeSlug,
   readWindowData,
+  type CaptchaConfig,
   type DataResult,
   type HomePayload,
   type MachineDetailPayload,
@@ -72,6 +73,32 @@ export const getHomePageData = (): DataResult<HomePayload> => {
   if (isHomePayload(w.payload)) return ok(w.payload, 'window')
 
   return missing()
+}
+
+/* ================= Captcha (doc v2 §3) ================= */
+
+/**
+ * Site key Cloudflare Turnstile cho form login/register.
+ * Nguồn: `window.DATA.captcha.site_key` — backend NHÉT CẢ 2 shape:
+ *   - payload phẳng `{ captcha: {...} }` (trang home), và
+ *   - envelope `{ page: 'auth', payload: { captcha: {...} } }` (trang /dang-nhap, /dang-ky).
+ * Reader chấp cả hai để không phụ thuộc chốt cuối của backend.
+ * `site_key === null` (hoặc thiếu block) = backend chưa bật captcha (dev) → FE ẩn widget, submit thẳng.
+ */
+export const getCaptchaConfig = (): CaptchaConfig | null => {
+  if (useMockData) return (homePageMock as HomePayload).captcha ?? { site_key: null }
+
+  const w = readWindowData()
+  if (!w) return null
+
+  const fromPayload = (payload: unknown): CaptchaConfig | null => {
+    if (!isObject(payload)) return null
+    const cap = payload.captcha
+    if (!isObject(cap)) return null
+    return { site_key: typeof cap.site_key === 'string' ? cap.site_key : null }
+  }
+
+  return fromPayload(w.payload) ?? fromPayload(w)
 }
 
 /* ================= Danh sách máy chủ ================= */
@@ -196,12 +223,16 @@ export const getTransferPageData = (): DataResult<TransferPagePayload> => {
 }
 
 export { useMockData }
+// DataResult được re-export từ block `export type { ... } from './contract'` dưới đây.
 export type {
-  DataResult,
+  CaptchaConfig,
   HomePayload,
   MachineDetailPayload,
   MachineListPayload,
+  ServerStatusBlock,
   SiteData,
+  TopDonatorsBlock,
   TopupPayload,
   TransferPagePayload,
-}
+} from './contract'
+export type { DataResult } from './contract'

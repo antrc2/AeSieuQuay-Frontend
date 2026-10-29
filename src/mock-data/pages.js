@@ -203,6 +203,43 @@ export const homePageMock = {
   },
   // Stat cụm thật — backend override server_info.players từ cùng nguồn stats.
   stats: machineListPageMock.stats,
+  /* ===== Frontend Requirements v2 — khối động (server_status / top_donators / captcha) ===== */
+  // Doc v2 §1: widget home ĐỌC block này, bỏ qua server_info. Muốn test case
+  // "chưa từng có heartbeat": status:'offline', players:null, version/motd/tps/uptime/servers/source = null.
+  server_status: {
+    ip: 'play.unimc.vn',
+    port: 25565,
+    version: '1.20.1 Paper',
+    motd: 'UniMC - Survival & Skyblock',
+    status: 'online',
+    online: true,
+    maintenance: false,
+    players: { online: 42, max: 200 },
+    tps: { avg_1m: 19.85 },
+    uptime: { percent_7d: 99.2, window_hours: 168 },
+    servers: { total: 6, online: 5 },
+    cluster: { id: 1, slug: 'aesq', name: 'AESQ Network' },
+    source: { server_key: 'lobby-1', name: 'Lobby 1', role: 'lobby', admin_picked: true },
+    updated_at_ms: Date.now(),
+  },
+  // Doc v2 §2: top toàn thời gian. Test ẩn section: items: [].
+  // Test avatar fallback: thay avatar_url bằng URL sai (vd '/bad.png').
+  top_donators: {
+    title: 'Bảng xếp hạng đại gia',
+    period: 'all',
+    currency: 'VND',
+    items: [
+      { rank: 1, username: 'nguyenvana', display_name: 'Nguyễn Văn A', total_vnd: 12500000, medal: 'gold', avatar_url: 'https://mc-heads.net/avatar/nguyenvana/80' },
+      { rank: 2, username: 'pe_Sity', display_name: 'Sity Player', total_vnd: 8200000, medal: 'silver', avatar_url: 'https://mc-heads.net/avatar/pe_Sity/64' },
+      { rank: 3, username: 'MinhTom', display_name: 'Minh Tom', total_vnd: 5400000, medal: 'bronze', avatar_url: 'https://mc-heads.net/avatar/MinhTom/64' },
+      { rank: 4, username: 'GamerPro2012', display_name: 'Pro Gamer', total_vnd: 3100000, medal: null, avatar_url: 'https://mc-heads.net/avatar/GamerPro2012/64' },
+      { rank: 5, username: 'AnTrc2', display_name: 'An Trần', total_vnd: 1900000, medal: null, avatar_url: 'https://mc-heads.net/avatar/AnTrc2/64' },
+    ],
+    updated_at_ms: Date.now(),
+  },
+  // Doc v2 §3: site_key null = dev, form login/register ẩn widget.
+  // Test Turnstile staging: đặt key thật (0x4AAAAAAA...) vào đây.
+  captcha: { site_key: null },
   server_info: {
     ...DEFAULT_SERVER_INFO,
     online: true,

@@ -38,14 +38,11 @@ import { Skeleton } from '@/components/ui/States'
 import { fmtBytes, fmtDateTime, fmtDateTimeMs, fmtDuration, timeAgo } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
-const TABS = [
-  { id: 'overview', label: 'Tổng quan' },
-  { id: 'uptime', label: 'Uptime' },
-  { id: 'storage', label: 'Disk & Worlds' },
-  { id: 'advanced', label: 'Nâng cao' },
-] as const
+/* Giao diện mới (restyle pass): bỏ tab — mọi khối stat hiển thị đồng loạt trên 1 trang.
+ * Các section phụ vẫn lazy-fetch ngay khi mount (giữ nguyên logic API cũ). */
+const SECTIONS = ['uptime', 'storage', 'advanced'] as const
 
-type TabId = (typeof TABS)[number]['id']
+type SectionId = (typeof SECTIONS)[number]
 
 const COLORS = { blue: '#3b82f6', violet: '#8b5cf6', emerald: '#10b981', amber: '#f59e0b', red: '#ef4444' }
 
@@ -73,8 +70,12 @@ export const AdminMonitorDetailPage = () => {
   const [loading, setLoading] = useState(true)
   const aliveRef = useRef(true)
 
-  /* §8 — tab dữ liệu mở rộng (load-on-first-open, giữ cache khi đổi lại) */
-  const [tab, setTab] = useState<TabId>('overview')
+  /* §8 — dữ liệu mở rộng: hiển thị đồng loạt, fetch song song ngay khi mount. */
+  const [sectionDone, setSectionDone] = useState<Record<SectionId, boolean>>({
+    uptime: false,
+    storage: false,
+    advanced: false,
+  })
   const [uptime, setUptime] = useState<UptimePeriod[] | null>(null)
   const [disks, setDisks] = useState<DiskSample[] | null>(null)
   const [worlds, setWorlds] = useState<WorldSize[] | null>(null)
@@ -123,26 +124,36 @@ export const AdminMonitorDetailPage = () => {
     }
   }, [load])
 
-  /* Tab dữ liệu lớn → fetch lần đầu mở tab, không nặng trang mặc định. */
+  /* Dữ liệu mở rộng → fetch song song một lần ngay khi mount (không còn tab ẩn). */
   useEffect(() => {
     let alive = true
     const grab = <T,>(getter: () => Promise<T>, setter: (v: T) => void) => {
       getter().then((v) => alive && setter(v)).catch(() => alive && setter([] as never))
     }
-    if (tab === 'uptime' && uptime === null) grab(() => monitorUptimePeriods(server, 168), setUptime)
-    if (tab === 'storage') {
-      if (disks === null) grab(() => monitorDisks(server, 24), setDisks)
-      if (worlds === null) grab(() => monitorWorlds(server, 168), setWorlds)
-    }
-    if (tab === 'advanced') {
-      if (samples === null) grab(() => monitorSamples(server, { limit: 50 }).then((r) => r.items), setSamples)
-      if (batches === null) grab(() => monitorBatches(server, 50), setBatches)
-    }
-    if (tab === 'overview' && topPlayers === null) grab(() => monitorPlayersTop(server, 10), setTopPlayers)
+    grab(() => monitorUptimePeriods(server, 168), setUptime)
+    grab(() => monitorDisks(server, 24), setDisks)
+    grab(() => monitorWorlds(server, 168), setWorlds)
+    grab(() => monitorSamples(server, { limit: 50 }).then((r) => r.items), setSamples)
+    grab(() => monitorBatches(server, 50), setBatches)
+    grab(() => monitorPlayersTop(server, 10), setTopPlayers)
     return () => {
       alive = false
     }
-  }, [tab, server, uptime, disks, worlds, samples, batches, topPlayers])
+  }, [server])
+
+  /* Theo dõi dữ liệu section phụ đã về để chuyển từ skeleton sang nội dung. */
+  useEffect(() => {
+    setSectionDone((prev) => {
+      const next = {
+        uptime: prev.uptime || uptime !== null,
+        storage: prev.storage || (disks !== null && worlds !== null),
+        advanced: prev.advanced || (samples !== null && batches !== null),
+      }
+      return next.uptime === prev.uptime && next.storage === prev.storage && next.advanced === prev.advanced
+        ? prev
+        : next
+    })
+  }, [uptime, disks, worlds, samples, batches])
 
   const fmtX = (ms: number) =>
     range.granularity === 'minute'
@@ -232,30 +243,13 @@ export const AdminMonitorDetailPage = () => {
         </div>
       )}
 
-      <div className="flex gap-1 overflow-x-auto rounded-xl border border-border-c bg-surface-2 p-1" role="tablist">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            role="tab"
-            aria-selected={tab === t.id}
-            onClick={() => setTab(t.id)}
-            className={cn(
-              'shrink-0 rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-colors',
-              tab === t.id ? 'bg-primary text-white' : 'text-muted hover:text-fg',
-            )}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+      {/* Uptime — khối ngang, hiển thị trực tiếp (không còn ẩn sau tab) */}
+      {sectionDone.uptime ? (
+        <UptimeSection periods={uptime} />
+      ) : (
+        <Skeleton className="h-40" />
+      )}
 
-      {tab === 'uptime' && <UptimeTab periods={uptime} />}
-      {tab === 'storage' && <StorageTab disks={disks} worlds={worlds} />}
-      {tab === 'advanced' && <AdvancedTab samples={samples} batches={batches} onOpenSample={setOpenSample} />}
-
-      {tab === 'overview' && (
-        <>
       <div className="grid gap-4 xl:grid-cols-1">
         {chart('TPS (1m)', [{ label: 'tpsbq', color: COLORS.emerald, data: line(perf, 'tps_avg') }])}
         {chart('MSPT', [
@@ -400,7 +394,19 @@ export const AdminMonitorDetailPage = () => {
           </CardContent>
         </Card>
       </div>
-        </>
+
+      {/* Disk & Worlds — hiển thị đồng loạt */}
+      {sectionDone.storage ? (
+        <StorageSection disks={disks} worlds={worlds} />
+      ) : (
+        <Skeleton className="h-40" />
+      )}
+
+      {/* Nâng cao (samples / batches) — hiển thị đồng loạt */}
+      {sectionDone.advanced ? (
+        <AdvancedSection samples={samples} batches={batches} onOpenSample={setOpenSample} />
+      ) : (
+        <Skeleton className="h-40" />
       )}
 
       {openSample && (
@@ -416,7 +422,7 @@ export const AdminMonitorDetailPage = () => {
 
 const UPTIME_WINDOW_MS = 7 * 86_400_000
 
-const UptimeTab = ({ periods }: { periods: UptimePeriod[] | null }) => {
+const UptimeSection = ({ periods }: { periods: UptimePeriod[] | null }) => {
   // ảnh chụp cửa sổ 7 ngày lúc mount — thanh bar không cần tick từng giây
   const [now] = useState(() => Date.now())
   if (!periods) return <Skeleton className="h-40" />
@@ -475,7 +481,7 @@ const UptimeTab = ({ periods }: { periods: UptimePeriod[] | null }) => {
   )
 }
 
-const StorageTab = ({ disks, worlds }: { disks: DiskSample[] | null; worlds: WorldSize[] | null }) => {
+const StorageSection = ({ disks, worlds }: { disks: DiskSample[] | null; worlds: WorldSize[] | null }) => {
   if (!disks || !worlds) return <Skeleton className="h-40" />
 
   // thế giới gần nhất + delta so với sample cũ nhất trong range
@@ -558,7 +564,7 @@ const StorageTab = ({ disks, worlds }: { disks: DiskSample[] | null; worlds: Wor
   )
 }
 
-const AdvancedTab = ({
+const AdvancedSection = ({
   samples,
   batches,
   onOpenSample,

@@ -19,25 +19,33 @@
   --brand-soft: #1e90ff1a;
   --accent: #7c3aed;
 
-  /* Light mode */
-  --bg: #f6f8fb;
+  /* Glow / ambient (đổi theo theme) */
+  --glow-primary: rgba(30, 144, 255, 0.35);
+  --glow-accent: rgba(124, 58, 237, 0.22);
+  --grid-line: rgba(15, 23, 42, 0.5);
+
+  /* Light mode — refined slate/white */
+  --bg: #f4f7fb;
   --surface: #ffffff;
-  --surface-2: #eef2f7;
+  --surface-2: #eaeff6;
   --fg: #0f172a;
   --muted: #5b6b81;
-  --border: #e2e8f0;
+  --border: #dfe6ef;
   --ring: #1e90ff40;
 }
 
 .dark {
-  /* Dark mode: xanh đen */
-  --bg: #070b14;
-  --surface: #0d1424;
-  --surface-2: #131c30;
+  /* Dark-first: deep navy gaming */
+  --bg: #060a13;
+  --surface: #0b1220;
+  --surface-2: #111a2e;
   --fg: #f1f5f9;
-  --muted: #94a3b8;
-  --border: #1e2a45;
+  --muted: #8ea0b8;
+  --border: #1c2942;
   --ring: #1e90ff60;
+  --glow-primary: rgba(30, 144, 255, 0.5);
+  --glow-accent: rgba(124, 58, 237, 0.35);
+  --grid-line: rgba(148, 163, 184, 0.6);
 }
 
 /* Map token -> Tailwind utilities: bg-bg, bg-surface, text-fg, border-border... */
@@ -78,6 +86,79 @@
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
+  }
+  /* ==== Modern dark-first helpers (restyle 2026) ==== */
+  /* Kính mờ: header/overlay/card nổi trên nền ambient */
+  .glass {
+    background: color-mix(in srgb, var(--surface) 72%, transparent);
+    backdrop-filter: blur(14px) saturate(1.4);
+    -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  }
+  /* Viền phát sáng theo brand — dùng cho card hero / status widget */
+  .glow-ring {
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--brand) 35%, transparent),
+      0 12px 40px -12px var(--glow-primary);
+  }
+  .glow-text {
+    text-shadow: 0 0 24px var(--glow-primary);
+  }
+  /* Lưới ô vuông mờ (nền hero / section) */
+  .bg-grid {
+    background-image:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: 44px 44px;
+    opacity: 0.05;
+  }
+  /* Ambient orbs: 2 khối glow lớn blur phía sau hero */
+  .ambient-orb {
+    position: absolute;
+    border-radius: 9999px;
+    filter: blur(90px);
+    pointer-events: none;
+  }
+  /* Gradient viền (border gradient) cho CTA / featured card */
+  .border-gradient {
+    background: linear-gradient(120deg, var(--brand), var(--accent));
+    padding: 1px;
+  }
+  /* Card nâng cấp: hover nổi + viền sáng */
+  .card-lift {
+    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+  }
+  .card-lift:hover {
+    transform: translateY(-3px);
+    border-color: color-mix(in srgb, var(--brand) 45%, var(--border));
+    box-shadow: 0 16px 40px -16px var(--glow-primary);
+  }
+  /* Shimmer cho skeleton "đang tải" */
+  .shimmer {
+    position: relative;
+    overflow: hidden;
+  }
+  .shimmer::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+    animation: shimmerSlide 1.6s infinite;
+  }
+  @keyframes shimmerSlide {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(100%); }
+  }
+  /* Chậm trôi cho orb trang trí */
+  @keyframes floatSlow {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-14px); }
+  }
+  .animate-float-slow {
+    animation: floatSlow 9s ease-in-out infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .animate-float-slow { animation: none; }
+    .shimmer::after { animation: none; }
   }
   /* Overlay cho chữ trên ảnh */
   .img-overlay {

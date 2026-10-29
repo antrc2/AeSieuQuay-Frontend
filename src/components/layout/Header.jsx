@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import Logo from '@/components/Logo'
 import ThemeToggle from '@/components/theme/ThemeToggle'
+import CopyIpButton from '@/components/ui/CopyIpButton'
 import { DEFAULT_MENU } from '@/data/site'
 import useAuth from '@/hooks/useAuth'
 import { cn } from '@/lib/utils'
@@ -167,15 +168,18 @@ export const Header = ({ menu = DEFAULT_MENU }) => {
       className={cn(
         'sticky top-0 z-40 border-b transition-all duration-300',
         scrolled
-          ? 'border-border-c bg-bg/85 shadow-sm backdrop-blur-md'
+          ? 'glass border-border-c shadow-lg shadow-black/5'
           : 'border-transparent bg-transparent',
       )}
     >
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
         <Logo size="sm" />
 
-        {/* Desktop menu */}
-        <nav className="hidden items-center gap-1 lg:flex" aria-label="Menu chính">
+        {/* Desktop menu — pill container hiện đại */}
+        <nav
+          className="hidden items-center gap-1 rounded-2xl border border-border-c/60 bg-surface/50 p-1 backdrop-blur lg:flex"
+          aria-label="Menu chính"
+        >
           {menu.map((item) => {
             const active =
               item.to === '/' ? location.pathname === '/' : location.pathname.startsWith(item.to)
@@ -185,9 +189,9 @@ export const Header = ({ menu = DEFAULT_MENU }) => {
                 href={item.to}
                 aria-current={active ? 'page' : undefined}
                 className={cn(
-                  'rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                  'rounded-xl px-3.5 py-2 text-sm font-medium transition-all',
                   active
-                    ? 'bg-primary-soft text-primary'
+                    ? 'bg-primary text-white shadow-md shadow-primary/30'
                     : 'text-muted hover:bg-surface-2 hover:text-fg',
                 )}
               >
@@ -198,9 +202,9 @@ export const Header = ({ menu = DEFAULT_MENU }) => {
         </nav>
 
         <div className="flex items-center gap-2">
+          <CopyIpButton className="hidden md:inline-flex" />
           <ThemeToggle />
           <div className="hidden items-center gap-2 sm:flex">
-            
             <AuthButton />
           </div>
 
@@ -229,10 +233,10 @@ export const Header = ({ menu = DEFAULT_MENU }) => {
       {open && (
         <nav
           aria-label="Menu mobile"
-          className="border-t border-border-c bg-surface px-4 py-3 lg:hidden"
+          className="border-t border-border-c glass px-4 py-3 lg:hidden"
         >
           <div className="flex flex-col gap-2">
-            
+            <CopyIpButton className="w-full justify-center md:hidden" />
             <AuthButton className="flex w-full justify-center" />
           </div>
           <div className="my-3 h-px bg-[var(--border)]" />

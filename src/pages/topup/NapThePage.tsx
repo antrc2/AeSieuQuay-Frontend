@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { CreditCard } from 'lucide-react'
 import SiteLayout from '@/components/layout/SiteLayout'
 import DataUnavailable from '@/components/ui/DataUnavailable'
 import { getTopupPageData } from '@/data'
@@ -473,10 +474,19 @@ export const NapThePage = () => {
         },
       }}
     >
-      <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+      <main className="relative mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+        {/* ambient glow — dark-first, nhẹ trên light */}
+        <div aria-hidden className="pointer-events-none absolute inset-x-0 -top-10 -z-10 flex justify-center">
+          <div className="h-52 w-[36rem] rounded-full bg-primary/15 blur-[90px]" />
+        </div>
         <div className="mb-6 text-center">
-          <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">{data.title || 'Nạp thẻ'}</h1>
-          {data.subtitle && <p className="mt-2 text-muted">{data.subtitle}</p>}
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/25 bg-primary-soft px-3 py-1 text-xs font-bold uppercase tracking-wider text-primary">
+            <CreditCard className="h-3.5 w-3.5" aria-hidden /> Nạp xu
+          </span>
+          <h1 className="mt-3 bg-gradient-to-b from-fg to-fg/70 bg-clip-text text-3xl font-extrabold tracking-tight text-transparent sm:text-4xl">
+            {data.title || 'Nạp thẻ'}
+          </h1>
+          {data.subtitle && <p className="mx-auto mt-2 max-w-xl text-muted">{data.subtitle}</p>}
         </div>
 
         {/* [PromotionBanner — nếu payload.promotion] */}

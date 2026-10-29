@@ -79,6 +79,74 @@ export interface GameModeSummary {
   image?: string | null
 }
 
+/* ================= Frontend Requirements v2 — khối động SSR =================
+ * `server_status` / `top_donators` / `captcha` do backend Flask nhét thẳng vào
+ * window.DATA lúc render (cache TTL ngắn, merge sau content-cache).
+ * FE KHÔNG fetch API cho các khối này — snapshot lúc render là hợp lệ (§0 doc v2),
+ * không poll/refetch. Trường bên trong có thể null → FE ẩn tương ứng.
+ */
+
+/** Widget "Trạng thái máy chủ" — doc v2 §1. Block LUÔN tồn tại, field trong có thể null. */
+export interface ServerStatusBlock {
+  /** TĨNH — site_config.server_ip (DB), hỗ trợ "host:port". */
+  ip: string
+  /** Port tách từ IP tĩnh / registry; mặc định 25565. */
+  port: number
+  /** Heartbeat tươi nhất → registry admin. nullable. */
+  version: string | null
+  /** Đã strip mã màu §. nullable. */
+  motd: string | null
+  status: 'online' | 'offline' | 'maintenance'
+  online: boolean
+  maintenance: boolean
+  /** null nếu chưa từng có heartbeat. */
+  players: { online: number; max: number } | null
+  /** nullable — từ stats cụm (push Monitor). */
+  tps: { avg_1m: number } | null
+  /** percent_7d cũng có thể null. */
+  uptime: { percent_7d: number | null; window_hours: number } | null
+  /** nullable — pill "5/6 server". */
+  servers: { total: number; online: number } | null
+  cluster: { id: number; slug: string; name: string } | null
+  /** Server đang làm nguồn hiển thị (admin chọn display_public, fallback proxy→lobby→game). */
+  source: {
+    server_key: string
+    name: string
+    role: 'proxy' | 'lobby' | 'game'
+    /** false = đang ăn fallback tự động. */
+    admin_picked: boolean
+  } | null
+  updated_at_ms: number
+}
+
+/** Widget "Top 5 Đại gia" — doc v2 §2. Tổng hợp toàn thời gian, cache Redis 300s. */
+export interface TopDonatorItem {
+  rank: number
+  /** Tên in-game (AuthMe). */
+  username: string
+  /** Realname DB, fallback = username. */
+  display_name: string
+  /** int, đơn vị ₫ — chỉ amount_vnd thực nạp, không bonus. */
+  total_vnd: number
+  medal: 'gold' | 'silver' | 'bronze' | null
+  avatar_url: string
+}
+
+export interface TopDonatorsBlock {
+  title: string
+  /** constant — toàn thời gian, không tab tháng. */
+  period: 'all'
+  currency: 'VND'
+  /** Có thể [] (chưa ai nạp / lỗi DB) → FE ẩn section. */
+  items: TopDonatorItem[]
+  updated_at_ms: number
+}
+
+/** Cloudflare Turnstile — doc v2 §3. site_key null = backend chưa bật captcha (dev). */
+export interface CaptchaConfig {
+  site_key: string | null
+}
+
 /* ================= Cluster stats (backend.md mục 0.1) ================= */
 
 export interface ClusterStatsServerStatus {
@@ -147,7 +215,14 @@ export interface SiteData {
 export interface HomePayload {
   header?: HeaderData
   hero?: HeroData
+  /** @deprecated Key cũ — FE đọc `server_status` cho widget, `server_info` chỉ fallback ip. */
   server_info?: ServerInfo
+  /** Doc v2 §1 — khối động, luôn tồn tại khi backend v2 render. */
+  server_status?: ServerStatusBlock | null
+  /** Doc v2 §2 — khối động, items có thể []. */
+  top_donators?: TopDonatorsBlock | null
+  /** Doc v2 §3 — site_key null = chưa bật captcha (ẩn widget). */
+  captcha?: CaptchaConfig | null
   game_modes?: {
     title?: string
     subtitle?: string
@@ -393,7 +468,7 @@ export const isObject = (value: unknown): value is Record<string, unknown> =>
 /** Payload trang chủ: envelope mới hoặc payload phẳng hiện tại của backend. */
 export const isHomePayload = (value: unknown): value is HomePayload =>
   isObject(value) &&
-  ('hero' in value || 'server_info' in value || 'game_modes' in value)
+  ('hero' in value || 'server_info' in value || 'game_modes' in value || 'server_status' in value || 'top_donators' in value)
 
 export const isMachineListPayload = (value: unknown): value is MachineListPayload =>
   isObject(value) && Array.isArray(value.modes)
@@ -432,6 +507,8 @@ export const readWindowData = (): WindowData | null => {
   }
 
   // Backward compatibility: backend phát payload phẳng (không bọc envelope).
+  // Thử machine_detail/machine_list TRƯỚC home: payload home v2 cũng phẳng và
+  // có thể chứa key trùng tên — nhưng detail/list có dấu hiệu riêng (name+slug / modes[]).
   if (isHomePayload(raw)) {
     return { page: 'home', payload: raw, notFound: false }
   }

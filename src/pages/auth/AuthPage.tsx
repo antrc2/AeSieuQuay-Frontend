@@ -1,4 +1,6 @@
 import {
+  useEffect,
+  useRef,
   useState,
   type ChangeEvent,
   type FormEvent,
@@ -6,9 +8,11 @@ import {
   type ReactNode,
 } from 'react'
 import { useLocation } from 'react-router-dom'
+import { Turnstile, type TurnstileInstance } from '@marsidev/react-turnstile'
 
 import SiteLayout from '@/components/layout/SiteLayout'
-import { apiPost } from '@/api/client'
+import { ApiError, apiPost } from '@/api/client'
+import { getCaptchaConfig } from '@/data'
 import { showApiError, showSuccess } from '@/utils/swal'
 import { cn } from '@/lib/utils'
 
@@ -26,6 +30,65 @@ const inputCls =
 
 const USERNAME_RE = /^[a-zA-Z0-9_]*$/
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+/* ================= Cloudflare Turnstile (doc v2 §3) =================
+ * Site key đọc từ window.DATA.captcha.site_key (SSR nhét vào payload trang auth).
+ * site_key === null → backend CHƯA bật captcha (dev) → ẩn widget, submit thẳng.
+ * Verify chạy server-side TRƯỚC mọi thao tác DB — FE chỉ render + gắn token. */
+
+type CaptchaBoxProps = {
+  action: 'login' | 'register'
+  disabled?: boolean
+  onToken: (token: string | null) => void
+  registerRef?: (inst: TurnstileInstance | null) => void
+}
+
+const CaptchaBox = ({ action, disabled, onToken, registerRef }: CaptchaBoxProps) => {
+  const siteKey = getCaptchaConfig()?.site_key ?? null
+  if (!siteKey) return null // dev / captcha tắt — không render gì
+
+  return (
+    <div className="flex min-h-[65px] items-center" data-testid={`turnstile-${action}`}>
+      <Turnstile
+        ref={(inst) => {
+          registerRef?.(inst ?? null)
+        }}
+        siteKey={siteKey}
+        options={{
+          theme: 'auto',
+          // doc v2 §3 — data-action phân biệt login/register; backend có thể validate action
+          action,
+          appearance: 'always',
+          execution: 'render',
+          refreshExpired: 'auto',
+        }}
+        onSuccess={(token) => onToken(token ?? null)}
+        onExpire={() => onToken(null)}
+        onError={() => onToken(null)}
+      />
+      {/* `disabled` chỉ khoá form lúc submit — widget CF không nhận attr disabled */}
+      {disabled && <span className="sr-only">Đang xử lý...</span>}
+    </div>
+  )
+}
+
+/** Map lỗi captcha theo envelope doc v2 §3. Trả true nếu đã tự xử lý (không toast chung). */
+const handleCaptchaApiError = (
+  err: unknown,
+  handlers: { onFailed: () => Promise<void> | void; onUnavailable: () => Promise<void> | void },
+): boolean => {
+  if (!(err instanceof ApiError)) return false
+  const code = (err.data as { code?: string } | undefined)?.code
+  if (err.status === 400 && code === 'captcha_failed') {
+    void handlers.onFailed()
+    return true
+  }
+  if (err.status === 503 && code === 'captcha_unavailable') {
+    void handlers.onUnavailable()
+    return true
+  }
+  return false
+}
 
 /* ================= Field components ================= */
 
@@ -123,12 +186,71 @@ const FormFooter = ({ text, action, href }: { text: string; action: string; href
   </p>
 )
 
+/* ================= Hook captcha dùng chung 2 form ================= */
+
+const useCaptcha = (_action: 'login' | 'register') => {
+  const siteKey = getCaptchaConfig()?.site_key ?? null
+  const [token, setToken] = useState<string | null>(null)
+  const widgetRef = useRef<TurnstileInstance | null>(null)
+  /** Số lần gặp 503 captcha_unavailable liên tiếp — doc v2: không auto-retry quá 2 lần. */
+  const [unavailableCount, setUnavailableCount] = useState(0)
+  const [blockedUntil, setBlockedUntil] = useState<number | null>(null)
+  const [, forceTick] = useState(0)
+
+  // Countdown hết thời gian "chặn tạm" sau quá nhiều lần 503
+  useEffect(() => {
+    if (blockedUntil == null) return
+    const t = setInterval(() => forceTick((n) => n + 1), 1000)
+    return () => clearInterval(t)
+  }, [blockedUntil])
+
+  const blocked = blockedUntil != null && Date.now() < blockedUntil
+
+  const resetWidget = () => {
+    setToken(null)
+    widgetRef.current?.reset?.()
+  }
+
+  /** Xử lý lỗi captcha; trả true nếu đã tự handle (form bỏ qua toast chung). */
+  const handleError = (err: unknown): boolean =>
+    handleCaptchaApiError(err, {
+      // 400 token thiếu/sai/hết hạn → báo + reset checkbox
+      onFailed: async () => {
+        setToken(null)
+        widgetRef.current?.reset?.()
+        await showApiError(new ApiError('Xác minh thất bại, thử lại', 400, null), 'Captcha')
+      },
+      // 503 CF endpoint fail-closed → tối đa 2 lần, sau đó chặn submit 30s
+      onUnavailable: async () => {
+        const next = unavailableCount + 1
+        setUnavailableCount(next)
+        if (next >= 2) {
+          setBlockedUntil(Date.now() + 30_000)
+          setUnavailableCount(0)
+          await showApiError(
+            new ApiError('Hệ thống xác minh đang bận, thử lại sau khoảng 30 giây', 503, null),
+            'Captcha',
+          )
+        } else {
+          resetWidget()
+          await showApiError(
+            new ApiError('Hệ thống xác minh đang bận, thử lại sau', 503, null),
+            'Captcha',
+          )
+        }
+      },
+    })
+
+  return { siteKey, token, setToken, blocked, handleError, registerRef: (i: TurnstileInstance | null) => { widgetRef.current = i } }
+}
+
 /* ================= Form đăng nhập ================= */
 
 const LoginForm = () => {
   const [form, setForm] = useState({ username: '', password: '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const captcha = useCaptcha('login')
 
   const onChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -151,9 +273,17 @@ const LoginForm = () => {
 
     if (!form.password) return setError('Vui lòng nhập mật khẩu')
 
+    // Client-side gate: captcha bật nhưng chưa solve → chặn, tiết kiệm 1 roundtrip 400
+    if (captcha.siteKey && !captcha.token) return setError('Vui lòng xác minh bạn không phải robot')
+    if (captcha.blocked) return setError('Hệ thống xác minh đang bận, vui lòng thử lại sau ít phút')
+
     setLoading(true)
     try {
-      const res = await apiPost('/auth/login', { username, password: form.password })
+      const res = await apiPost('/auth/login', {
+        username,
+        password: form.password,
+        ...(captcha.siteKey ? { captcha_token: captcha.token } : {}),
+      })
       await showSuccess(
         'Đăng nhập thành công',
         res?.message || `Xin chào ${res?.data?.user?.realname || username}!`,
@@ -161,7 +291,7 @@ const LoginForm = () => {
       window.location.assign('/')
       return
     } catch (err) {
-      await showApiError(err, 'Đăng nhập thất bại')
+      if (!captcha.handleError(err)) await showApiError(err, 'Đăng nhập thất bại')
     } finally {
       setLoading(false)
     }
@@ -190,9 +320,16 @@ const LoginForm = () => {
         disabled={loading}
       />
 
+      <CaptchaBox
+        action="login"
+        disabled={loading}
+        onToken={captcha.setToken}
+        registerRef={captcha.registerRef}
+      />
+
       {error && <ErrorAlert>{error}</ErrorAlert>}
 
-      <SubmitButton loading={loading} idle="Đăng nhập" busy="Đang đăng nhập..." />
+      <SubmitButton loading={loading || captcha.blocked} idle="Đăng nhập" busy="Đang đăng nhập..." />
 
       <FormFooter text="Chưa có tài khoản?" action="Đăng ký ngay" href="/dang-ky" />
     </form>
@@ -210,6 +347,7 @@ const RegisterForm = () => {
   })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const captcha = useCaptcha('register')
 
   const onChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -237,12 +375,17 @@ const RegisterForm = () => {
     if (form.password.length < 6) return setError('Mật khẩu phải có ít nhất 6 ký tự')
     if (form.password !== form.confirmPassword) return setError('Mật khẩu nhập lại không khớp')
 
+    // Client-side gate — xem LoginForm
+    if (captcha.siteKey && !captcha.token) return setError('Vui lòng xác minh bạn không phải robot')
+    if (captcha.blocked) return setError('Hệ thống xác minh đang bận, vui lòng thử lại sau ít phút')
+
     setLoading(true)
     try {
       const res = await apiPost('/auth/register', {
         username,
         email: form.email.trim() || undefined,
         password: form.password,
+        ...(captcha.siteKey ? { captcha_token: captcha.token } : {}),
       })
       await showSuccess(
         'Đăng ký thành công',
@@ -251,7 +394,7 @@ const RegisterForm = () => {
       window.location.assign('/')
       return
     } catch (err) {
-      await showApiError(err, 'Đăng ký thất bại')
+      if (!captcha.handleError(err)) await showApiError(err, 'Đăng ký thất bại')
     } finally {
       setLoading(false)
     }
@@ -303,9 +446,16 @@ const RegisterForm = () => {
         disabled={loading}
       />
 
+      <CaptchaBox
+        action="register"
+        disabled={loading}
+        onToken={captcha.setToken}
+        registerRef={captcha.registerRef}
+      />
+
       {error && <ErrorAlert>{error}</ErrorAlert>}
 
-      <SubmitButton loading={loading} idle="Tạo tài khoản" busy="Đang đăng ký..." />
+      <SubmitButton loading={loading || captcha.blocked} idle="Tạo tài khoản" busy="Đang đăng ký..." />
 
       <FormFooter text="Đã có tài khoản?" action="Đăng nhập" href="/dang-nhap" />
     </form>
@@ -334,7 +484,7 @@ export const AuthPage = () => {
       <section className="relative flex min-h-[70vh] items-center justify-center overflow-hidden px-4 py-12 sm:py-16">
         {/* Nền trang trí */}
         <div aria-hidden className="pointer-events-none absolute inset-0">
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_55%_45%_at_50%_-5%,rgba(30,144,255,0.22),transparent),radial-gradient(ellipse_40%_40%_at_85%_25%,rgba(124,58,237,0.14),transparent)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_55%_45%_at_50%_-5%,rgba(99,102,241,0.24),transparent),radial-gradient(ellipse_40%_40%_at_85%_25%,rgba(124,58,237,0.16),transparent)]" />
           <div
             className="absolute inset-0 opacity-[0.04]"
             style={{
@@ -346,7 +496,9 @@ export const AuthPage = () => {
         </div>
 
         <div className="relative w-full max-w-md">
-          <div className="rounded-3xl border border-border-c bg-surface p-6 shadow-2xl shadow-black/10 sm:p-8">
+          {/* viền gradient + kính mờ — dark-first */}
+          <div className="border-gradient rounded-[26px] shadow-2xl shadow-black/30">
+            <div className="glass rounded-[25px] p-6 sm:p-8">
             {/* Tabs — dùng <a href> để full reload, lấy window.DATA mới */}
             <nav
               aria-label="Đăng nhập hoặc đăng ký"
@@ -386,6 +538,7 @@ export const AuthPage = () => {
 
             <div className="animate-[fadeIn_.2s_ease]">
               {tab === 'login' ? <LoginForm /> : <RegisterForm />}
+            </div>
             </div>
           </div>
 

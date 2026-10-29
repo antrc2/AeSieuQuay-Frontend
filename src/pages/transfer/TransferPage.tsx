@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { ArrowLeftRight } from 'lucide-react'
 import SiteLayout from '@/components/layout/SiteLayout'
 import DataUnavailable from '@/components/ui/DataUnavailable'
 import { getTransferPageData, useMockData } from '@/data'
@@ -337,10 +338,19 @@ export const TransferPage = () => {
         },
       }}
     >
-      <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-10">
+      <main className="relative mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-10">
+        {/* ambient glow — dark-first */}
+        <div aria-hidden className="pointer-events-none absolute inset-x-0 -top-10 -z-10 flex justify-center">
+          <div className="h-52 w-[36rem] rounded-full bg-primary/15 blur-[90px]" />
+        </div>
         <div className="mb-6 text-center">
-          <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">{data.title || 'Chuyển Xu'}</h1>
-          <p className="mt-2 text-muted">Xu chỉ đi một chiều: <b className="text-fg">Lobby → máy chủ game</b>. Không chuyển giữa hai máy chủ game, không rút về sảnh.</p>
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/25 bg-primary-soft px-3 py-1 text-xs font-bold uppercase tracking-wider text-primary">
+            <ArrowLeftRight className="h-3.5 w-3.5" aria-hidden /> Chuyển xu
+          </span>
+          <h1 className="mt-3 bg-gradient-to-b from-fg to-fg/70 bg-clip-text text-3xl font-extrabold tracking-tight text-transparent sm:text-4xl">
+            {data.title || 'Chuyển Xu'}
+          </h1>
+          <p className="mx-auto mt-2 max-w-xl text-muted">Xu chỉ đi một chiều: <b className="text-fg">Lobby → máy chủ game</b>. Không chuyển giữa hai máy chủ game, không rút về sảnh.</p>
         </div>
 
         {/* Desktop: form 45% | lịch sử 55% (chủ server review 27/10); mobile: stack */}
