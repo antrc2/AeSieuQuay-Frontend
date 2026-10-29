@@ -3,8 +3,8 @@ import { useParams } from 'react-router-dom'
 import SiteLayout from '@/components/layout/SiteLayout'
 import DataUnavailable from '@/components/ui/DataUnavailable'
 import NotFound from '@/pages/errors/NotFound'
-import Toast from '@/components/ui/Toast'
 import ClusterStatsStrip from '@/components/stats/ClusterStatsStrip'
+import CopyIpButton from '@/components/ui/CopyIpButton'
 import { getMachineDetailData, getSiteData } from '@/data'
 import { DEFAULT_DISCORD_URL } from '@/data/site'
 
@@ -12,8 +12,6 @@ export const GameModeDetailPage = () => {
   const { slug = '' } = useParams()
   const result = getMachineDetailData(slug)
   const [playModalOpen, setPlayModalOpen] = useState(false)
-  const [ipCopied, setIpCopied] = useState(false)
-
   if (result.status === 'not_found') {
     return <NotFound />
   }
@@ -44,22 +42,6 @@ export const GameModeDetailPage = () => {
   const canonicalPath = `/may-chu/${mode.slug || slug}`
   const description =
     mode.short_desc || `Thông tin máy chủ ${mode.name} tại SV AeSieuQuay.`
-
-  const copyIp = async () => {
-    if (!serverIp) return
-    try {
-      await navigator.clipboard.writeText(serverIp)
-    } catch {
-      const el = document.createElement('textarea')
-      el.value = serverIp
-      document.body.appendChild(el)
-      el.select()
-      document.execCommand('copy')
-      document.body.removeChild(el)
-    }
-    setIpCopied(true)
-    setTimeout(() => setIpCopied(false), 2000)
-  }
 
   return (
     <SiteLayout
@@ -119,14 +101,16 @@ export const GameModeDetailPage = () => {
                   </span>
                 )}
               </div>
-              <h1 className="mt-4 text-4xl font-extrabold tracking-tight sm:text-5xl lg:text-6xl">{mode.name}</h1>
+              <h1 className="text-gradient-brand mt-4 text-4xl font-extrabold tracking-tight sm:text-5xl lg:text-6xl">
+                {mode.name}
+              </h1>
               {/* Số liệu thật theo cụm — ẩn khi backend chưa từng report */}
               <ClusterStatsStrip stats={mode.stats} className="mt-4" />
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <button
                   type="button"
                   onClick={() => setPlayModalOpen(true)}
-                  className="inline-flex items-center justify-center rounded-xl bg-primary px-8 py-3 text-base font-semibold text-white shadow-lg shadow-primary/30 transition-all hover:bg-primary-strong"
+                  className="glow-ring inline-flex items-center justify-center rounded-xl bg-primary px-8 py-3 text-base font-semibold text-white shadow-lg shadow-primary/30 transition-all hover:bg-primary-strong active:scale-[0.98]"
                 >
                   Chơi ngay
                 </button>
@@ -165,7 +149,7 @@ export const GameModeDetailPage = () => {
                 src={src}
                 alt={`${mode.name} — ảnh ${i + 1}`}
                 loading="lazy"
-                className="aspect-video w-full rounded-xl border border-border-c object-cover"
+                className="card-lift aspect-video w-full rounded-xl border border-border-c object-cover"
               />
             ))}
           </div>
@@ -205,13 +189,7 @@ export const GameModeDetailPage = () => {
             <p className="mt-2 text-sm text-muted">Sao chép IP và thêm vào Minecraft của bạn</p>
             <div className="mt-5 flex items-center gap-2 rounded-xl border border-border-c bg-surface-2 px-4 py-2.5">
               <code className="flex-1 text-center font-mono text-sm">{serverIp || '—'}</code>
-              <button
-                type="button"
-                onClick={copyIp}
-                className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white"
-              >
-                Sao chép
-              </button>
+              <CopyIpButton compact />
             </div>
             <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
               <button
@@ -228,7 +206,6 @@ export const GameModeDetailPage = () => {
           </div>
         </div>
       )}
-      {ipCopied && <Toast message="Đã sao chép IP server!" type="success" />}
     </SiteLayout>
   )
 }

@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils'
  * getSiteAddress(), chỉ hiện ":port" khi port ≠ 25565.
  * Dùng chung cho Header navbar; Hero/FinalCTA giữ logic copy riêng vì đã có ip prop.
  */
-export const CopyIpButton = ({ className, compact = false }) => {
+export const CopyIpButton = ({ className = '', compact = false }) => {
   const [address, setAddress] = useState('')
   const [copied, setCopied] = useState(false)
 
