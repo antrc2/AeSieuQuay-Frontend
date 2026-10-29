@@ -28,6 +28,8 @@ import { LegacyRedirect, LegacySlugRedirect, RootLayout } from '@/router/RouteHe
 
 /** Editor HTML admin kéo theo CodeMirror (~450KB) — chỉ tải khi admin mở trang soạn. */
 const AdminGameModeContentPage = lazy(() => import('@/pages/admin/AdminGameModeContentPage'))
+/** FRONTEND-5 §4 — trang Nội dung website (6 tab CRUD), lazy cho nhẹ bundle admin mặc định. */
+const AdminContentPage = lazy(() => import('@/pages/admin/AdminContentPage'))
 
 export const router = createBrowserRouter([
   {
@@ -73,6 +75,14 @@ export const router = createBrowserRouter([
         element: <AdminLayout />,
         children: [
           { index: true, element: <AdminOverviewPage /> },
+          {
+            path: 'content',
+            element: (
+              <Suspense fallback={<div className="p-8 text-sm text-muted">Đang tải trang nội dung…</div>}>
+                <AdminContentPage />
+              </Suspense>
+            ),
+          },
           { path: 'clusters', element: <AdminClustersPage /> },
           { path: 'servers', element: <AdminServersPage /> },
           { path: 'game-modes', element: <AdminGameModesPage /> },

@@ -891,3 +891,264 @@ export const getMyCardHistory = async (
 export const getMyBankDeposits = async (query: { limit?: number; offset?: number } = {}): Promise<PagedAdmin<BankDepositAdmin>> => {
   return unwrap(await apiGet('/bank/deposits', { params: cleanParams(query) }))
 }
+
+/* ================= Nội dung site (FRONTEND-2/4/5 — backend-5 §4) =================
+ * `modules/api/admin_content`: trang chủ (hero slides, highlights, gallery,
+ * socials, footer columns, site-config) — mọi bảng DB hiện trên trang user đều
+ * sửa được ở /admin/content, không cần seeder. Ảnh upload qua /api/admin/upload
+ * (prefix `content`) rồi gửi CẢ image_key + image_url (server trust admin,
+ * không download/validate URL — như game_modes).
+ * Sau mỗi write backend tự invalidate payload home + cache status/donators;
+ * nút "Đồng bộ cache" gọi thêm refreshSiteCache() để dựng lại ngay.
+ */
+
+/** SiteConfigOut — row singleton; `id = null` khi DB chưa có row (GET trả default rỗng). */
+export interface AdminSiteConfig {
+  id: number | null
+  server_ip: string | null
+  version: string | null
+  hero_name: string | null
+  hero_tagline: string | null
+  hero_description: string | null
+  hero_cta_primary: string | null
+  hero_cta_secondary: string | null
+  hero_discord_url: string | null
+  hero_bg_image_url: string | null
+  hero_bg_image_key: string | null
+  /** ms — backend validate 1000–60000. */
+  slideshow_interval: number | null
+  modes_title: string | null
+  modes_subtitle: string | null
+  highlights_title: string | null
+  gallery_title: string | null
+  gallery_description: string | null
+  community_title: string | null
+  community_description: string | null
+  community_cta: string | null
+  community_discord_url: string | null
+  members_estimate: number | null
+  widget_id: string | null
+  footer_copyright: string | null
+}
+
+/** PATCH site-config — upsert singleton. KHÔNG gửi server_online/players_online/
+ *  players_max (runtime stats — backend-5 §4.2: có key → 400). */
+export type SiteConfigPatch = Partial<Omit<AdminSiteConfig, 'id'>>
+
+export const getContentConfig = async (): Promise<AdminSiteConfig> => {
+  if (useAdminMock) return mock.getContentConfig()
+  return unwrap(await apiGet('/admin/site-config'))
+}
+
+export const updateContentConfig = async (patch: SiteConfigPatch): Promise<AdminSiteConfig> => {
+  if (useAdminMock) return mock.updateContentConfig(patch)
+  return unwrap(await apiPatch('/admin/site-config', patch))
+}
+
+/* ---- Hero slides (GET kèm is_active=false) ---- */
+
+export interface AdminHeroSlide {
+  id: number
+  image_url: string
+  image_key: string | null
+  alt: string | null
+  sort_order: number
+  is_active: boolean
+}
+
+const CONTENT_BASE = '/admin/content'
+
+export const listHeroSlides = async (): Promise<AdminHeroSlide[]> => {
+  if (useAdminMock) return mock.listHeroSlides()
+  return unwrap(await apiGet(`${CONTENT_BASE}/hero-slides`)) ?? []
+}
+
+export const createHeroSlide = async (body: Partial<AdminHeroSlide>): Promise<AdminHeroSlide> => {
+  if (useAdminMock) return mock.createHeroSlide(body)
+  return unwrap(await apiPost(`${CONTENT_BASE}/hero-slides`, body))
+}
+
+export const updateHeroSlide = async (id: number, body: Partial<AdminHeroSlide>): Promise<AdminHeroSlide> => {
+  if (useAdminMock) return mock.updateHeroSlide(id, body)
+  return unwrap(await apiPatch(`${CONTENT_BASE}/hero-slides/${id}`, body))
+}
+
+export const deleteHeroSlide = async (id: number): Promise<null> => {
+  if (useAdminMock) return mock.deleteHeroSlide(id)
+  await apiDelete(`${CONTENT_BASE}/hero-slides/${id}`)
+  return null
+}
+
+/* ---- Highlights ---- */
+
+export interface AdminHighlight {
+  id: number
+  /** ≤16 ký tự — thường 1 emoji. */
+  icon: string | null
+  title: string
+  desc: string
+  sort_order: number
+  is_active: boolean
+}
+
+export const listHighlights = async (): Promise<AdminHighlight[]> => {
+  if (useAdminMock) return mock.listHighlights()
+  return unwrap(await apiGet(`${CONTENT_BASE}/highlights`)) ?? []
+}
+
+export const createHighlight = async (body: Partial<AdminHighlight>): Promise<AdminHighlight> => {
+  if (useAdminMock) return mock.createHighlight(body)
+  return unwrap(await apiPost(`${CONTENT_BASE}/highlights`, body))
+}
+
+export const updateHighlight = async (id: number, body: Partial<AdminHighlight>): Promise<AdminHighlight> => {
+  if (useAdminMock) return mock.updateHighlight(id, body)
+  return unwrap(await apiPatch(`${CONTENT_BASE}/highlights/${id}`, body))
+}
+
+export const deleteHighlight = async (id: number): Promise<null> => {
+  if (useAdminMock) return mock.deleteHighlight(id)
+  await apiDelete(`${CONTENT_BASE}/highlights/${id}`)
+  return null
+}
+
+/* ---- Gallery ---- */
+
+export interface AdminGalleryImage {
+  id: number
+  title: string | null
+  alt: string | null
+  image_url: string
+  image_key: string | null
+  width: number | null
+  height: number | null
+  sort_order: number
+  is_active: boolean
+}
+
+export const listGallery = async (): Promise<AdminGalleryImage[]> => {
+  if (useAdminMock) return mock.listGallery()
+  return unwrap(await apiGet(`${CONTENT_BASE}/gallery`)) ?? []
+}
+
+export const createGalleryImage = async (body: Partial<AdminGalleryImage>): Promise<AdminGalleryImage> => {
+  if (useAdminMock) return mock.createGalleryImage(body)
+  return unwrap(await apiPost(`${CONTENT_BASE}/gallery`, body))
+}
+
+export const updateGalleryImage = async (id: number, body: Partial<AdminGalleryImage>): Promise<AdminGalleryImage> => {
+  if (useAdminMock) return mock.updateGalleryImage(id, body)
+  return unwrap(await apiPatch(`${CONTENT_BASE}/gallery/${id}`, body))
+}
+
+export const deleteGalleryImage = async (id: number): Promise<null> => {
+  if (useAdminMock) return mock.deleteGalleryImage(id)
+  await apiDelete(`${CONTENT_BASE}/gallery/${id}`)
+  return null
+}
+
+/* ---- Socials ---- */
+
+export type SocialLocation = 'community' | 'footer'
+
+export interface AdminSocial {
+  id: number
+  location: SocialLocation
+  /** discord|facebook|tiktok|youtube|khác — ≤32 ký tự, optional. */
+  icon: string | null
+  label: string
+  /** bắt buộc http(s). */
+  url: string
+  sort_order: number
+  is_active: boolean
+}
+
+export const listSocials = async (location?: SocialLocation | ''): Promise<AdminSocial[]> => {
+  if (useAdminMock) return mock.listSocials(location)
+  return unwrap(await apiGet(`${CONTENT_BASE}/socials`, { params: cleanParams({ location }) })) ?? []
+}
+
+export const createSocial = async (body: Partial<AdminSocial>): Promise<AdminSocial> => {
+  if (useAdminMock) return mock.createSocial(body)
+  return unwrap(await apiPost(`${CONTENT_BASE}/socials`, body))
+}
+
+export const updateSocial = async (id: number, body: Partial<AdminSocial>): Promise<AdminSocial> => {
+  if (useAdminMock) return mock.updateSocial(id, body)
+  return unwrap(await apiPatch(`${CONTENT_BASE}/socials/${id}`, body))
+}
+
+export const deleteSocial = async (id: number): Promise<null> => {
+  if (useAdminMock) return mock.deleteSocial(id)
+  await apiDelete(`${CONTENT_BASE}/socials/${id}`)
+  return null
+}
+
+/* ---- Footer columns (links nested — upsert toàn bộ links khi POST/PATCH column) ---- */
+
+export interface AdminFooterLink {
+  id?: number
+  label: string
+  /** route nội bộ `/...` hoặc http(s). */
+  to_url: string
+}
+
+export interface AdminFooterColumn {
+  id: number
+  title: string
+  sort_order: number
+  is_active: boolean
+  links: AdminFooterLink[]
+}
+
+export const listFooterColumns = async (): Promise<AdminFooterColumn[]> => {
+  if (useAdminMock) return mock.listFooterColumns()
+  return unwrap(await apiGet(`${CONTENT_BASE}/footer-columns`)) ?? []
+}
+
+export const createFooterColumn = async (body: {
+  title: string
+  sort_order?: number
+  is_active?: boolean
+  links?: AdminFooterLink[]
+}): Promise<AdminFooterColumn> => {
+  if (useAdminMock) return mock.createFooterColumn(body)
+  return unwrap(await apiPost(`${CONTENT_BASE}/footer-columns`, body))
+}
+
+/** PATCH column — nếu gửi `links` thì upsert TOÀN BỘ links của column
+ *  (backend-5 §4.2; DELETE link = PATCH với links thiếu nó). */
+export const updateFooterColumn = async (
+  id: number,
+  body: { title?: string; sort_order?: number; is_active?: boolean; links?: AdminFooterLink[] },
+): Promise<AdminFooterColumn> => {
+  if (useAdminMock) return mock.updateFooterColumn(id, body)
+  return unwrap(await apiPatch(`${CONTENT_BASE}/footer-columns/${id}`, body))
+}
+
+export const deleteFooterColumn = async (id: number): Promise<null> => {
+  if (useAdminMock) return mock.deleteFooterColumn(id)
+  await apiDelete(`${CONTENT_BASE}/footer-columns/${id}`)
+  return null
+}
+
+/* ================= Refresh cache cho /admin/content (FRONTEND-5 §3) ================= */
+
+export interface SiteCacheRefreshResult {
+  refreshed: string[]
+  errors: Record<string, string>
+}
+
+/**
+ * POST /api/admin/cache/refresh — cùng endpoint doc v2 §6 nhưng hàm riêng cho
+ * trang Nội dung: dựng lại payload home sau khi CRUD content. Bấm dồn trong 15s
+ * → 429 (Redis lock NX phía backend; mock cũng mô phỏng).
+ */
+export const refreshSiteCache = async (): Promise<SiteCacheRefreshResult> => {
+  if (useAdminMock) return mock.refreshSiteCache()
+  const env: any = await apiPost('/admin/cache/refresh')
+  return { refreshed: env?.data?.refreshed ?? [], errors: env?.data?.errors ?? {} }
+}
+
+/** Ảnh nội dung site —复用 uploadAdminImage, prefix `content` (backend-5 §4.2). */
+export const uploadContentImage = (file: File): Promise<AdminUploadResult> => uploadAdminImage(file, 'content')

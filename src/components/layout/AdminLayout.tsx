@@ -5,6 +5,7 @@ import {
   Server,
   KeyRound,
   Gamepad2,
+  Image,
   Landmark,
   Gift,
   Coins,
@@ -48,7 +49,11 @@ const NAV_GROUPS: { label: string; items: { to: string; label: string; end?: boo
   },
   {
     label: 'Nội dung',
-    items: [{ to: '/admin/game-modes', label: 'Máy chủ game', icon: Gamepad2 }],
+    items: [
+      // FRONTEND-5 §4 — CRUD toàn bộ nội dung DB hiện trên trang chủ (hero/highlight/gallery/social/footer/config).
+      { to: '/admin/content', label: 'Nội dung', icon: Image },
+      { to: '/admin/game-modes', label: 'Máy chủ game', icon: Gamepad2 },
+    ],
   },
   {
     label: 'Tài chính',
