@@ -45,7 +45,7 @@ export function ServerStatusWidget({ status, legacyInfo }: Props) {
     if (!ip) return null
     const isOnline = legacyInfo.online === true
     return (
-      <section className="mx-auto -mt-6 max-w-4xl px-4 sm:px-6">
+      <section className="mx-auto mt-4 max-w-4xl px-4 sm:px-6">
         <div className="flex flex-col items-center gap-4 rounded-2xl border border-border-c bg-surface p-4 shadow-lg shadow-black/5 sm:flex-row sm:justify-between sm:p-5">
           <code className="font-mono text-sm font-semibold text-fg sm:text-base">{ip}</code>
           <span className="flex items-center gap-2 text-sm text-muted">
@@ -80,7 +80,7 @@ export function ServerStatusWidget({ status, legacyInfo }: Props) {
 
   return (
     <section
-      className="mx-auto -mt-6 max-w-4xl px-4 sm:px-6"
+      className="mx-auto mt-4 max-w-4xl px-4 sm:px-6"
       role="status"
       aria-label={`Trạng thái máy chủ: ${meta.label}`}
     >
