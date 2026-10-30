@@ -484,6 +484,21 @@ const UptimeSection = ({ periods }: { periods: UptimePeriod[] | null }) => {
 const StorageSection = ({ disks, worlds }: { disks: DiskSample[] | null; worlds: WorldSize[] | null }) => {
   if (!disks || !worlds) return <Skeleton className="h-40" />
 
+  // Disk: plugin gửi system record mỗi 60s → cả nghìn sample C:\ D:\ lặp lại trong 24h.
+  // Gom theo path y hệt byWorld dưới — mỗi ổ ĐÚNG 1 dòng (key={path} unique, hết duplicate-key remount).
+  const byPath = new Map<string, { latest: DiskSample; oldest: DiskSample; count: number }>()
+  for (const d of disks) {
+    const cur = byPath.get(d.path)
+    if (!cur) byPath.set(d.path, { latest: d, oldest: d, count: 1 })
+    else {
+      cur.count += 1
+      if (d.ts_ms > cur.latest.ts_ms) cur.latest = d
+      if (d.ts_ms < cur.oldest.ts_ms) cur.oldest = d
+    }
+  }
+  // Mount point ổn định trước (C:\, D:\...) — sort theo path.
+  const diskRows = [...byPath.entries()].sort((a, b) => a[0].localeCompare(b[0]))
+
   // thế giới gần nhất + delta so với sample cũ nhất trong range
   const byWorld = new Map<string, { latest: WorldSize; oldest: WorldSize }>()
   for (const w of worlds) {
@@ -506,14 +521,17 @@ const StorageSection = ({ disks, worlds }: { disks: DiskSample[] | null; worlds:
             <p className="text-sm text-muted">Chưa có sample disk.</p>
           ) : (
             <ul className="space-y-3">
-              {disks.map((d) => {
-                const usedPct = d.total_bytes ? 100 - (d.free_bytes / d.total_bytes) * 100 : 0
+              {diskRows.map(([path, { latest, oldest, count }]) => {
+                const usedPct = latest.total_bytes ? 100 - (latest.free_bytes / latest.total_bytes) * 100 : 0
+                const freePct = latest.total_bytes ? (latest.free_bytes / latest.total_bytes) * 100 : 0
+                // delta dung lượng TRỐNG trong 24h (free giảm = ổ đang đầy dần → amber)
+                const freeDelta = latest.free_bytes - oldest.free_bytes
                 return (
-                  <li key={d.path}>
+                  <li key={path}>
                     <div className="flex items-center justify-between text-sm">
-                      <code className="font-mono text-xs text-fg">{d.path}</code>
+                      <code className="font-mono text-xs text-fg">{path}</code>
                       <span className="text-xs text-muted tabular-nums">
-                        còn {fmtBytes(d.free_bytes)} / {fmtBytes(d.total_bytes)}
+                        {fmtBytes(latest.free_bytes)} / {fmtBytes(latest.total_bytes)} (còn {Math.round(freePct)}%)
                       </span>
                     </div>
                     <div className="mt-1 h-2 overflow-hidden rounded-full bg-surface-2">
@@ -521,6 +539,17 @@ const StorageSection = ({ disks, worlds }: { disks: DiskSample[] | null; worlds:
                         className={cn('h-full rounded-full', usedPct > 90 ? 'bg-red-500' : usedPct > 75 ? 'bg-amber-500' : 'bg-emerald-500')}
                         style={{ width: `${Math.min(100, usedPct)}%` }}
                       />
+                    </div>
+                    <div className="mt-1 flex items-center gap-2 text-[11px] text-muted">
+                      <span>cập nhật {fmtDateTimeMs(latest.ts_ms)} · {count} sample/24h</span>
+                      {oldest.ts_ms !== latest.ts_ms && freeDelta !== 0 && (
+                        <span
+                          className={cn('rounded-full px-1.5 py-0.5 font-semibold', freeDelta < 0 ? 'bg-amber-500/10 text-amber-500' : 'bg-emerald-500/10 text-emerald-500')}
+                          title="độ thay đổi dung lượng TRỐNG so với sample cũ nhất trong 24h"
+                        >
+                          {freeDelta < 0 ? `−${fmtBytes(-freeDelta)}` : `+${fmtBytes(freeDelta)}`} trống
+                        </span>
+                      )}
                     </div>
                   </li>
                 )

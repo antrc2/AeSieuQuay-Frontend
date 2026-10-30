@@ -1,7 +1,11 @@
 /**
  * Dữ liệu dùng chung cho site chrome: menu Header, Footer, thông tin server.
  *
- * Đây là cấu hình tĩnh (không phải nội dung trang), dùng làm fallback an toàn khi
+ * FRONTEND-5 §1 — MENU LÀ ĐẶC QUYỀN FRONTEND: `DEFAULT_MENU` dưới đây là NGUỒN
+ * DUY NHẤT của menu Header. Backend KHÔNG còn trả `header.menu` (backend-5 §2);
+ * mọi payload/mock có key này đều bị bỏ qua. THÊM/BỚT MENU = SỬA FILE NÀY.
+ *
+ * Phần còn lại (footer, server_info) vẫn là cấu hình tĩnh dùng làm fallback an toàn khi
  * `window.DATA` không kèm khối `site`. Ở production, backend nên gửi kèm
  * `site: { header, footer, server_info }` trong mọi payload.
  *
@@ -126,6 +130,9 @@ export const buildDefaultSiteData = () => ({
  * `windowData.site` được ưu tiên; nếu là trang chủ phẳng thì dùng header/footer
  * của payload đó; cuối cùng mới tới default.
  * Link chết/URL cũ được lọc hoặc map sang route chuẩn.
+ *
+ * FRONTEND-5 §1: `header.menu` KHÔNG BAO GIỜ đọc từ payload — luôn là
+ * sanitize(DEFAULT_MENU) (sanitize giữ nguyên để route lạ vẫn bị lọc).
  */
 export const resolveSiteData = (site, homePayload) => {
   const fallback = buildDefaultSiteData()
@@ -138,7 +145,7 @@ export const resolveSiteData = (site, homePayload) => {
     header: {
       ...fallback.header,
       ...header,
-      menu: sanitizeMenu(header?.menu, fallback.header.menu),
+      menu: sanitizeMenu(DEFAULT_MENU, fallback.header.menu),
     },
     footer: {
       ...fallback.footer,

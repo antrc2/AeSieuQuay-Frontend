@@ -207,10 +207,11 @@ export const homePageMock = {
   // Doc v2 §1: widget home ĐỌC block này, bỏ qua server_info. Muốn test case
   // "chưa từng có heartbeat": status:'offline', players:null, version/motd/tps/uptime/servers/source = null.
   server_status: {
-    ip: 'play.unimc.vn',
+    // Branding thật của site (chủ server chốt 29/10): IP = aesieuquay.com.
+    ip: 'aesieuquay.com',
     port: 25565,
-    version: '1.20.1 Paper',
-    motd: 'UniMC - Survival & Skyblock',
+    version: '1.21.11 Paper',
+    motd: 'AeSieuQuay - Survival & Skyblock',
     status: 'online',
     online: true,
     maintenance: false,
@@ -218,7 +219,7 @@ export const homePageMock = {
     tps: { avg_1m: 19.85 },
     uptime: { percent_7d: 99.2, window_hours: 168 },
     servers: { total: 6, online: 5 },
-    cluster: { id: 1, slug: 'aesq', name: 'AESQ Network' },
+    cluster: { id: 1, slug: 'aesiumquay', name: 'AeSieuQuay' },
     source: { server_key: 'lobby-1', name: 'Lobby 1', role: 'lobby', admin_picked: true },
     updated_at_ms: Date.now(),
   },

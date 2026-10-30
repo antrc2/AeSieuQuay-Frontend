@@ -21,7 +21,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/States'
 import { fmtBytes, fmtNumber, fmtTime, timeAgo } from '@/lib/format'
 import { cn } from '@/lib/utils'
-import { showApiError, showSuccess } from '@/utils/swal'
+import Swal, { showApiError, showSuccess } from '@/utils/swal'
 
 const REFRESH_MS = 15_000
 
@@ -84,7 +84,7 @@ export const AdminOverviewPage = () => {
       const errorEntries = Object.entries(res.errors ?? {})
       if (errorEntries.length > 0) {
         // một phần producer lỗi → backend vẫn trả 200; FE toast cảnh báo + list errors
-        const { default: Swal } = await import('sweetalert2')
+        // (Swal lấy từ '@/utils/swal' — module đã nằm trong bundle tĩnh nên dynamic import vô nghĩa)
         void Swal.fire({
           icon: 'warning',
           title: 'Làm mới một phần',

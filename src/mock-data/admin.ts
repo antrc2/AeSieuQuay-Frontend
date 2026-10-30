@@ -361,6 +361,79 @@ const state = {
     { id: 3, name: 'Sale Tết — +50% thẻ cào', applies_to: 'card', bonus_percent: 50, starts_at: new Date(Date.now() + 2 * 86_400_000).toISOString().slice(0, 19), ends_at: new Date(Date.now() + 9 * 86_400_000).toISOString().slice(0, 19), max_users: 100, max_per_user: 2, is_active: true, claimed_users: 0, created_at: msAgo(60 * 5), updated_at: msAgo(60 * 5) }, // sắp diễn ra
     { id: 4, name: 'KM thử nghiệm (đã tắt)', applies_to: 'bank', bonus_percent: 10, starts_at: msAgo(60 * 24 * 20), ends_at: msAgo(60 * 24 * 15), max_users: 5, max_per_user: 1, is_active: false, claimed_users: 2, created_at: msAgo(60 * 24 * 25), updated_at: msAgo(60 * 24 * 16) }, // tắt
   ] as AnyObj[],
+
+  /* ---- FRONTEND-5 §2: nội dung site (admin_content — backend-5 §4) ----
+   * Shape khớp SiteConfigOut / HeroSlideIn / HighlightIn / GalleryIn / SocialIn /
+   * FooterColumnIn; CRUD mock mutate in-memory.
+   */
+  siteConfig: {
+    id: 1,
+    server_ip: 'aesieuquay.com',
+    version: '1.21.4',
+    hero_name: 'AeSieuQuay',
+    hero_tagline: 'Chơi là ghiền',
+    hero_description: 'Máy chủ Minecraft Việt Nam — survival, skyblock, PvP ping thấp.',
+    hero_cta_primary: 'Chơi ngay',
+    hero_cta_secondary: 'Xem máy chủ',
+    hero_discord_url: 'https://discord.gg/tBH4zEpK2S',
+    hero_bg_image_url: 'https://picsum.photos/seed/aesq-hero-bg/1920/1080',
+    hero_bg_image_key: 'content/hero-bg.jpg',
+    slideshow_interval: 6000,
+    modes_title: 'Các chế độ chơi',
+    modes_subtitle: 'Chọn thế giới của bạn',
+    highlights_title: 'Vì sao chọn AeSieuQuay',
+    gallery_title: 'Khoảnh khắc đẹp',
+    gallery_description: 'Ảnh do cộng đồng chụp trong game.',
+    community_title: 'Tham gia cộng đồng',
+    community_description: 'Giao lưu, săn sự kiện, báo lỗi — tất cả ở Discord.',
+    community_cta: 'Tham gia Discord',
+    community_discord_url: 'https://discord.gg/tBH4zEpK2S',
+    members_estimate: 12000,
+    widget_id: 'aesq-main',
+    footer_copyright: '© 2026 SV AeSieuQuay — Minecraft Việt Nam. Không liên kết chính thức với Mojang AB hoặc Microsoft.',
+  } as AnyObj,
+
+  heroSlides: [
+    { id: 1, image_url: 'https://picsum.photos/seed/aesq-h1/1600/900', image_key: 'content/h1.jpg', alt: 'Pháo đài lúc bình minh', sort_order: 0, is_active: true },
+    { id: 2, image_url: 'https://picsum.photos/seed/aesq-h2/1600/900', image_key: 'content/h2.jpg', alt: 'Sự kiện boss cuối tuần', sort_order: 1, is_active: true },
+    { id: 3, image_url: 'https://picsum.photos/seed/aesq-h3/1600/900', image_key: null, alt: 'Đảo skyblock', sort_order: 2, is_active: false },
+  ] as AnyObj[],
+
+  highlights: [
+    { id: 1, icon: '⚡', title: 'Ping thấp Việt Nam', desc: 'Server đặt tại VN, ping trung bình <30ms.', sort_order: 0, is_active: true },
+    { id: 2, icon: '🛡️', title: 'Anti-cheat mạnh', desc: 'Grim + Watchdog tinh chỉnh riêng cho AeSieuQuay.', sort_order: 1, is_active: true },
+    { id: 3, icon: '🎉', title: 'Sự kiện mỗi tuần', desc: 'Boss, đua top nạp, xây dựng — quà Xu hấp dẫn.', sort_order: 2, is_active: true },
+  ] as AnyObj[],
+
+  gallery: [
+    { id: 1, title: 'Solution mùa 3', alt: 'Nhà máy redstone khổng lồ', image_url: 'https://picsum.photos/seed/aesq-g1/1200/800', image_key: 'content/g1.jpg', width: 1200, height: 800, sort_order: 0, is_active: true },
+    { id: 2, title: 'Lâu đài PvP', alt: 'Giải đấu cuối tuần', image_url: 'https://picsum.photos/seed/aesq-g2/1200/1600', image_key: null, width: 1200, height: 1600, sort_order: 1, is_active: true },
+    { id: 3, title: 'Đảo nổi', alt: 'Skyblock mùa 1', image_url: 'https://picsum.photos/seed/aesq-g3/1600/900', image_key: 'content/g3.jpg', width: 1600, height: 900, sort_order: 2, is_active: false },
+  ] as AnyObj[],
+
+  socials: [
+    { id: 1, location: 'community', icon: 'discord', label: 'Discord', url: 'https://discord.gg/tBH4zEpK2S', sort_order: 0, is_active: true },
+    { id: 2, location: 'community', icon: 'facebook', label: 'Facebook', url: 'https://facebook.com/aesieuquay', sort_order: 1, is_active: true },
+    { id: 3, location: 'footer', icon: 'tiktok', label: 'TikTok', url: 'https://tiktok.com/@aesieuquay', sort_order: 2, is_active: true },
+  ] as AnyObj[],
+
+  footerColumns: [
+    {
+      id: 1, title: 'Khám phá', sort_order: 0, is_active: true,
+      links: [
+        { id: 1, label: 'Máy chủ', to_url: '/may-chu' },
+        { id: 2, label: 'Nạp thẻ', to_url: '/nap-the' },
+        { id: 3, label: 'Chuyển xu', to_url: '/chuyen-xu' },
+      ],
+    },
+    {
+      id: 2, title: 'Tài khoản', sort_order: 1, is_active: true,
+      links: [
+        { id: 4, label: 'Đăng nhập', to_url: '/dang-nhap' },
+        { id: 5, label: 'Đăng ký', to_url: '/dang-ky' },
+      ],
+    },
+  ] as AnyObj[],
 }
 
 function mkServer(p: Partial<MockServer> & { id: number }): MockServer {
@@ -1353,6 +1426,241 @@ export const adminMock = {
       errors: i === 3 ? [{ index: 7, error: 'unknown metric kind: bogus' }] : null,
     }))
   },
+
+  /* ================= nội dung site (FRONTEND-5 §2 / backend-5 §4) =================
+   * CRUD mutate in-memory, validate sơ bộ theo schema backend (422 message tiếng
+   * Việt để test showApiError). Sắp xếp theo sort_order khi list — như backend.
+   */
+
+  async getContentConfig() {
+    await wait()
+    return { ...state.siteConfig }
+  },
+
+  async updateContentConfig(patch: AnyObj) {
+    await wait()
+    // backend-5 §4.2: stats runtime KHÔNG nằm trong schema — PATCH có key → 400.
+    for (const k of ['server_online', 'players_online', 'players_max', 'id']) {
+      if (k in patch) fail(`'${k}' không sửa được qua site-config (runtime stats)`, 400, 'bad_request')
+    }
+    if (patch.slideshow_interval !== undefined) {
+      const v = Number(patch.slideshow_interval)
+      if (!Number.isFinite(v) || v < 1000 || v > 60000) fail('slideshow_interval phải trong 1000–60000 ms', 422, 'validation_error')
+    }
+    Object.assign(state.siteConfig, patch, { updated_at: nowIso() })
+    return { ...state.siteConfig }
+  },
+
+  async listHeroSlides() {
+    await wait()
+    return state.heroSlides.map((r) => ({ ...r })).sort((a, b) => a.sort_order - b.sort_order)
+  },
+
+  async createHeroSlide(payload: AnyObj) {
+    await wait()
+    if (!String(payload.image_url ?? '').trim()) fail('image_url là bắt buộc (upload ảnh trước)', 422, 'validation_error')
+    const id = nextContentId(state.heroSlides)
+    const row = {
+      id,
+      image_url: String(payload.image_url),
+      image_key: payload.image_key ?? null,
+      alt: payload.alt ?? null,
+      sort_order: Number(payload.sort_order ?? id),
+      is_active: payload.is_active !== false,
+    }
+    state.heroSlides.push(row)
+    return { ...row }
+  },
+
+  async updateHeroSlide(id: number, patch: AnyObj) {
+    await wait()
+    const row = findContentRow(state.heroSlides, id, 'hero slide')
+    applyContentPatch(row, patch, ['image_url', 'image_key', 'alt', 'sort_order', 'is_active'])
+    return { ...row }
+  },
+
+  async deleteHeroSlide(id: number) {
+    await wait()
+    state.heroSlides = state.heroSlides.filter((r) => r.id !== findContentRow(state.heroSlides, id, 'hero slide').id)
+    return null
+  },
+
+  async listHighlights() {
+    await wait()
+    return state.highlights.map((r) => ({ ...r })).sort((a, b) => a.sort_order - b.sort_order)
+  },
+
+  async createHighlight(payload: AnyObj) {
+    await wait()
+    if (!String(payload.title ?? '').trim()) fail('title là bắt buộc', 422, 'validation_error')
+    if (!String(payload.desc ?? '').trim()) fail('desc là bắt buộc', 422, 'validation_error')
+    if (String(payload.icon ?? '').length > 16) fail('icon tối đa 16 ký tự', 422, 'validation_error')
+    const id = nextContentId(state.highlights)
+    const row = {
+      id,
+      icon: payload.icon ?? null,
+      title: String(payload.title).trim(),
+      desc: String(payload.desc),
+      sort_order: Number(payload.sort_order ?? id),
+      is_active: payload.is_active !== false,
+    }
+    state.highlights.push(row)
+    return { ...row }
+  },
+
+  async updateHighlight(id: number, patch: AnyObj) {
+    await wait()
+    const row = findContentRow(state.highlights, id, 'highlight')
+    applyContentPatch(row, patch, ['icon', 'title', 'desc', 'sort_order', 'is_active'])
+    return { ...row }
+  },
+
+  async deleteHighlight(id: number) {
+    await wait()
+    state.highlights = state.highlights.filter((r) => r.id !== findContentRow(state.highlights, id, 'highlight').id)
+    return null
+  },
+
+  async listGallery() {
+    await wait()
+    return state.gallery.map((r) => ({ ...r })).sort((a, b) => a.sort_order - b.sort_order)
+  },
+
+  async createGalleryImage(payload: AnyObj) {
+    await wait()
+    if (!String(payload.image_url ?? '').trim()) fail('image_url là bắt buộc (upload ảnh trước)', 422, 'validation_error')
+    const id = nextContentId(state.gallery)
+    const row = {
+      id,
+      title: payload.title ?? null,
+      alt: payload.alt ?? null,
+      image_url: String(payload.image_url),
+      image_key: payload.image_key ?? null,
+      width: payload.width != null && payload.width !== '' ? Number(payload.width) : null,
+      height: payload.height != null && payload.height !== '' ? Number(payload.height) : null,
+      sort_order: Number(payload.sort_order ?? id),
+      is_active: payload.is_active !== false,
+    }
+    state.gallery.push(row)
+    return { ...row }
+  },
+
+  async updateGalleryImage(id: number, patch: AnyObj) {
+    await wait()
+    const row = findContentRow(state.gallery, id, 'ảnh gallery')
+    applyContentPatch(row, patch, ['title', 'alt', 'image_url', 'image_key', 'width', 'height', 'sort_order', 'is_active'])
+    return { ...row }
+  },
+
+  async deleteGalleryImage(id: number) {
+    await wait()
+    state.gallery = state.gallery.filter((r) => r.id !== findContentRow(state.gallery, id, 'ảnh gallery').id)
+    return null
+  },
+
+  async listSocials(location?: string) {
+    await wait()
+    let rows = state.socials.map((r) => ({ ...r }))
+    if (location) rows = rows.filter((r) => r.location === location)
+    return rows.sort((a, b) => a.sort_order - b.sort_order)
+  },
+
+  async createSocial(payload: AnyObj) {
+    await wait()
+    validateSocial(payload)
+    const id = nextContentId(state.socials)
+    const row = {
+      id,
+      location: payload.location,
+      icon: payload.icon ?? null,
+      label: String(payload.label).trim(),
+      url: String(payload.url).trim(),
+      sort_order: Number(payload.sort_order ?? id),
+      is_active: payload.is_active !== false,
+    }
+    state.socials.push(row)
+    return { ...row }
+  },
+
+  async updateSocial(id: number, patch: AnyObj) {
+    await wait()
+    const row = findContentRow(state.socials, id, 'social')
+    validateSocial({ ...row, ...patch })
+    applyContentPatch(row, patch, ['location', 'icon', 'label', 'url', 'sort_order', 'is_active'])
+    return { ...row }
+  },
+
+  async deleteSocial(id: number) {
+    await wait()
+    state.socials = state.socials.filter((r) => r.id !== findContentRow(state.socials, id, 'social').id)
+    return null
+  },
+
+  async listFooterColumns() {
+    await wait()
+    return state.footerColumns
+      .map((c) => ({ ...c, links: c.links.map((l: AnyObj) => ({ ...l })) }) as AnyObj)
+      .sort((a, b) => a.sort_order - b.sort_order)
+  },
+
+  async createFooterColumn(payload: AnyObj) {
+    await wait()
+    if (!String(payload.title ?? '').trim()) fail('title là bắt buộc', 422, 'validation_error')
+    const id = nextContentId(state.footerColumns)
+    let linkId = nextContentId(state.footerColumns.flatMap((c) => c.links))
+    const row = {
+      id,
+      title: String(payload.title).trim(),
+      sort_order: Number(payload.sort_order ?? id),
+      is_active: payload.is_active !== false,
+      links: (Array.isArray(payload.links) ? payload.links : []).map((l: AnyObj) => ({
+        id: linkId++,
+        label: String(l.label ?? '').trim(),
+        to_url: String(l.to_url ?? '').trim(),
+      })),
+    }
+    state.footerColumns.push(row)
+    return { ...row, links: row.links.map((l: AnyObj) => ({ ...l })) }
+  },
+
+  /** PATCH kèm `links` = upsert TOÀN BỘ links của column (backend-5 §4.2). */
+  async updateFooterColumn(id: number, patch: AnyObj) {
+    await wait()
+    const row = findContentRow(state.footerColumns, id, 'cột footer')
+    if (patch.title !== undefined) {
+      if (!String(patch.title).trim()) fail('title không được rỗng', 422, 'validation_error')
+      row.title = String(patch.title).trim()
+    }
+    if (patch.sort_order !== undefined) row.sort_order = Number(patch.sort_order)
+    if (patch.is_active !== undefined) row.is_active = !!patch.is_active
+    if (Array.isArray(patch.links)) {
+      let linkId = nextContentId(state.footerColumns.flatMap((c) => c.links))
+      row.links = patch.links.map((l: AnyObj) => ({
+        id: linkId++,
+        label: String(l.label ?? '').trim(),
+        to_url: String(l.to_url ?? '').trim(),
+      }))
+    }
+    return { ...row, links: row.links.map((l: AnyObj) => ({ ...l })) }
+  },
+
+  async deleteFooterColumn(id: number) {
+    await wait()
+    state.footerColumns = state.footerColumns.filter((r) => r.id !== findContentRow(state.footerColumns, id, 'cột footer').id)
+    return null
+  },
+
+  /** Đồng bộ cache home — cooldown 15s Y như Redis lock NX backend (lần 2 trong 15s → 429). */
+  _siteCacheLockUntil: 0 as number,
+  async refreshSiteCache() {
+    await wait()
+    const now = Date.now()
+    if (now < adminMock._siteCacheLockUntil) {
+      fail('Vừa refresh — chờ ~15s rồi bấm lại', 429, 'too_many_requests')
+    }
+    adminMock._siteCacheLockUntil = now + 15_000
+    return { refreshed: ['web:home'], errors: {} }
+  },
 }
 
 /* ================= helpers mock FRONTEND-3 ================= */
@@ -1375,6 +1683,31 @@ function findGameMode(modeId: number): AnyObj {
   const m = state.gameModes.find((x) => x.id === modeId)
   if (!m) fail(`Không tìm thấy máy chủ id=${modeId}`, 404, 'not_found')
   return m
+}
+
+/* ---- helpers nội dung site (FRONTEND-5 §2) ---- */
+
+const nextContentId = (rows: AnyObj[]) => Math.max(0, ...rows.map((r) => Number(r.id) || 0)) + 1
+
+function findContentRow(rows: AnyObj[], id: number, label: string): AnyObj {
+  const row = rows.find((x) => x.id === id)
+  if (!row) fail(`${label} ${id} không tồn tại`, 404, 'not_found')
+  return row
+}
+
+/** PATCH style backend: `exclude_unset` — chỉ ghi key có gửi. */
+function applyContentPatch(row: AnyObj, patch: AnyObj, allowed: string[]) {
+  for (const key of allowed) {
+    if (patch[key] !== undefined) row[key] = patch[key]
+  }
+}
+
+/** SocialIn (backend-5 §4.2): location ∈ community|footer, label bắt buộc, url http(s). */
+function validateSocial(input: AnyObj) {
+  if (!['community', 'footer'].includes(String(input.location ?? ''))) fail('location phải là community|footer', 422, 'validation_error')
+  if (!String(input.label ?? '').trim()) fail('label là bắt buộc', 422, 'validation_error')
+  if (String(input.icon ?? '').length > 32) fail('icon tối đa 32 ký tự', 422, 'validation_error')
+  if (!/^https?:\/\//i.test(String(input.url ?? '').trim())) fail('url phải bắt đầu bằng http:// hoặc https://', 422, 'validation_error')
 }
 
 /**

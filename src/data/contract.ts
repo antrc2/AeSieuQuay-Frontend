@@ -38,6 +38,11 @@ export interface MenuItem {
 }
 
 export interface HeaderData {
+  /**
+   * @deprecated (FRONTEND-5 §1) — backend không còn trả `header.menu`
+   * (backend-5 §2 offload sang FE); menu luôn = `DEFAULT_MENU` phía FE
+   * (`src/data/site.js`). Giữ optional cho tương thích payload cũ, không phá type cũ.
+   */
   menu?: MenuItem[]
   cta?: { label: string; to: string }
 }

@@ -176,7 +176,7 @@ const HistoryBlock = ({
     ].sort((a, b) => b.at - a.at)
   }, [data.my, liveCard, liveBank])
 
-  const guest = !data.my && !isLoggedIn
+  const guest = !isLoggedIn
 
   return (
     <section className="relative mt-8 overflow-hidden rounded-3xl border border-border-c bg-surface shadow-lg shadow-black/10">
@@ -298,9 +298,15 @@ export const NapThePage = () => {
   const description = data.subtitle || 'Nạp thẻ vào tài khoản AeSieuQuay nhanh chóng và an toàn.'
   const siteUrl = typeof window !== 'undefined' ? window.location.origin : ''
 
-  const isLoggedIn = Boolean(user) || data.my !== null
+  // Nguồn đăng nhập DUY NHẤT là useAuth (cookie JWT thật).
+  // KHÔNG suy ra từ data.my — mock/dev có `my` giả, và key thiếu (undefined !== null)
+  // từng khiến khách bị tính là đã login → QR không blur (fix 29/10).
+  const isLoggedIn = Boolean(user)
   const canTopup = !authLoading && isLoggedIn
-  const realname = (typeof user?.realname === 'string' && user.realname.trim()) || data.my?.user.realname || ''
+  // Chỉ lấy từ phiên đăng nhập THẬT (user) — không fallback data.my (mock/dev có `my` giả).
+  const realname = (typeof user?.realname === 'string' && user.realname.trim())
+    || (typeof user?.username === 'string' && user.username.trim())
+    || ''
 
   /* VietQR chuẩn cứng (chốt 27/10): OCB-HNC61025015012, accountName NGUYEN NGOC AN.
    * Ưu tiên build từ payload.bank.receiving; thiếu → BANK_QR_BASE_URL fallback (site.js). */
@@ -715,7 +721,14 @@ export const NapThePage = () => {
                     </div>
                   </dl>
                   <p className="mt-3 text-xs leading-relaxed text-muted">
-                    Nội dung chuyển khoản: <b className="text-fg">{realname || 'ten ingame'}</b> — {data.bank?.content_format}.
+                    {/* Bắt buộc login mới hiện nội dung CK (fix 29/10): khách chỉ thấy hướng dẫn chung + link đăng nhập. */}
+                    {canTopup ? (
+                      <>Nội dung chuyển khoản: <b className="text-fg">{realname || user?.username || 'ten ingame'}</b> — {data.bank?.content_format}.</>
+                    ) : (
+                      <>Nội dung chuyển khoản: <b className="text-fg">tên nhân vật của bạn</b> —{' '}
+                        <a href="/dang-nhap" className="font-semibold text-primary underline">đăng nhập</a> để xem chính xác nội dung CK (hệ thống match theo tên đăng nhập).
+                      </>
+                    )}
                     {data.promotion?.applies_to === 'bank' && (
                       <> Đang chạy <b className="text-amber-500">+{data.promotion.bonus_percent}% Xu</b> ({data.promotion.name}).</>
                     )}

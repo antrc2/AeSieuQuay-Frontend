@@ -677,76 +677,7 @@ const Community = ({ community }: { community?: HomePayload['community'] }) => {
 }
 
 
-/* ================= CTA cuối trang ================= */
 
-const FinalCTA = ({ ip: ipProp }: { ip?: string }) => {
-  const [copied, setCopied] = useState(false)
-  // Doc v2 §1: luôn hiển thị ":port" khi port ≠ 25565 (ip prop đã qua formatAddress ở caller).
-  const ip = ipProp ?? ''
-
-  const copy = async () => {
-    if (!ip) return
-    try {
-      await navigator.clipboard.writeText(ip)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2500)
-    } catch {
-      /* ignore */
-    }
-  }
-
-  return (
-    <section className="reveal mx-auto mt-20 max-w-6xl px-4 sm:px-6">
-      <div className="border-gradient relative overflow-hidden rounded-3xl">
-        <div className="relative rounded-[calc(1.5rem-1px)] bg-surface p-8 text-center sm:p-14">
-          {/* Ambient glow phía trong card */}
-          <div className="pointer-events-none absolute inset-0" aria-hidden>
-            <span className="ambient-orb left-[10%] top-[-40%] h-72 w-72" style={{ background: 'var(--glow-primary)' }} />
-            <span className="ambient-orb bottom-[-50%] right-[8%] h-72 w-72" style={{ background: 'var(--glow-accent)' }} />
-          </div>
-          <div className="relative">
-            <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
-              Sẵn sàng vào <span className="text-gradient-brand">game?</span>
-            </h2>
-            <p className="mx-auto mt-3 max-w-md text-muted">
-              Sao chép IP, mở Minecraft và tham gia ngay — cùng cộng đồng AeSieuQuay.
-            </p>
-            {/* Ô IP lớn — click để copy */}
-            <button
-              type="button"
-              onClick={copy}
-              title={`Sao chép ${ip}`}
-              className="mx-auto mt-7 flex items-center gap-3 rounded-2xl border border-border-c bg-surface-2 px-5 py-3 transition-all hover:border-primary/50 active:scale-[0.98]"
-            >
-              <code className="font-mono text-base font-bold text-fg sm:text-lg">{ip}</code>
-              <span className={cn(
-                'rounded-lg px-2.5 py-1 text-xs font-bold',
-                copied ? 'bg-emerald-500/15 text-emerald-500' : 'bg-primary text-white',
-              )}>
-                {copied ? '✓ Đã copies' : 'Copy'}
-              </span>
-            </button>
-            <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
-              <button
-                onClick={copy}
-                className="w-full max-w-[280px] rounded-xl bg-gradient-to-r from-primary to-accent px-8 py-3 font-semibold text-white shadow-lg shadow-primary/30 transition-all hover:shadow-xl hover:brightness-110 active:scale-[0.98] sm:w-auto"
-              >
-                📋 Sao chép IP
-              </button>
-              <a
-                href="/dang-ky"
-                className="w-full max-w-[280px] rounded-xl border border-border-c bg-surface px-8 py-3 font-semibold text-fg transition-all hover:bg-surface-2 active:scale-[0.98] sm:w-auto"
-              >
-                Tạo tài khoản
-              </a>
-            </div>
-          </div>
-        </div>
-      </div>
-      {copied && <Toast message="Đã sao chép IP server!" />}
-    </section>
-  )
-}
 
 /* ================= Trang chủ ================= */
 
@@ -820,7 +751,6 @@ export const HomePage = () => {
       {data.highlights?.items?.length ? <Highlights section={data.highlights} /> : null}
       {data.gallery ? <Gallery gallery={data.gallery} /> : null}
       {data.community ? <Community community={data.community} /> : null}
-      {siteIp && <FinalCTA ip={siteIp} />}
     </SiteLayout>
   )
 }
