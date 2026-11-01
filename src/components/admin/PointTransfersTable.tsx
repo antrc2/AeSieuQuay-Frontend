@@ -63,7 +63,7 @@ export const PointTransfersTable = ({
             <Td>
               <span className="tabular-nums text-fg">{fmtXu(t.amount)}</span>
               <p className="text-[11px] text-muted">
-                {t.from_server_key} → {t.to_server_key}
+                {t.from_server_slug} → {t.to_server_slug}
               </p>
             </Td>
             <Td>

@@ -82,6 +82,9 @@ export interface GameModeSummary {
   short_desc?: string
   status?: string
   image?: string | null
+  /** Thể loại hiển thị (nhóm card trang chủ + badge). */
+  category?: string | null
+  category_slug?: string | null
 }
 
 /* ================= Frontend Requirements v2 — khối động SSR =================
@@ -115,7 +118,7 @@ export interface ServerStatusBlock {
   cluster: { id: number; slug: string; name: string } | null
   /** Server đang làm nguồn hiển thị (admin chọn display_public, fallback proxy→lobby→game). */
   source: {
-    server_key: string
+    server_slug: string
     name: string
     role: 'proxy' | 'lobby' | 'game'
     /** false = đang ăn fallback tự động. */
@@ -155,7 +158,7 @@ export interface CaptchaConfig {
 /* ================= Cluster stats (backend.md mục 0.1) ================= */
 
 export interface ClusterStatsServerStatus {
-  server_key: string
+  server_slug: string
   name: string
   role: string // 'proxy' | 'lobby' | 'game'
   online: boolean
@@ -271,8 +274,15 @@ export interface MachineDetailPayload {
   /** Gallery — ảnh trong nội dung. */
   images?: string[]
   cluster?: { id: number } | null
+  category?: { slug: string; name: string } | null
   stats?: ClusterStats | null
   content_html?: string | null
+}
+
+export interface MachineCategory {
+  slug: string
+  name: string
+  count?: number
 }
 
 export interface MachineModeCard {
@@ -282,6 +292,10 @@ export interface MachineModeCard {
   short_desc?: string
   status?: string
   image?: string | null
+  /** Tên thể loại hiển thị trên card. */
+  category?: string | null
+  /** Slug thể loại — dùng lọc/nhóm. */
+  category_slug?: string | null
 }
 
 export interface MachineListPayload {
@@ -289,6 +303,8 @@ export interface MachineListPayload {
   subtitle?: string
   cluster?: ClusterSummary | null
   stats?: ClusterStats | null
+  categories?: MachineCategory[]
+  current_category?: { slug: string; name: string } | null
   modes?: MachineModeCard[]
 }
 
@@ -321,7 +337,7 @@ export interface BankPublicInfo {
   enabled: boolean
   vnd_per_xu: number
   min_amount_vnd: number
-  credit_server_key: string
+  credit_server: string
   receiving: {
     bank: string
     account_number: string
@@ -412,7 +428,7 @@ export type TransferStatus =
 
 export interface TransferRow {
   transfer_id: string
-  to_server_key: string
+  to_server_slug: string
   amount: number
   status: TransferStatus
   error: string | null
@@ -422,9 +438,9 @@ export interface TransferRow {
 
 export interface TransferPagePayload {
   title?: string
-  lobby: { server_key: string; name: string }
+  lobby: { server_slug: string; name: string }
   /** Chỉ server role=game, points_enabled, đang hoạt động — KHÔNG có proxy/lobby làm đích. */
-  targets: Array<{ server_key: string; name: string }>
+  targets: Array<{ server_slug: string; name: string }>
   limits: { min_amount: number; max_amount: number }
   command_ttl_seconds: number
   my: { user: TopupMineUser; transfers: TransferRow[] } | null
@@ -544,5 +560,27 @@ export const normalizeSlug = (slug: unknown): string => {
     return decodeURIComponent(value)
   } catch {
     return value
+  }
+}
+
+/* ================= Trang tĩnh mới (Ban quản trị + pháp lý) ================= */
+
+export interface SiteTeamMember {
+  id: number
+  name: string
+  role_title: string
+  avatar?: string | null
+}
+
+export interface SitePagePayload {
+  kind: 'team' | 'content_page'
+  title?: string
+  subtitle?: string
+  members?: SiteTeamMember[]
+  page?: {
+    slug: string
+    title: string
+    content_html: string
+    updated_at?: string | null
   }
 }

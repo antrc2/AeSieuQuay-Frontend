@@ -157,7 +157,7 @@ const TYPE_TONE: Record<string, string> = {
 }
 
 const CommandsTab = () => {
-  const q = usePagedQuery({ server_key: '', type: '', status: '', q: '' })
+  const q = usePagedQuery({ server_slug: '', type: '', status: '', q: '' })
   const [data, setData] = useState<PagedAdmin<PointCommandAdmin> | null>(null)
   const [pointsServers, setPointsServers] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
@@ -188,7 +188,7 @@ const CommandsTab = () => {
 
   useEffect(() => {
     listServers({ include_inactive: true })
-      .then((s) => aliveRef.current && setPointsServers(s.filter((x) => x.points_enabled).map((x) => x.server_key)))
+      .then((s) => aliveRef.current && setPointsServers(s.filter((x) => x.points_enabled).map((x) => x.slug)))
       .catch(() => undefined)
   }, [])
 
@@ -196,7 +196,7 @@ const CommandsTab = () => {
     <>
       <div className="flex flex-wrap items-end gap-3">
         <Field label="Server" className="w-40">
-          <select className={ctlCls} value={q.filters.server_key} onChange={(e) => q.setFilters({ server_key: e.target.value })}>
+          <select className={ctlCls} value={q.filters.server_slug} onChange={(e) => q.setFilters({ server_slug: e.target.value })}>
             <option value="">Mọi server</option>
             {pointsServers.map((k) => (
               <option key={k} value={k}>
@@ -317,7 +317,7 @@ export const CommandsTable = ({ rows }: { rows: PointCommandAdmin[] }) => {
               {c.type}
             </span>
           </td>
-          <td className="border-b border-border-c px-3 py-2.5 font-mono text-xs text-muted">{c.server_key}</td>
+          <td className="border-b border-border-c px-3 py-2.5 font-mono text-xs text-muted">{c.server_slug}</td>
           <td className="border-b border-border-c px-3 py-2.5 text-fg">{c.player_name ?? '—'}</td>
           <td className="border-b border-border-c px-3 py-2.5 tabular-nums text-fg">{fmtXu(c.amount)}</td>
           <td className="border-b border-border-c px-3 py-2.5" title={c.error ?? undefined}>

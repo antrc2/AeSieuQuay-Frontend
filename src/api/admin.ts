@@ -32,26 +32,19 @@ const mock = adminMock as any
 export type ServerRole = 'proxy' | 'lobby' | 'game'
 export type KeyKind = 'monitor' | 'points'
 
-export interface AdminCluster {
-  id: number
-  slug: string
-  name: string
-  description: string | null
-  is_active: boolean
-  sort_order: number
-  created_at: string | null
-  updated_at: string | null
-  servers?: AdminServer[] | null
-}
-
+/**
+ * Máy chủ HỢP NHẤT (bảng `servers`) — vừa hạ tầng vừa trang public.
+ * Không còn khái niệm cụm: thêm 1 server (bật public_page) là trang
+ * /may-chu/<slug> + widget home hiện luôn, cùng slug.
+ */
 export interface AdminServer {
   id: number
-  cluster_id: number
-  cluster_slug: string | null
-  server_key: string
+  /** Định danh duy nhất — URL /may-chu/<slug>, do backend tự sinh từ Tên. */
+  slug: string
   name: string
   role: ServerRole
-  group_slug: string | null
+  /** Thể loại (server_categories.id) — như danh mục sản phẩm. */
+  category_id: number | null
   host: string | null
   port: number | null
   mc_version: string | null
@@ -60,6 +53,13 @@ export interface AdminServer {
   max_players: number | null
   description: string | null
   image_url: string | null
+  image_key?: string | null
+  /** Bật = có trang /may-chu/<slug> + hiện widget home "Máy chủ game". */
+  public_page: boolean
+  tagline: string | null
+  short_desc: string | null
+  status: 'hot' | 'new' | 'normal'
+  content_version?: number
   monitoring_enabled: boolean
   maintenance_mode: boolean
   is_active: boolean
@@ -70,54 +70,61 @@ export interface AdminServer {
   monitor_key_rotated_at: string | null
   points_key_rotated_at: string | null
   sort_order: number
-  /** doc v2 §5: server NGUỒN cho widget `server_status` trang home.
-   *  Toàn hệ thống tối đa 1 (backend guarantee — bật server mới tự gỡ server cũ).
-   *  `null`/`false` = bỏ chọn. Thay đổi flag tự invalidate cache home. */
+  /** Server NGUỒN cho widget `server_status` trang home (toàn hệ thống 1). */
   display_public: boolean | null
-  /** doc v2 §5: lobby của CỤM dùng cho trang /chuyen-xu (tối đa 1/cụm). */
+  /** Server "lobby" cho /chuyen-xu (nguồn Xu khi chuyển; toàn hệ thống 1). */
   lobby_display: boolean | null
+  /** Server nhận Xu nạp (bank/thẻ; toàn hệ thống 1). Chưa chọn → config. */
+  credit_destination: boolean | null
   created_at: string | null
   updated_at: string | null
 }
 
 export interface ServerKeys {
   server_id: number
-  server_key: string
-  cluster_id: number
+  slug: string
   monitor: { configured: boolean; rotated_at: string | null }
   points: { configured: boolean; rotated_at: string | null }
 }
 
 export interface RotateKeyResult {
   server_id: number
-  server_key: string
+  slug: string
   kind: KeyKind
   api_key: string
 }
 
 export interface ServerDraft {
-  server_key: string
+  /** Slug/định danh — bỏ trống = backend tự sinh từ Tên. */
+  slug?: string | null
   name: string
   role: ServerRole
-  group_slug?: string | null
+  /** Thể loại (server_categories.id). */
+  category_id?: number | null
   host?: string | null
   port?: number | null
+  mc_version?: string | null
+  server_impl?: string | null
+  motd?: string | null
+  max_players?: number | null
+  description?: string | null
+  image_url?: string | null
+  /** Bật = trang /may-chu/<slug> + widget home. */
+  public_page?: boolean
+  tagline?: string | null
+  short_desc?: string | null
+  status?: 'hot' | 'new' | 'normal'
   monitoring_enabled?: boolean
+  maintenance_mode?: boolean
+  is_active?: boolean
   points_enabled?: boolean | null
   sort_order?: number
-  /** doc v2 §5 — xem `AdminServer.display_public` */
+  /** xem `AdminServer.display_public` */
   display_public?: boolean | null
-  /** doc v2 §5 — xem `AdminServer.lobby_display` */
+  /** xem `AdminServer.lobby_display` */
   lobby_display?: boolean | null
-}
-
-export interface ClusterCreateBody {
-  slug: string
-  name: string
-  description?: string | null
-  is_active?: boolean
-  sort_order?: number
-  servers?: ServerDraft[]
+  /** xem `AdminServer.credit_destination` */
+  credit_destination?: boolean | null
 }
 
 /* ================= Helpers ================= */
@@ -134,35 +141,52 @@ const cleanParams = (params: object = {}) => {
 
 const unwrap = (res: any) => res?.data ?? null
 
-/* ================= Clusters ================= */
+/* ================= Thể loại máy chủ (như danh mục sản phẩm) ================= */
 
-export const listClusters = async (): Promise<AdminCluster[]> => {
-  if (useAdminMock) return mock.listClusters()
-  return unwrap(await apiGet('/admin/clusters')) ?? []
+export interface AdminServerCategory {
+  id: number
+  slug: string
+  name: string
+  description: string | null
+  sort_order: number
+  is_active: boolean
+  server_count?: number | null
+  created_at?: string | null
+  updated_at?: string | null
 }
 
-export const getCluster = async (id: number): Promise<AdminCluster> => {
-  if (useAdminMock) return mock.getCluster(id)
-  return unwrap(await apiGet(`/admin/clusters/${id}`))
+export interface ServerCategoryDraft {
+  /** Bỏ trống = backend tự sinh từ `name`. */
+  slug?: string
+  name: string
+  description?: string | null
+  sort_order?: number
+  is_active?: boolean
 }
 
-export const createCluster = async (body: ClusterCreateBody): Promise<AdminCluster> => {
-  if (useAdminMock) return mock.createCluster(body)
-  return unwrap(await apiPost('/admin/clusters', body))
+export const listServerCategories = async (query: { include_inactive?: boolean } = {}): Promise<AdminServerCategory[]> => {
+  if (useAdminMock) return mock.listServerCategories?.() ?? []
+  const params = cleanParams({ include_inactive: query.include_inactive ? '1' : undefined })
+  return unwrap(await apiGet('/admin/server-categories', { params })) ?? []
 }
 
-export const updateCluster = async (id: number, body: Partial<ClusterCreateBody>): Promise<AdminCluster> => {
-  if (useAdminMock) return mock.updateCluster(id, body)
-  return unwrap(await apiPatch(`/admin/clusters/${id}`, body))
+export const createServerCategory = async (body: ServerCategoryDraft): Promise<AdminServerCategory> => {
+  if (useAdminMock) return mock.createServerCategory(body)
+  return unwrap(await apiPost('/admin/server-categories', body))
 }
 
-export const deleteCluster = async (id: number): Promise<null> => {
-  if (useAdminMock) return mock.deleteCluster(id)
-  await apiDelete(`/admin/clusters/${id}`)
+export const updateServerCategory = async (id: number, body: Partial<ServerCategoryDraft>): Promise<AdminServerCategory> => {
+  if (useAdminMock) return mock.updateServerCategory(id, body)
+  return unwrap(await apiPatch(`/admin/server-categories/${id}`, body))
+}
+
+export const deleteServerCategory = async (id: number): Promise<null> => {
+  if (useAdminMock) return mock.deleteServerCategory(id)
+  await apiDelete(`/admin/server-categories/${id}`)
   return null
 }
 
-/* ================= Servers ================= */
+/* ================= Servers (không còn cụm) ================= */
 
 /** doc v2 §6: response `POST /api/admin/cache/refresh`. Backend LUÔN trả 200
  *  kể cả khi một producer lỗi — phần hỏng nằm trong `errors` (map key → message). */
@@ -178,24 +202,29 @@ export interface CacheRefreshResult {
 }
 
 export interface ServerListQuery {
-  cluster_id?: number | ''
   role?: string
   include_inactive?: boolean
+  public_page?: boolean
+  category_id?: number
 }
 
 export const listServers = async (query: ServerListQuery = {}): Promise<AdminServer[]> => {
   if (useAdminMock) {
     return mock.listServers({
-      cluster_id: query.cluster_id === '' ? undefined : query.cluster_id,
       role: query.role || undefined,
       include_inactive: !!query.include_inactive,
     })
   }
-  const params = cleanParams({ ...query, include_inactive: query.include_inactive ? '1' : undefined })
+  const params = cleanParams({
+    role: query.role,
+    category_id: query.category_id,
+    public_page: query.public_page === undefined ? undefined : (query.public_page ? '1' : '0'),
+    include_inactive: query.include_inactive ? '1' : undefined,
+  })
   return unwrap(await apiGet('/admin/servers', { params })) ?? []
 }
 
-export const createServer = async (body: ServerDraft & { cluster_id: number }): Promise<AdminServer> => {
+export const createServer = async (body: ServerDraft): Promise<AdminServer> => {
   if (useAdminMock) return mock.createServer(body)
   return unwrap(await apiPost('/admin/servers', body))
 }
@@ -418,7 +447,8 @@ export interface AdminGameMode {
   short_desc: string | null
   desc: string | null
   status: 'hot' | 'new' | 'normal'
-  cluster_id: number | null
+  /** Thể loại (server_categories.id) — như danh mục sản phẩm. */
+  category_id: number | null
   content_html: string | null
   /** backend-4 §6 optimistic locking — editor giữ bản này để gửi kèm khi lưu content_html. */
   content_version: number
@@ -609,6 +639,10 @@ export interface BankDepositAdmin {
   username: string | null
   realname: string | null
   xu_amount: number | null
+  /** Event KM: id + tên + Xu bonus cộng thêm (NULL/không có → không KM). */
+  promotion_id?: number | null
+  promotion_name?: string | null
+  bonus_xu?: number | null
   sandbox: boolean
   note: string | null
   credit_command_id: string | null
@@ -663,8 +697,8 @@ export type TransferStatus =
 export interface PointTransferAdmin {
   transfer_id: string
   idempotency_key: string | null
-  from_server_key: string
-  to_server_key: string
+  from_server_slug: string
+  to_server_slug: string
   player_uuid: string | null
   player_name: string | null
   created_by: number | null
@@ -689,7 +723,7 @@ export interface PointCommandAdmin {
   id: string // command_id UUID
   transfer_id: string | null
   type: CommandType
-  server_key: string
+  server_slug: string
   player_uuid: string | null
   player_name: string | null
   amount: number
@@ -722,7 +756,7 @@ export const getPointTransfer = async (
 }
 
 export const listPointCommands = async (
-  query: { server_key?: string; type?: string; status?: string; q?: string; page?: number; limit?: number } = {},
+  query: { server_slug?: string; type?: string; status?: string; q?: string; page?: number; limit?: number } = {},
 ): Promise<PagedAdmin<PointCommandAdmin>> => {
   if (useAdminMock) return mock.listPointCommands(query)
   return unwrap(await apiGet('/admin/points/commands', { params: cleanParams(query) }))
@@ -759,6 +793,8 @@ export interface CardTransactionAdmin {
   credit_command_status?: 'pending' | 'claimed' | 'done' | 'failed' | 'expired' | 'uncertain' | null
   credit_command_error?: string | null
   promotion_id?: number | null
+  /** Tên event KM (backend tra theo promotion_id). null = không có KM. */
+  promotion_name?: string | null
   bonus_xu?: number | null
   created_at: string | null
   credited_at: string | null
@@ -796,11 +832,15 @@ export interface AdminPromotion {
   name: string
   applies_to: PromotionChannel
   bonus_percent: number
-  /** naive datetime từ DB (giờ hệ thống repo) — hiển thị qua fmtIsoVN. */
+  /** naive datetime từ DB (giờ hệ thống repo) — hiển thị qua fmtIsoVN.
+   *  Backend luôn điền starts_at (= now nếu admin để trống lúc tạo). */
   starts_at: string
+  /** BẮT BUỘC duy nhất trong form — mốc kết thúc. */
   ends_at: string
-  max_users: number
-  max_per_user: number
+  /** `null` = KHÔNG giới hạn suất (option để trống). */
+  max_users: number | null
+  /** `null` = không giới hạn GD/user. */
+  max_per_user: number | null
   is_active: boolean
   /** số user DISTINCT đã nhận bonus (subquery backend). */
   claimed_users: number
@@ -812,10 +852,13 @@ export interface PromotionInput {
   name: string
   applies_to: PromotionChannel
   bonus_percent: number
-  starts_at: string
+  /** trống/null = chạy ngay từ lúc tạo (backend điền now). */
+  starts_at?: string | null
+  /** BẮT BUỘC — phải chọn giờ kết thúc. */
   ends_at: string
-  max_users: number
-  max_per_user?: number
+  /** null/không gửi = không giới hạn. */
+  max_users?: number | null
+  max_per_user?: number | null
   is_active?: boolean
 }
 
@@ -910,25 +953,11 @@ export interface AdminSiteConfig {
   hero_name: string | null
   hero_tagline: string | null
   hero_description: string | null
-  hero_cta_primary: string | null
-  hero_cta_secondary: string | null
   hero_discord_url: string | null
   hero_bg_image_url: string | null
   hero_bg_image_key: string | null
   /** ms — backend validate 1000–60000. */
   slideshow_interval: number | null
-  modes_title: string | null
-  modes_subtitle: string | null
-  highlights_title: string | null
-  gallery_title: string | null
-  gallery_description: string | null
-  community_title: string | null
-  community_description: string | null
-  community_cta: string | null
-  community_discord_url: string | null
-  members_estimate: number | null
-  widget_id: string | null
-  footer_copyright: string | null
 }
 
 /** PATCH site-config — upsert singleton. KHÔNG gửi server_online/players_online/
@@ -1049,11 +1078,8 @@ export const deleteGalleryImage = async (id: number): Promise<null> => {
 
 /* ---- Socials ---- */
 
-export type SocialLocation = 'community' | 'footer'
-
 export interface AdminSocial {
   id: number
-  location: SocialLocation
   /** discord|facebook|tiktok|youtube|khác — ≤32 ký tự, optional. */
   icon: string | null
   label: string
@@ -1063,9 +1089,9 @@ export interface AdminSocial {
   is_active: boolean
 }
 
-export const listSocials = async (location?: SocialLocation | ''): Promise<AdminSocial[]> => {
-  if (useAdminMock) return mock.listSocials(location)
-  return unwrap(await apiGet(`${CONTENT_BASE}/socials`, { params: cleanParams({ location }) })) ?? []
+export const listSocials = async (): Promise<AdminSocial[]> => {
+  if (useAdminMock) return mock.listSocials()
+  return unwrap(await apiGet(`${CONTENT_BASE}/socials`)) ?? []
 }
 
 export const createSocial = async (body: Partial<AdminSocial>): Promise<AdminSocial> => {
@@ -1081,54 +1107,6 @@ export const updateSocial = async (id: number, body: Partial<AdminSocial>): Prom
 export const deleteSocial = async (id: number): Promise<null> => {
   if (useAdminMock) return mock.deleteSocial(id)
   await apiDelete(`${CONTENT_BASE}/socials/${id}`)
-  return null
-}
-
-/* ---- Footer columns (links nested — upsert toàn bộ links khi POST/PATCH column) ---- */
-
-export interface AdminFooterLink {
-  id?: number
-  label: string
-  /** route nội bộ `/...` hoặc http(s). */
-  to_url: string
-}
-
-export interface AdminFooterColumn {
-  id: number
-  title: string
-  sort_order: number
-  is_active: boolean
-  links: AdminFooterLink[]
-}
-
-export const listFooterColumns = async (): Promise<AdminFooterColumn[]> => {
-  if (useAdminMock) return mock.listFooterColumns()
-  return unwrap(await apiGet(`${CONTENT_BASE}/footer-columns`)) ?? []
-}
-
-export const createFooterColumn = async (body: {
-  title: string
-  sort_order?: number
-  is_active?: boolean
-  links?: AdminFooterLink[]
-}): Promise<AdminFooterColumn> => {
-  if (useAdminMock) return mock.createFooterColumn(body)
-  return unwrap(await apiPost(`${CONTENT_BASE}/footer-columns`, body))
-}
-
-/** PATCH column — nếu gửi `links` thì upsert TOÀN BỘ links của column
- *  (backend-5 §4.2; DELETE link = PATCH với links thiếu nó). */
-export const updateFooterColumn = async (
-  id: number,
-  body: { title?: string; sort_order?: number; is_active?: boolean; links?: AdminFooterLink[] },
-): Promise<AdminFooterColumn> => {
-  if (useAdminMock) return mock.updateFooterColumn(id, body)
-  return unwrap(await apiPatch(`${CONTENT_BASE}/footer-columns/${id}`, body))
-}
-
-export const deleteFooterColumn = async (id: number): Promise<null> => {
-  if (useAdminMock) return mock.deleteFooterColumn(id)
-  await apiDelete(`${CONTENT_BASE}/footer-columns/${id}`)
   return null
 }
 
@@ -1152,3 +1130,134 @@ export const refreshSiteCache = async (): Promise<SiteCacheRefreshResult> => {
 
 /** Ảnh nội dung site —复用 uploadAdminImage, prefix `content` (backend-5 §4.2). */
 export const uploadContentImage = (file: File): Promise<AdminUploadResult> => uploadAdminImage(file, 'content')
+
+
+/* ================= Ban quản trị (team) ================= */
+
+export interface AdminTeamMember {
+  id: number
+  name: string
+  role_title: string
+  avatar_key: string | null
+  avatar_url: string | null
+  sort_order: number
+  is_active: boolean
+  created_at?: string | null
+  updated_at?: string | null
+}
+
+export const listTeamMembers = async (query: { include_inactive?: boolean } = {}): Promise<AdminTeamMember[]> => {
+  if (useAdminMock) return mock.listTeamMembers?.() ?? []
+  return unwrap(await apiGet('/admin/team-members', {
+    params: cleanParams({ include_inactive: query.include_inactive ? '1' : undefined }),
+  })) ?? []
+}
+
+export const createTeamMember = async (body: Partial<AdminTeamMember>): Promise<AdminTeamMember> => {
+  if (useAdminMock) return mock.createTeamMember(body)
+  return unwrap(await apiPost('/admin/team-members', body))
+}
+
+export const updateTeamMember = async (id: number, body: Partial<AdminTeamMember>): Promise<AdminTeamMember> => {
+  if (useAdminMock) return mock.updateTeamMember(id, body)
+  return unwrap(await apiPatch(`/admin/team-members/${id}`, body))
+}
+
+export const deleteTeamMember = async (id: number): Promise<null> => {
+  if (useAdminMock) return mock.deleteTeamMember(id)
+  await apiDelete(`/admin/team-members/${id}`)
+  return null
+}
+
+/* ================= Trang nội dung (luật lệ/điều khoản/chính sách) ================= */
+
+export interface AdminContentPage {
+  id: number
+  slug: string
+  title: string
+  content_html: string | null
+  content_version: number
+  show_in_footer: boolean
+  sort_order: number
+  is_active: boolean
+  created_at?: string | null
+  updated_at?: string | null
+}
+
+export const listContentPages = async (query: { include_inactive?: boolean } = {}): Promise<AdminContentPage[]> => {
+  if (useAdminMock) return mock.listContentPages?.() ?? []
+  return unwrap(await apiGet('/admin/content-pages', {
+    params: cleanParams({ include_inactive: query.include_inactive ? '1' : undefined }),
+  })) ?? []
+}
+
+export const getContentPage = async (id: number): Promise<AdminContentPage> => {
+  if (useAdminMock) return mock.getContentPage(id)
+  return unwrap(await apiGet(`/admin/content-pages/${id}`))
+}
+
+export const createContentPage = async (body: Partial<AdminContentPage>): Promise<AdminContentPage> => {
+  if (useAdminMock) return mock.createContentPage(body)
+  return unwrap(await apiPost('/admin/content-pages', body))
+}
+
+export const updateContentPage = async (id: number, body: Record<string, unknown>): Promise<AdminContentPage> => {
+  if (useAdminMock) return mock.updateContentPage(id, body)
+  return unwrap(await apiPatch(`/admin/content-pages/${id}`, body))
+}
+
+export const deleteContentPage = async (id: number): Promise<null> => {
+  if (useAdminMock) return mock.deleteContentPage(id)
+  await apiDelete(`/admin/content-pages/${id}`)
+  return null
+}
+
+/* ================= Điểm danh hằng ngày ================= */
+
+export interface CheckinStatus {
+  enabled: boolean
+  reward_xu: number
+  checked_today: boolean
+  total_days: number
+  streak: number
+  next_reset_at: string | null
+}
+
+export interface AdminCheckinRow {
+  id: number
+  user_id: number
+  username: string | null
+  realname: string | null
+  checkin_date: string
+  reward_xu: number
+  status: 'pending' | 'credited' | 'failed'
+  command_id: string | null
+  note: string | null
+  created_at: string | null
+}
+
+export interface AdminCheckinStats {
+  today: { date: string; checkins: number; xu: number }
+  total: { checkins: number; unique_users: number; xu: number }
+  series: { date: string; checkins: number; xu: number }[]
+}
+
+export const getCheckinStatus = async (): Promise<CheckinStatus> => {
+  if (useAdminMock) return { enabled: true, reward_xu: 1, checked_today: false, total_days: 0, streak: 0, next_reset_at: null }
+  return unwrap(await apiGet('/checkin/status'))
+}
+
+export const doCheckin = async (): Promise<CheckinStatus & { command_id?: string | null; server_slug?: string }> => {
+  if (useAdminMock) return { enabled: true, reward_xu: 1, checked_today: true, total_days: 1, streak: 1, next_reset_at: null }
+  return unwrap(await apiPost('/checkin'))
+}
+
+export const listCheckins = async (query: { user_id?: number; date_from?: string; date_to?: string; status?: string; page?: number; limit?: number } = {}) => {
+  if (useAdminMock) return { total: 0, page: 1, limit: query.limit ?? 30, items: [] as AdminCheckinRow[] }
+  return unwrap(await apiGet('/admin/checkins', { params: cleanParams(query) }))
+}
+
+export const getCheckinStats = async (days = 30): Promise<AdminCheckinStats> => {
+  if (useAdminMock) return { today: { date: new Date().toISOString().slice(0, 10), checkins: 0, xu: 0 }, total: { checkins: 0, unique_users: 0, xu: 0 }, series: [] }
+  return unwrap(await apiGet('/admin/checkins/stats', { params: { days: String(days) } }))
+}

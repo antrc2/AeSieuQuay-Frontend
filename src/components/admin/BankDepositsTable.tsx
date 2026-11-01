@@ -43,7 +43,20 @@ export const BankDepositsTable = ({
                 <p className="font-semibold tabular-nums text-fg" title="sảnh xuống theo tỷ giá">
                   {fmtVnd(d.amount_vnd)}
                 </p>
-                <p className="text-xs tabular-nums text-muted">{fmtXu(d.xu_amount)}</p>
+                {(d.bonus_xu ?? 0) > 0 ? (
+                  // Có KM: "10 + 10 = 20 Xu" + tên event (dòng sau).
+                  <p className="text-xs tabular-nums text-muted">
+                    {fmtXu(d.xu_amount)} <span className="text-emerald-500">+{fmtXu(d.bonus_xu ?? 0)}</span>
+                    <span className="text-fg"> = {fmtXu((d.xu_amount ?? 0) + (d.bonus_xu ?? 0))}</span>
+                  </p>
+                ) : (
+                  <p className="text-xs tabular-nums text-muted">{fmtXu(d.xu_amount)}</p>
+                )}
+                {d.promotion_name && (
+                  <p className="mt-0.5 inline-block rounded bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-500">
+                    🎁 {d.promotion_name}
+                  </p>
+                )}
               </Td>
               <Td className="max-w-[200px]">
                 <code className="block truncate font-mono text-xs text-fg" title={d.content}>

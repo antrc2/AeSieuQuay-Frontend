@@ -1,24 +1,29 @@
 import { Suspense } from 'react'
-import { createBrowserRouter } from 'react-router-dom'
+import { Navigate, createBrowserRouter } from 'react-router-dom'
 
 import HomePage from '@/pages/landing/HomePage'
 import AuthPage from '@/pages/auth/AuthPage'
 import NapThePage from '@/pages/topup/NapThePage'
 import TransferPage from '@/pages/transfer/TransferPage'
 import GameModesListPage from '@/pages/game/GameModesListPage'
+import TeamPage from '@/pages/site/TeamPage'
+import ContentPage from '@/pages/site/ContentPage'
 import GameModeDetailPage from '@/pages/game/GameModeDetailPage'
 import NotFound from '@/pages/errors/NotFound'
 import Forbidden from '@/pages/errors/Forbidden'
 import ErrorPage from '@/pages/errors/ErrorPage'
 import AdminLayout from '@/components/layout/AdminLayout'
 import AdminOverviewPage from '@/pages/admin/AdminOverviewPage'
-import AdminClustersPage from '@/pages/admin/AdminClustersPage'
 import AdminServersPage from '@/pages/admin/AdminServersPage'
+import AdminServerCategoriesPage from '@/pages/admin/AdminServerCategoriesPage'
+import AdminTeamPage from '@/pages/admin/AdminTeamPage'
+import AdminContentPagesPage from '@/pages/admin/AdminContentPagesPage'
+import AdminPageEditorPage from '@/pages/admin/AdminPageEditorPage'
+import AdminCheckinsPage from '@/pages/admin/AdminCheckinsPage'
 import AdminKeysPage from '@/pages/admin/AdminKeysPage'
 import { lazy } from 'react'
 import AdminMonitorPage from '@/pages/admin/AdminMonitorPage'
 import AdminMonitorDetailPage from '@/pages/admin/AdminMonitorDetailPage'
-import AdminGameModesPage from '@/pages/admin/AdminGameModesPage'
 import AdminBankDepositsPage from '@/pages/admin/AdminBankDepositsPage'
 import AdminPointsHistoryPage from '@/pages/admin/AdminPointsHistoryPage'
 import AdminCardTransactionsPage from '@/pages/admin/AdminCardTransactionsPage'
@@ -53,6 +58,10 @@ export const router = createBrowserRouter([
         element: <GameModesListPage />,
       },
       {
+        path: '/may-chu/the-loai/:slug',
+        element: <GameModesListPage />,
+      },
+      {
         path: '/may-chu/:slug',
         element: <GameModeDetailPage />,
       },
@@ -65,10 +74,12 @@ export const router = createBrowserRouter([
         path: '/chuyen-xu',
         element: <TransferPage />,
       },
-      {
-        path: '/forbidden',
-        element: <Forbidden />,
-      },
+      // Trang tĩnh mới: Ban quản trị + pháp lý (HTML do admin soạn).
+      { path: '/ban-quan-tri', element: <TeamPage /> },
+      { path: '/luat-le', element: <ContentPage slug="luat-le" fallbackTitle="Luật lệ" /> },
+      { path: '/dieu-khoan', element: <ContentPage slug="dieu-khoan" fallbackTitle="Điều khoản dịch vụ" /> },
+      { path: '/chinh-sach-bao-mat', element: <ContentPage slug="chinh-sach-bao-mat" fallbackTitle="Chính sách bảo mật" /> },
+      { path: '/forbidden', element: <Forbidden /> },
       // ===== Khu admin: dữ liệu động qua API, được phép navigation SPA (<Link>) =====
       {
         path: '/admin',
@@ -83,9 +94,15 @@ export const router = createBrowserRouter([
               </Suspense>
             ),
           },
-          { path: 'clusters', element: <AdminClustersPage /> },
           { path: 'servers', element: <AdminServersPage /> },
-          { path: 'game-modes', element: <AdminGameModesPage /> },
+          { path: 'server-categories', element: <AdminServerCategoriesPage /> },
+          { path: 'team', element: <AdminTeamPage /> },
+          { path: 'pages', element: <AdminContentPagesPage /> },
+          { path: 'pages/:id/content', element: <AdminPageEditorPage /> },
+          { path: 'checkins', element: <AdminCheckinsPage /> },
+          // Bỏ cụm + tách trang máy chủ game: 2 route cũ chuyển về trang Servers hợp nhất.
+          { path: 'clusters', element: <Navigate to="/admin/servers" replace /> },
+          { path: 'game-modes', element: <Navigate to="/admin/servers" replace /> },
           { path: 'bank-deposits', element: <AdminBankDepositsPage /> },
           { path: 'points-history', element: <AdminPointsHistoryPage /> },
           { path: 'card-transactions', element: <AdminCardTransactionsPage /> },

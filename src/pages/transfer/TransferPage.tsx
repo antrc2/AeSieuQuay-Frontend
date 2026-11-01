@@ -104,7 +104,7 @@ const HistoryBlock = ({
               <li key={t.transfer_id} className="flex items-center justify-between gap-3 py-3">
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-fg">
-                    {fmtXu(t.amount)} <span className="font-normal text-muted">→ {nameOf(t.to_server_key)}</span>
+                    {fmtXu(t.amount)} <span className="font-normal text-muted">→ {nameOf(t.to_server_slug)}</span>
                   </p>
                   <p className="text-xs text-muted">
                     Mã {t.transfer_id.slice(0, 8)} · {fmtIsoVN(t.created_at)}
@@ -174,9 +174,9 @@ export const TransferPage = () => {
 
   /* ---------- Action + poll chuyển (§3.2) ---------- */
 
-  const finishTransfer = (t: { transfer_id: string; to_server_key: string; amount: number; status: TransferStatus; error: string | null; created_at: string | null; completed_at: string | null }) => {
+  const finishTransfer = (t: { transfer_id: string; to_server_slug: string; amount: number; status: TransferStatus; error: string | null; created_at: string | null; completed_at: string | null }) => {
     setExtraRows((prev) => [
-      { transfer_id: t.transfer_id, to_server_key: t.to_server_key, amount: t.amount, status: t.status, error: t.error, created_at: t.created_at, completed_at: t.completed_at },
+      { transfer_id: t.transfer_id, to_server_slug: t.to_server_slug, amount: t.amount, status: t.status, error: t.error, created_at: t.created_at, completed_at: t.completed_at },
       ...prev.filter((r) => r.transfer_id !== t.transfer_id),
     ])
     idemRef.current = null // terminal → release key, lần chuyển sau UUID mới
@@ -193,7 +193,7 @@ export const TransferPage = () => {
         if (!t) continue
         last = {
           transfer_id: t.transfer_id ?? transferId,
-          to_server_key: t.to_server_key,
+          to_server_slug: t.to_server_slug,
           amount: t.amount,
           status: t.status,
           error: t.error ?? null,
@@ -227,7 +227,7 @@ export const TransferPage = () => {
     const min = data.limits?.min_amount ?? 1
     const max = data.limits?.max_amount ?? Number.MAX_SAFE_INTEGER
     const value = Number(amount)
-    if (!target || !data.targets.some((t) => t.server_key === target)) {
+    if (!target || !data.targets.some((t) => t.server_slug === target)) {
       setFormError('Chọn máy chủ đích hợp lệ')
       return
     }
@@ -257,8 +257,8 @@ export const TransferPage = () => {
       } else {
         // body theo points-user-api.md: idempotency_key là FIELD trong body (không phải header).
         const res = await apiPost('/points/transfers', {
-          from_server_key: data.lobby.server_key,
-          to_server_key: target,
+          from_server_slug: data.lobby.server_slug,
+          to_server_slug: target,
           amount: value,
           idempotency_key: idemKey,
         })
@@ -273,7 +273,7 @@ export const TransferPage = () => {
       if (isTerminal(initial)) {
         finishTransfer({
           transfer_id: transferId,
-          to_server_key: target,
+          to_server_slug: target,
           amount: value,
           status: initial,
           error: transfer?.error ?? null,
@@ -284,7 +284,7 @@ export const TransferPage = () => {
       } else if (useMockData) {
         const st = transfer!.status as TransferStatus
         setExtraRows((prev) => [
-          { transfer_id: transferId, to_server_key: target, amount: value, status: st, error: transfer!.error ?? null, created_at: new Date().toISOString(), completed_at: null },
+          { transfer_id: transferId, to_server_slug: target, amount: value, status: st, error: transfer!.error ?? null, created_at: new Date().toISOString(), completed_at: null },
           ...prev,
         ])
         idemRef.current = null
@@ -318,7 +318,7 @@ export const TransferPage = () => {
     )
   }
 
-  const nameOf = (key: string) => data.targets.find((t) => t.server_key === key)?.name ?? key
+  const nameOf = (key: string) => data.targets.find((t) => t.server_slug === key)?.name ?? key
   const limits = data.limits ?? { min_amount: 1, max_amount: 1_000_000 }
   const canSubmit = !authLoading && isLoggedIn && !submitting
 
@@ -405,7 +405,7 @@ export const TransferPage = () => {
                 >
                   <option value="">— chọn server con —</option>
                   {data.targets.map((t) => (
-                    <option key={t.server_key} value={t.server_key}>
+                    <option key={t.server_slug} value={t.server_slug}>
                       {t.name}
                     </option>
                   ))}

@@ -37,6 +37,7 @@ export const DEFAULT_MENU = [
   { label: 'Nạp thẻ', to: '/nap-the' },
   // FRONTEND-4 §3.1 — trang tiện ích chuyển xu (SSR page, điều hướng <a href> full reload).
   { label: 'Chuyển xu', to: '/chuyen-xu' },
+  { label: 'Ban quản trị', to: '/ban-quan-tri' },
 ]
 
 export const DEFAULT_SERVER_INFO = {
@@ -61,6 +62,14 @@ export const DEFAULT_FOOTER = {
       links: [
         { label: 'Đăng nhập', to: '/dang-nhap' },
         { label: 'Đăng ký', to: '/dang-ky' },
+      ],
+    },
+    {
+      title: 'Pháp lý',
+      links: [
+        { label: 'Luật lệ', to: '/luat-le' },
+        { label: 'Điều khoản dịch vụ', to: '/dieu-khoan' },
+        { label: 'Chính sách bảo mật', to: '/chinh-sach-bao-mat' },
       ],
     },
   ],

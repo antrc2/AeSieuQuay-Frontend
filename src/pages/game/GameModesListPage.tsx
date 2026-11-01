@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { Server } from 'lucide-react'
 import SiteLayout from '@/components/layout/SiteLayout'
 import DataUnavailable from '@/components/ui/DataUnavailable'
@@ -37,7 +38,7 @@ export const GameModesListPage = () => {
       seo={{
         title: `${data.title || 'Máy chủ'} — SV AeSieuQuay`,
         description,
-        path: '/may-chu',
+        path: data.current_category ? `/may-chu/the-loai/${data.current_category.slug}` : '/may-chu',
         ogImage: modes[0]?.image,
         jsonLd: [
           {
@@ -89,6 +90,34 @@ export const GameModesListPage = () => {
             {data.subtitle && <p className="mx-auto mt-3 max-w-2xl text-lg text-muted">{data.subtitle}</p>}
             {/* Stat cụm thật — ẩn khi backend chưa trả stats */}
             <ClusterStatsStrip stats={data.stats} className="mt-6 justify-center" />
+            {(data.categories ?? []).length > 0 && (
+              <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
+                <Link
+                  to="/may-chu"
+                  className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${
+                    data.current_category
+                      ? 'border-border-c bg-surface text-muted hover:text-fg'
+                      : 'border-primary/40 bg-primary-soft text-primary'
+                  }`}
+                >
+                  Tất cả
+                </Link>
+                {(data.categories ?? []).map((c) => (
+                  <Link
+                    key={c.slug}
+                    to={`/may-chu/the-loai/${c.slug}`}
+                    className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${
+                      data.current_category?.slug === c.slug
+                        ? 'border-primary/40 bg-primary-soft text-primary'
+                        : 'border-border-c bg-surface text-muted hover:text-fg'
+                    }`}
+                  >
+                    {c.name}
+                    {typeof c.count === 'number' ? ` (${c.count})` : ''}
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </section>

@@ -112,17 +112,6 @@ export const Footer = ({ columns = [], socials = [], copyright = '', ip = '' }) 
             <a href="/nap-the" className="transition-colors hover:text-primary">
               Nạp thẻ
             </a>
-            <span aria-hidden className="h-3 w-px bg-[var(--border)]" />
-            <a
-              href="#top"
-              onClick={(e) => {
-                e.preventDefault()
-                window.scrollTo({ top: 0, behavior: 'smooth' })
-              }}
-              className="transition-colors hover:text-primary"
-            >
-              ↑ Lên đầu trang
-            </a>
           </div>
         </div>
       </div>

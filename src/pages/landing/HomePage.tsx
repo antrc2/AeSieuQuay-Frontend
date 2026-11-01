@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import SiteLayout from '@/components/layout/SiteLayout'
 import Toast from '@/components/ui/Toast'
 import { EmptyState } from '@/components/ui/States'
@@ -9,6 +10,7 @@ import ClusterStatsStrip from '@/components/stats/ClusterStatsStrip'
 import ServerStatusWidget from '@/components/stats/ServerStatusWidget'
 import TopDonators from '@/components/donators/TopDonators'
 import ServerConCard from '@/components/game/ServerConCard'
+import CheckinCard from '@/components/CheckinCard'
 import { formatAddress } from '@/lib/siteAddress'
 
 /* ================= Helpers ================= */
@@ -191,7 +193,7 @@ const Hero = ({ hero = {}, serverStatus, serverInfo = {} }: { hero?: HomePayload
                 onClick={() => setPlayModalOpen(true)}
                 className="w-full max-w-[240px] rounded-xl bg-gradient-to-r from-primary to-accent px-8 py-3 text-base font-semibold text-white shadow-lg shadow-primary/30 transition-all hover:shadow-xl hover:shadow-primary/40 hover:brightness-110 active:scale-[0.98] sm:w-auto"
               >
-                {hero.cta?.primary || 'Chơi ngay'}
+                Chơi ngay
               </button>
               {hero.discord_url ? (
                 <a
@@ -200,14 +202,14 @@ const Hero = ({ hero = {}, serverStatus, serverInfo = {} }: { hero?: HomePayload
                   rel="noopener noreferrer"
                   className="w-full max-w-[240px] rounded-xl border border-border-c bg-surface px-8 py-3 text-base font-semibold text-fg transition-all hover:bg-surface-2 active:scale-[0.98] sm:w-auto"
                 >
-                  {hero.cta?.secondary || 'Tham gia Discord'}
+                  Discord
                 </a>
               ) : (
                 <span
                   title="Đang chờ link Discord chính thức"
                   className="w-full max-w-[240px] cursor-not-allowed rounded-xl border border-dashed border-border-c px-8 py-3 text-base font-semibold text-muted sm:w-auto"
                 >
-                  {hero.cta?.secondary || 'Tham gia Discord'} (sắp ra mắt)
+                  Discord (sắp ra mắt)
                 </span>
               )}
             </div>
@@ -428,112 +430,62 @@ const GameModes = ({
   stats?: HomePayload['stats']
 }) => {
   const modes = section?.modes ?? []
-  const perView = usePerView(true)
-  const isCarousel = modes.length > Math.max(perView, 3) // > 3 mode mới chuyển carousel
 
-  const [slide, setSlide] = useState(0)
-  const maxSlide = Math.max(modes.length - perView, 0)
-
-  useEffect(() => {
-    setSlide((s) => Math.min(s, maxSlide))
-  }, [maxSlide])
-
-  useEffect(() => {
-    if (!isCarousel) return
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
-    const timer = setInterval(() => setSlide((s) => (s >= maxSlide ? 0 : s + 1)), 4000)
-    return () => clearInterval(timer)
-  }, [isCarousel, maxSlide, slide])
+  // Nhóm server con theo thể loại (giữ thứ tự xuất hiện); thiếu thể loại → "Khác".
+  const groups: { key: string; slug: string | null; name: string; modes: typeof modes }[] = []
+  for (const mode of modes) {
+    const key = mode.category_slug ?? mode.category ?? '__other__'
+    const name = mode.category ?? 'Khác'
+    let group = groups.find((g) => g.key === key)
+    if (!group) {
+      group = { key, slug: mode.category_slug ?? null, name, modes: [] }
+      groups.push(group)
+    }
+    group.modes.push(mode)
+  }
 
   return (
     <section className="reveal mx-auto mt-20 max-w-6xl px-4 sm:px-6">
-      {/* Tiêu đề — luôn căn giữa */}
+      {/* Tiêu đề */}
       <div className="mb-4 text-center">
         <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
-          <span className="text-gradient-brand">{section?.title ?? 'Máy chủ'}</span>
+          <span className="text-gradient-brand">Máy chủ</span>
         </h2>
-        {section?.subtitle && (
-          <p className="mt-2 text-muted">{section.subtitle}</p>
-        )}
+        
       </div>
-      {/* Stat cụm thật — non-compact (FRONTEND-3 §6.2: lộ cả TPS + uptime); ẩn khi chưa có stats */}
-      <ClusterStatsStrip stats={stats} className="mb-6 justify-center" />
+      {/* Stat cụm thật — ẩn khi chưa có stats */}
+      <ClusterStatsStrip stats={stats} className="mb-8 justify-center" />
 
-      {!isCarousel ? (
-        /* ===== Grid căn giữa (≤ 3 mode) ===== */
-        <div
-          className={cn(
-            'mx-auto grid max-w-4xl justify-items-center gap-6',
-            modes.length === 2
-              ? 'sm:grid-cols-2'
-              : modes.length >= 3
-                ? 'sm:grid-cols-2 lg:grid-cols-3'
-                : '',
-          )}
-        >
-          {modes.map((mode) => (
-            <ServerConCard key={mode.slug} mode={mode} />
-          ))}
-        </div>
+      {modes.length === 0 ? (
+        <EmptyState
+          icon="🖥️"
+          title="Chưa có máy chủ"
+          description="Danh sách máy chủ sẽ được cập nhật khi có dữ liệu chính thức."
+        />
       ) : (
-        /* ===== Carousel (> 3 mode) ===== */
-        <div className="group/car relative mx-auto max-w-5xl">
-          <div className="overflow-hidden">
-            <div
-              className="flex gap-6 transition-transform duration-500 ease-out"
-              style={{ transform: `translateX(calc(-${slide} * (100% + 1.5rem) / ${perView}))` }}
-            >
-              {modes.map((mode) => (
-                <div
-                  key={mode.slug}
-                  className="shrink-0"
-                  style={{ width: `calc((100% - ${(perView - 1) * 1.5}rem) / ${perView})` }}
-                >
-                  <ServerConCard mode={mode} />
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Nút < > */}
-          <button
-            type="button"
-            aria-label="Chế độ trước"
-            onClick={() => setSlide((s) => (s <= 0 ? maxSlide : s - 1))}
-            className="absolute -left-4 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-border-c bg-surface text-fg opacity-0 shadow-lg transition-all hover:border-primary/50 hover:text-primary group-hover/car:opacity-100 focus-visible:opacity-100"
-          >
-            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-              <path d="m15 18-6-6 6-6" />
-            </svg>
-          </button>
-          <button
-            type="button"
-            aria-label="Chế độ tiếp theo"
-            onClick={() => setSlide((s) => (s >= maxSlide ? 0 : s + 1))}
-            className="absolute -right-4 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-border-c bg-surface text-fg opacity-0 shadow-lg transition-all hover:border-primary/50 hover:text-primary group-hover/car:opacity-100 focus-visible:opacity-100"
-          >
-            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-              <path d="m9 18 6-6-6-6" />
-            </svg>
-          </button>
-
-          {/* Dots */}
-          <div className="mt-6 flex items-center justify-center gap-2" role="tablist" aria-label="Chuyển nhóm chế độ chơi">
-            {Array.from({ length: maxSlide + 1 }).map((_, i) => (
-              <button
-                key={i}
-                type="button"
-                role="tab"
-                aria-selected={i === slide}
-                aria-label={`Nhóm ${i + 1}`}
-                onClick={() => setSlide(i)}
-                className={cn(
-                  'h-2.5 rounded-full transition-all duration-300',
-                  i === slide ? 'w-7 bg-primary' : 'w-2.5 bg-[var(--border)] hover:bg-muted',
+        <div className="space-y-12">
+          {groups.map((group) => (
+            <div key={group.key}>
+              <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
+                <h3 className="text-xl font-extrabold tracking-tight sm:text-2xl">
+                  {group.name}
+                </h3>
+                {group.slug && (
+                  <Link
+                    to={`/may-chu/the-loai/${group.slug}`}
+                    className="text-sm font-semibold text-primary transition-colors hover:text-primary-strong"
+                  >
+                    Xem tất cả {group.name} →
+                  </Link>
                 )}
-              />
-            ))}
-          </div>
+              </div>
+              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {group.modes.map((mode) => (
+                  <ServerConCard key={mode.slug} mode={mode} />
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </section>
@@ -545,21 +497,21 @@ const GameModes = ({
 const Highlights = ({ section }: { section?: HomePayload['highlights'] }) => (
   <section className="reveal mx-auto mt-20 max-w-6xl px-4 sm:px-6">
     <h2 className="text-center text-3xl font-extrabold tracking-tight sm:text-4xl">
-      <span className="text-gradient-brand">{section?.title ?? 'Điểm nổi bật'}</span>
+      <span className="text-gradient-brand">Vì sao chọn AeSieuQuay?</span>
     </h2>
     <div className="mx-auto mt-3 mb-8 h-1 w-16 rounded-full bg-gradient-to-r from-primary to-accent" />
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      {(section?.items ?? []).map((item) => (
+    <div className="mx-auto flex max-w-5xl flex-wrap justify-center gap-4">
+      {(section?.items ?? []).map((item, index) => (
         <div
-          key={item.title}
-          className="card-lift group relative overflow-hidden rounded-2xl border border-border-c bg-surface p-5"
+          key={`${item.title}-${index}`}
+          className="card-lift group relative min-w-0 w-full overflow-hidden rounded-2xl border border-border-c bg-surface p-5 sm:w-[calc(50%-0.5rem)] lg:w-[calc(25%-0.75rem)]"
         >
           <div className="absolute -right-6 -top-6 h-20 w-20 rounded-full bg-primary-soft opacity-0 blur-2xl transition-opacity group-hover:opacity-100" />
           <span className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-surface-2 text-3xl transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-6">
             {item.icon}
           </span>
-          <h3 className="mt-3 font-bold text-fg">{item.title}</h3>
-          <p className="mt-1.5 text-sm leading-relaxed text-muted">{item.desc}</p>
+          <h3 className="mt-3 break-words font-bold text-fg">{item.title}</h3>
+          <p className="mt-1.5 break-words text-sm leading-relaxed text-muted">{item.desc}</p>
         </div>
       ))}
     </div>
@@ -573,7 +525,7 @@ const galleryIcons = ['🌳', '🏝️', '⚔️', '🏙️']
 const Gallery = ({ gallery }: { gallery?: HomePayload['gallery'] }) => (
   <section className="reveal mx-auto mt-20 max-w-6xl px-4 sm:px-6">
     <h2 className="mb-8 text-center text-3xl font-extrabold tracking-tight sm:text-4xl">
-      {gallery?.title ?? 'Khám phá thế giới AeSieuQuay'}
+      Khoảnh khắc server
     </h2>
 
     {(gallery?.images ?? []).length === 0 ? (
@@ -634,9 +586,11 @@ const Community = ({ community }: { community?: HomePayload['community'] }) => {
         <div className="relative">
           <span className="text-5xl">💬</span>
           <h2 className="mt-4 text-3xl font-extrabold tracking-tight sm:text-4xl">
-            <span className="text-gradient-brand">{community.title}</span>
+            <span className="text-gradient-brand">Cộng đồng</span>
           </h2>
-          <p className="mx-auto mt-3 max-w-lg text-muted">{community.description}</p>
+          <p className="mx-auto mt-3 max-w-lg text-muted">
+            Tham gia cộng đồng để giao lưu, chia sẻ và nhận hỗ trợ.
+          </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             {(community.socials ?? []).map((s) => (
               <a
@@ -745,6 +699,10 @@ export const HomePage = () => {
       <Hero hero={data.hero} serverStatus={data.server_status} serverInfo={data.server_info} />
       {/* Doc v2 §1: widget đọc khối động server_status; server_info chỉ fallback khi backend cũ. */}
       <ServerStatusWidget status={data.server_status} legacyInfo={data.server_info} />
+      {/* Điểm danh hằng ngày (+1 Xu) */}
+      <div className="mx-auto max-w-6xl px-4 sm:px-6">
+        <CheckinCard />
+      </div>
       {data.game_modes && <GameModes section={data.game_modes} stats={data.stats} />}
       {/* Doc v2 §2: Top 5 đại gia — items rỗng/thiếu block → component tự ẩn. */}
       <TopDonators block={data.top_donators} />

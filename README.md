@@ -2,6 +2,19 @@
 
 Frontend website cho máy chủ Minecraft **SV AeSieuQuay** được xây dựng với React 19, Vite, Tailwind CSS v4 và shadcn/ui.
 
+## Cập nhật 02/11/2026
+
+- **Admin**: layout full-width, sidebar gập/kéo giãn, submenu accordion; nút
+  **lên đầu trang** nổi (thay link trong footer).
+- **Trang quản trị mới**: Thể loại máy chủ, Ban quản trị, Trang nội dung
+  (+ editor HTML với preview Light/Dark), Điểm danh (thống kê 30 ngày + lịch sử).
+- **Trang user mới**: `/ban-quan-tri`, `/luat-le`, `/dieu-khoan`,
+  `/chinh-sach-bao-mat`, `/trang/:slug`, `/may-chu/the-loai/:slug`; widget
+  **điểm danh hằng ngày** trên trang chủ.
+- **API field**: bỏ `server_key`; dùng `slug`, `server_slug`,
+  `from_server_slug`, `to_server_slug`; `credit_server`.
+- **Form Máy chủ** không nhập slug/server_key — backend tự sinh slug từ Tên.
+
 ## Công nghệ sử dụng
 
 - [React 19](https://react.dev/) - Thư viện UI

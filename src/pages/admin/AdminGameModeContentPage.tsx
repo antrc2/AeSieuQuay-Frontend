@@ -15,10 +15,18 @@ import { html } from '@codemirror/lang-html'
 import { oneDark } from '@codemirror/theme-one-dark'
 
 import { useSeo } from '@/hooks/useSeo'
-import { getGameMode, updateGameMode, uploadAdminImage, type AdminGameMode } from '@/api/admin'
+import {
+  getGameMode,
+  listServerCategories,
+  updateGameMode,
+  uploadAdminImage,
+  type AdminGameMode,
+  type AdminServerCategory,
+} from '@/api/admin'
 import { ApiError } from '@/api/client'
 import { showApiError, showSuccess } from '@/utils/swal'
 import { PageHeader } from '@/components/admin/blocks'
+import { Field, ctlCls } from '@/components/admin/form'
 import Modal from '@/components/admin/Modal'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -84,7 +92,7 @@ export interface HtmlEditorHandle {
  * Bọc CodeMirror 6 thủ công (không dùng react-codemirror).
  * Mount 1 lần với doc khởi tạo; thay đổi sau đó qua `setValue`.
  */
-const HtmlEditor = forwardRef<HtmlEditorHandle, { value: string; onChange: (v: string) => void }>(
+export const HtmlEditor = forwardRef<HtmlEditorHandle, { value: string; onChange: (v: string) => void }>(
   ({ value, onChange }, ref) => {
     const hostRef = useRef<HTMLDivElement>(null)
     const viewRef = useRef<EditorView | null>(null)
@@ -165,6 +173,16 @@ export const AdminGameModeContentPage = () => {
   const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState(false)
 
+  // ---- metadata trang landing (title / meta description / thể loại / ảnh đại diện) ----
+  const [name, setName] = useState('')
+  const [shortDesc, setShortDesc] = useState('')
+  const [categoryId, setCategoryId] = useState('')
+  const [imageUrl, setImageUrl] = useState('')
+  const [categories, setCategories] = useState<AdminServerCategory[]>([])
+  const [coverBusy, setCoverBusy] = useState(false)
+  const coverInputRef = useRef<HTMLInputElement>(null)
+  const [savedMeta, setSavedMeta] = useState({ name: '', shortDesc: '', categoryId: '', imageUrl: '' })
+
   /* FRONTEND-4 §6 — optimistic locking: giữ version bản đang soạn, gửi khi lưu. */
   const [baseVersion, setBaseVersion] = useState<number | null>(null)
   const [conflict, setConflict] = useState<{ version: number; updatedAt: string | null; serverDoc: string | null } | null>(null)
@@ -183,6 +201,17 @@ export const AdminGameModeContentPage = () => {
     setPreview(html)
     setBaseVersion(typeof m.content_version === 'number' ? m.content_version : 0)
     editorRef.current?.setValue(html)
+    const meta = {
+      name: m.name ?? '',
+      shortDesc: m.short_desc ?? '',
+      categoryId: m.category_id == null ? '' : String(m.category_id),
+      imageUrl: m.image_url ?? '',
+    }
+    setName(meta.name)
+    setShortDesc(meta.shortDesc)
+    setCategoryId(meta.categoryId)
+    setImageUrl(meta.imageUrl)
+    setSavedMeta(meta)
   }, [])
 
   useEffect(() => {
@@ -203,13 +232,26 @@ export const AdminGameModeContentPage = () => {
     }
   }, [modeId])
 
+  /* Thể loại cho select */
+  useEffect(() => {
+    listServerCategories({ include_inactive: true })
+      .then(setCategories)
+      .catch(() => setCategories([]))
+  }, [])
+
   /* Preview debounce 250ms */
   useEffect(() => {
     const t = setTimeout(() => setPreview(doc), 250)
     return () => clearTimeout(t)
   }, [doc])
 
-  const dirty = mode !== null && doc !== savedDoc
+  const metaDirty =
+    mode !== null &&
+    (name !== savedMeta.name ||
+      shortDesc !== savedMeta.shortDesc ||
+      categoryId !== savedMeta.categoryId ||
+      imageUrl !== savedMeta.imageUrl)
+  const dirty = mode !== null && (doc !== savedDoc || metaDirty)
 
   /* Unsaved-changes guard: đổi tab/đóng window */
   useEffect(() => {
@@ -236,9 +278,21 @@ export const AdminGameModeContentPage = () => {
     if (!mode || saving || uploading) return
     setSaving(true)
     try {
+      // Gộp cả metadata (title/meta/thể loại/ảnh) trong 1 PATCH.
+      const payload: Record<string, unknown> = {}
+      if (doc !== savedDoc) {
+        payload.content_html = doc
+        payload.base_content_version = baseVersion
+      }
+      if (name !== savedMeta.name) payload.name = name.trim()
+      if (shortDesc !== savedMeta.shortDesc) payload.short_desc = shortDesc.trim() || null
+      if (categoryId !== savedMeta.categoryId) {
+        payload.category_id = categoryId === '' ? null : Number(categoryId)
+      }
+      if (imageUrl !== savedMeta.imageUrl) payload.image_url = imageUrl.trim() || null
       // Response là GameModeOut với content_html ĐÃ sanitize (nh3) —
       // reset editor về bản canonical để admin thấy kết quả thật.
-      const updated = await updateGameMode(mode.id, { content_html: doc, base_content_version: baseVersion })
+      const updated = await updateGameMode(mode.id, payload)
       applyMode(updated ?? { ...mode, content_html: doc, content_version: (baseVersion ?? 0) + 1 })
       await showSuccess('Đã lưu nội dung', 'HTML đã được sanitize server-side (thẻ/script ngoài allowlist bị loại).')
     } catch (err) {
@@ -262,7 +316,7 @@ export const AdminGameModeContentPage = () => {
     } finally {
       setSaving(false)
     }
-  }, [mode, doc, saving, uploading, baseVersion, applyMode])
+  }, [mode, doc, saving, uploading, baseVersion, applyMode, name, shortDesc, categoryId, imageUrl, savedMeta, savedDoc])
 
   /* ===== 3 lựa chọn khi 409 (FRONTEND-4 §6) ===== */
 
@@ -319,6 +373,18 @@ export const AdminGameModeContentPage = () => {
     }
   }
 
+  const onPickCover = async (file: File) => {
+    setCoverBusy(true)
+    try {
+      const res = await uploadAdminImage(file)
+      setImageUrl(res.url)
+    } catch (err) {
+      await showApiError(err, 'Upload ảnh đại diện thất bại')
+    } finally {
+      setCoverBusy(false)
+    }
+  }
+
   const previewHtml = useMemo(() => ({ __html: preview }), [preview])
 
   if (!mode) {
@@ -366,6 +432,55 @@ export const AdminGameModeContentPage = () => {
           </>
         }
       />
+
+      {/* ===== Metadata trang landing (như trình soạn bài viết) ===== */}
+      <Card className="shrink-0">
+        <CardContent className="grid gap-4 py-4 sm:grid-cols-2 lg:grid-cols-4">
+          <Field label="Tiêu đề" className="sm:col-span-2">
+            <input className={ctlCls} value={name} onChange={(ev) => setName(ev.target.value)} placeholder="SkyOp" />
+          </Field>
+          <Field label="Meta description (SEO)" className="sm:col-span-2">
+            <input className={ctlCls} value={shortDesc} onChange={(ev) => setShortDesc(ev.target.value)} placeholder="Mô tả ngắn hiển thị trên Google và card" />
+          </Field>
+          <Field label="Thể loại">
+            <select className={ctlCls} value={categoryId} onChange={(ev) => setCategoryId(ev.target.value)}>
+              <option value="">— chưa phân loại —</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Ảnh đại diện">
+            <div className="flex items-center gap-2">
+              <input
+                className={cn(ctlCls, 'min-w-0 flex-1')}
+                value={imageUrl}
+                onChange={(ev) => setImageUrl(ev.target.value)}
+                placeholder="https://… hoặc upload"
+              />
+              <input
+                ref={coverInputRef}
+                type="file"
+                accept="image/*"
+                hidden
+                onChange={(e) => {
+                  const f = e.target.files?.[0]
+                  if (f) onPickCover(f)
+                  e.target.value = ''
+                }}
+              />
+              <Button size="sm" variant="outline" onClick={() => coverInputRef.current?.click()} disabled={coverBusy}>
+                {coverBusy ? '…' : 'Upload'}
+              </Button>
+            </div>
+          </Field>
+          {imageUrl && (
+            <div className="sm:col-span-2 lg:col-span-4">
+              <img src={imageUrl} alt="Ảnh đại diện" className="h-24 w-full max-w-xs rounded-xl border border-border-c object-cover" />
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-2">
         {/* ===== HTML SOURCE ===== */}

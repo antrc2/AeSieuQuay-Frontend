@@ -28,7 +28,7 @@ export function ClusterStatsStrip({ stats, compact = false, className }: Props) 
     <div
       className={cn('flex flex-wrap items-center gap-2 text-sm', className)}
       role="status"
-      aria-label={`Trạng thái cụm ${stats.cluster.name}`}
+      aria-label={`Trạng thái máy chủ${stats.cluster ? ` ${stats.cluster.name}` : ''}`}
     >
       <span className="inline-flex items-center gap-1.5 rounded-full border border-border-c bg-surface px-3 py-1">
         <span

@@ -3,38 +3,32 @@ import { useSearchParams } from 'react-router-dom'
 
 import { useSeo } from '@/hooks/useSeo'
 import {
-  createFooterColumn,
   createGalleryImage,
   createHighlight,
   createHeroSlide,
   createSocial,
-  deleteFooterColumn,
   deleteGalleryImage,
   deleteHighlight,
   deleteHeroSlide,
   deleteSocial,
   getContentConfig,
-  listFooterColumns,
   listGallery,
   listHeroSlides,
   listHighlights,
   listSocials,
   refreshSiteCache,
   updateContentConfig,
-  updateFooterColumn,
   updateGalleryImage,
   updateHighlight,
   updateHeroSlide,
   updateSocial,
   uploadContentImage,
-  type AdminFooterColumn,
   type AdminGalleryImage,
   type AdminHighlight,
   type AdminHeroSlide,
   type AdminSiteConfig,
   type AdminSocial,
   type SiteConfigPatch,
-  type SocialLocation,
 } from '@/api/admin'
 import { showApiError, showSuccess } from '@/utils/swal'
 import { PageHeader, SectionHeader, TableWrap, Td, Th } from '@/components/admin/blocks'
@@ -63,7 +57,6 @@ const CONTENT_TABS = [
   ['highlight', 'Highlight'],
   ['gallery', 'Gallery'],
   ['socials', 'Mạng xã hội'],
-  ['footer', 'Footer'],
 ] as const
 type ContentTab = (typeof CONTENT_TABS)[number][0]
 
@@ -213,29 +206,15 @@ const CONFIG_KEYS = [
   'hero_name',
   'hero_tagline',
   'hero_description',
-  'hero_cta_primary',
-  'hero_cta_secondary',
   'hero_discord_url',
   'hero_bg_image_url',
   'hero_bg_image_key',
   'slideshow_interval',
-  'modes_title',
-  'modes_subtitle',
-  'highlights_title',
-  'gallery_title',
-  'gallery_description',
-  'community_title',
-  'community_description',
-  'community_cta',
-  'community_discord_url',
-  'members_estimate',
-  'widget_id',
-  'footer_copyright',
 ] as const
 type ConfigKey = (typeof CONFIG_KEYS)[number]
 type ConfigDraft = Record<ConfigKey, string>
 
-const NUMERIC_CONFIG_KEYS = ['slideshow_interval', 'members_estimate'] as const
+const NUMERIC_CONFIG_KEYS = ['slideshow_interval'] as const
 
 const cfgToDraft = (c: AdminSiteConfig): ConfigDraft =>
   Object.fromEntries(CONFIG_KEYS.map((k) => [k, c[k] == null ? '' : String(c[k])])) as ConfigDraft
@@ -275,8 +254,6 @@ const ConfigTab = () => {
     const interval = Number(draft.slideshow_interval)
     if (draft.slideshow_interval !== '' && (!Number.isFinite(interval) || interval < 1000 || interval > 60000))
       e.slideshow_interval = 'Phải trong 1000–60000 (ms)'
-    const members = Number(draft.members_estimate)
-    if (draft.members_estimate !== '' && (!Number.isInteger(members) || members < 0)) e.members_estimate = 'Số nguyên ≥ 0'
     setErrors(e)
     if (Object.keys(e).length) return
 
@@ -340,12 +317,6 @@ const ConfigTab = () => {
             <Field label="Mô tả" htmlFor="cfg-hd" className="sm:col-span-2">
               <textarea id="cfg-hd" rows={2} className={ctlCls} value={draft.hero_description} onChange={(ev) => set({ hero_description: ev.target.value })} />
             </Field>
-            <Field label="CTA chính" htmlFor="cfg-hc1">
-              <input id="cfg-hc1" className={ctlCls} value={draft.hero_cta_primary} onChange={(ev) => set({ hero_cta_primary: ev.target.value })} />
-            </Field>
-            <Field label="CTA phụ" htmlFor="cfg-hc2">
-              <input id="cfg-hc2" className={ctlCls} value={draft.hero_cta_secondary} onChange={(ev) => set({ hero_cta_secondary: ev.target.value })} />
-            </Field>
             <Field label="Discord URL (hero)" htmlFor="cfg-hdurl">
               <input id="cfg-hdurl" className={ctlCls} value={draft.hero_discord_url} onChange={(ev) => set({ hero_discord_url: ev.target.value })} placeholder="https://discord.gg/…" />
             </Field>
@@ -360,58 +331,6 @@ const ConfigTab = () => {
               />
             </Field>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Nhóm 3 — cộng đồng + gallery */}
-      <Card>
-        <CardContent className="space-y-4 p-6">
-          <SectionHeader title="Game modes · Highlight · Gallery · Cộng đồng" />
-          <div className={group}>
-            <Field label="Modes title" htmlFor="cfg-mt">
-              <input id="cfg-mt" className={ctlCls} value={draft.modes_title} onChange={(ev) => set({ modes_title: ev.target.value })} />
-            </Field>
-            <Field label="Modes subtitle" htmlFor="cfg-ms">
-              <input id="cfg-ms" className={ctlCls} value={draft.modes_subtitle} onChange={(ev) => set({ modes_subtitle: ev.target.value })} />
-            </Field>
-            <Field label="Highlights title" htmlFor="cfg-ht2" className="sm:col-span-2">
-              <input id="cfg-ht2" className={ctlCls} value={draft.highlights_title} onChange={(ev) => set({ highlights_title: ev.target.value })} />
-            </Field>
-            <Field label="Gallery title" htmlFor="cfg-gt">
-              <input id="cfg-gt" className={ctlCls} value={draft.gallery_title} onChange={(ev) => set({ gallery_title: ev.target.value })} />
-            </Field>
-            <Field label="Gallery description" htmlFor="cfg-gd">
-              <input id="cfg-gd" className={ctlCls} value={draft.gallery_description} onChange={(ev) => set({ gallery_description: ev.target.value })} />
-            </Field>
-            <Field label="Community title" htmlFor="cfg-ct">
-              <input id="cfg-ct" className={ctlCls} value={draft.community_title} onChange={(ev) => set({ community_title: ev.target.value })} />
-            </Field>
-            <Field label="Community CTA" htmlFor="cfg-cc">
-              <input id="cfg-cc" className={ctlCls} value={draft.community_cta} onChange={(ev) => set({ community_cta: ev.target.value })} />
-            </Field>
-            <Field label="Community description" htmlFor="cfg-cd" className="sm:col-span-2">
-              <textarea id="cfg-cd" rows={2} className={ctlCls} value={draft.community_description} onChange={(ev) => set({ community_description: ev.target.value })} />
-            </Field>
-            <Field label="Community Discord URL" htmlFor="cfg-cdurl">
-              <input id="cfg-cdurl" className={ctlCls} value={draft.community_discord_url} onChange={(ev) => set({ community_discord_url: ev.target.value })} placeholder="https://discord.gg/…" />
-            </Field>
-            <Field label="Members estimate" htmlFor="cfg-me" error={errors.members_estimate} hint="Số thành viên hiển thị (làm tròn mềm)">
-              <input id="cfg-me" type="number" min={0} className={cn(ctlCls, 'tabular-nums')} value={draft.members_estimate} onChange={(ev) => set({ members_estimate: ev.target.value })} />
-            </Field>
-            <Field label="Widget id" htmlFor="cfg-wid">
-              <input id="cfg-wid" className={ctlCls} value={draft.widget_id} onChange={(ev) => set({ widget_id: ev.target.value })} />
-            </Field>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Nhóm 4 — footer copyright */}
-      <Card>
-        <CardContent className="space-y-4 p-6">
-          <SectionHeader title="Footer — bản quyền" />
-          <Field label="Footer copyright" htmlFor="cfg-fc">
-            <textarea id="cfg-fc" rows={2} className={ctlCls} value={draft.footer_copyright} onChange={(ev) => set({ footer_copyright: ev.target.value })} />
-          </Field>
         </CardContent>
       </Card>
 
@@ -898,14 +817,13 @@ const GalleryTab = () => {
 /* ================= 3.4 Tab Mạng xã hội ================= */
 
 const SOCIAL_ICONS = ['discord', 'facebook', 'tiktok', 'youtube']
-type SocialDraft = { location: SocialLocation; icon: string; label: string; url: string; sort_order: string; is_active: boolean }
-const EMPTY_SOCIAL: SocialDraft = { location: 'community', icon: 'discord', label: '', url: '', sort_order: '0', is_active: true }
+type SocialDraft = { icon: string; label: string; url: string; sort_order: string; is_active: boolean }
+const EMPTY_SOCIAL: SocialDraft = { icon: 'discord', label: '', url: '', sort_order: '0', is_active: true }
 
 const SocialFormModal = ({ editing, onClose, onSaved }: { editing: AdminSocial | null; onClose: () => void; onSaved: () => void }) => {
   const [draft, setDraft] = useState<SocialDraft>(() =>
     editing
       ? {
-          location: editing.location,
           icon: editing.icon ?? '',
           label: editing.label,
           url: editing.url,
@@ -930,7 +848,6 @@ const SocialFormModal = ({ editing, onClose, onSaved }: { editing: AdminSocial |
     setBusy(true)
     try {
       const body = {
-        location: draft.location,
         icon: draft.icon.trim() || null,
         label: draft.label.trim(),
         url: draft.url.trim(),
@@ -955,7 +872,7 @@ const SocialFormModal = ({ editing, onClose, onSaved }: { editing: AdminSocial |
       open
       onClose={onClose}
       title={editing ? `Sửa liên kết #${editing.id}` : 'Liên kết mạng xã hội mới'}
-      description="location = vị trí hiển thị: community (khối cộng đồng) hoặc footer."
+      description="Danh sách dùng chung cho khối Cộng đồng và Footer."
       footer={
         <>
           <Button variant="ghost" onClick={onClose} disabled={busy}>Huỷ</Button>
@@ -964,12 +881,6 @@ const SocialFormModal = ({ editing, onClose, onSaved }: { editing: AdminSocial |
       }
     >
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Location">
-          <select className={ctlCls} value={draft.location} onChange={(ev) => set({ location: ev.target.value as SocialLocation })}>
-            <option value="community">community — khối cộng đồng</option>
-            <option value="footer">footer</option>
-          </select>
-        </Field>
         <Field label="Icon">
           <select
             className={ctlCls}
@@ -1014,8 +925,7 @@ const SocialFormModal = ({ editing, onClose, onSaved }: { editing: AdminSocial |
 }
 
 const SocialsTab = () => {
-  const [filter, setFilter] = useState<SocialLocation | ''>('')
-  const fetcher = useCallback(() => listSocials(filter), [filter])
+  const fetcher = useCallback(() => listSocials(), [])
   const { rows, loading, load } = useContentList(fetcher, 'Không tải được danh sách mạng xã hội')
   const [editing, setEditing] = useState<AdminSocial | 'new' | null>(null)
   const swap = makeSortSwapper(rows ?? [], load, (id, body) => updateSocial(id, body))
@@ -1024,13 +934,6 @@ const SocialsTab = () => {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <Field label="Lọc theo location" className="w-56">
-          <select className={ctlCls} value={filter} onChange={(ev) => setFilter(ev.target.value as SocialLocation | '')}>
-            <option value="">Mọi vị trí</option>
-            <option value="community">community</option>
-            <option value="footer">footer</option>
-          </select>
-        </Field>
         <Button size="sm" onClick={() => setEditing('new')}>+ Thêm liên kết</Button>
       </div>
       {loading && !rows ? (
@@ -1063,7 +966,7 @@ const SocialsTab = () => {
                           {s.url}
                         </a>
                       </Td>
-                      <Td className="text-xs text-muted">{s.location}</Td>
+                      <Td className="text-xs text-muted">—</Td>
                       <Td className="tabular-nums text-muted">{s.sort_order}</Td>
                       <Td><ActiveBadge active={s.is_active} /></Td>
                       <Td className="text-right whitespace-nowrap">
@@ -1105,194 +1008,6 @@ const EMPTY_COLUMN: ColumnDraft = { title: '', sort_order: '0', is_active: true,
 
 /** link nội bộ `/...` (kể cả `/`, hoặc `#...`) hoặc http(s) — backend nhận cả hai. */
 const isLinkTarget = (to = '') => to === '/' || /^\/[^/]/.test(to) || to.startsWith('#') || /^https?:\/\//i.test(to)
-
-const FooterColumnFormModal = ({ editing, onClose, onSaved }: { editing: AdminFooterColumn | null; onClose: () => void; onSaved: () => void }) => {
-  const [draft, setDraft] = useState<ColumnDraft>(() =>
-    editing
-      ? {
-          title: editing.title,
-          sort_order: String(editing.sort_order),
-          is_active: editing.is_active,
-          links: editing.links.length ? editing.links.map((l) => ({ label: l.label, to_url: l.to_url })) : [{ label: '', to_url: '' }],
-        }
-      : EMPTY_COLUMN,
-  )
-  const [errors, setErrors] = useState<Record<string, string>>({})
-  const [busy, setBusy] = useState(false)
-
-  const set = (patch: Partial<ColumnDraft>) => setDraft((d) => ({ ...d, ...patch }))
-
-  const setLink = (idx: number, patch: Partial<LinkDraft>) =>
-    setDraft((d) => ({ ...d, links: d.links.map((l, i) => (i === idx ? { ...l, ...patch } : l)) }))
-
-  const moveLink = (idx: number, delta: -1 | 1) =>
-    setDraft((d) => {
-      const j = idx + delta
-      if (j < 0 || j >= d.links.length) return d
-      const links = [...d.links]
-      ;[links[idx], links[j]] = [links[j], links[idx]]
-      return { ...d, links }
-    })
-
-  const submit = async () => {
-    const e: Record<string, string> = {}
-    if (!draft.title.trim()) e.title = 'Bắt buộc'
-    // rows rỗng hoàn toàn bỏ qua; row có nội dung phải khớp /... hoặc http(s)
-    draft.links.forEach((l, i) => {
-      if (!l.label.trim() && !l.to_url.trim()) return
-      if (!l.label.trim()) e[`link_${i}_label`] = 'Thiếu label'
-      if (!isLinkTarget(l.to_url.trim())) e[`link_${i}_to`] = 'Route nội bộ /... hoặc http(s)'
-    })
-    setErrors(e)
-    if (Object.keys(e).length || busy) return
-    setBusy(true)
-    try {
-      const links = draft.links
-        .map((l) => ({ label: l.label.trim(), to_url: l.to_url.trim() }))
-        .filter((l) => l.label && l.to_url)
-      // upsert TOÀN BỘ links của column (backend-5 §4.2 — nested trong body column)
-      const body = { title: draft.title.trim(), sort_order: Number(draft.sort_order || 0), is_active: draft.is_active, links }
-      if (editing) await updateFooterColumn(editing.id, body)
-      else await createFooterColumn(body)
-      onSaved()
-      onClose()
-    } catch (err) {
-      await showApiError(err, editing ? 'Không cập nhật được cột' : 'Không tạo được cột')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  return (
-    <Modal
-      open
-      onClose={onClose}
-      title={editing ? `Sửa cột #${editing.id}` : 'Cột footer mới'}
-      description="Links lưu nested trong column (upsert toàn bộ khi lưu)."
-      className="max-w-2xl"
-      footer={
-        <>
-          <Button variant="ghost" onClick={onClose} disabled={busy}>Huỷ</Button>
-          <Button onClick={submit} disabled={busy}>{busy ? 'Đang lưu…' : 'Lưu cột'}</Button>
-        </>
-      }
-    >
-      <div className="space-y-4">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Title *" htmlFor="fc-title" error={errors.title}>
-            <input id="fc-title" className={ctlCls} value={draft.title} onChange={(ev) => set({ title: ev.target.value })} placeholder="Khám phá" />
-          </Field>
-          <Field label="Sort order" htmlFor="fc-sort">
-            <input id="fc-sort" type="number" className={cn(ctlCls, 'tabular-nums')} value={draft.sort_order} onChange={(ev) => set({ sort_order: ev.target.value })} />
-          </Field>
-        </div>
-        <label className="flex items-center gap-2 text-sm font-medium">
-          <input type="checkbox" checked={draft.is_active} onChange={(ev) => set({ is_active: ev.target.checked })} className="h-4 w-4 accent-[var(--primary)]" />
-          Đang bật (is_active)
-        </label>
-
-        <div className="space-y-2">
-          <SectionHeader
-            title="Links"
-            actions={
-              <Button size="sm" variant="outline" onClick={() => set({ links: [...draft.links, { label: '', to_url: '' }] })}>
-                + Thêm link
-              </Button>
-            }
-          />
-          {draft.links.map((l, i) => (
-            <div key={i} className="flex flex-wrap items-start gap-2 rounded-xl border border-border-c bg-surface-2/50 p-2">
-              <div className="min-w-0 flex-1 space-y-1">
-                <input className={ctlCls} value={l.label} placeholder="Label (vd: Máy chủ)" onChange={(ev) => setLink(i, { label: ev.target.value })} />
-                {errors[`link_${i}_label`] && <p className="text-xs font-medium text-red-500">{errors[`link_${i}_label`]}</p>}
-              </div>
-              <div className="min-w-0 flex-1 space-y-1">
-                <input className={ctlCls} value={l.to_url} placeholder="/may-chu hoặc https://…" onChange={(ev) => setLink(i, { to_url: ev.target.value })} />
-                {errors[`link_${i}_to`] && <p className="text-xs font-medium text-red-500">{errors[`link_${i}_to`]}</p>}
-              </div>
-              <div className="flex items-center gap-1 pt-1">
-                <Button size="sm" variant="ghost" disabled={i === 0} onClick={() => moveLink(i, -1)} aria-label="Lên">↑</Button>
-                <Button size="sm" variant="ghost" disabled={i === draft.links.length - 1} onClick={() => moveLink(i, 1)} aria-label="Xuống">↓</Button>
-                <Button size="sm" variant="ghost" onClick={() => set({ links: draft.links.filter((_, j) => j !== i) })} aria-label="Xoá link">✕</Button>
-              </div>
-            </div>
-          ))}
-          {draft.links.length === 0 && <p className="text-xs text-muted">Chưa có link — column rỗng sẽ không hiện trên footer.</p>}
-        </div>
-      </div>
-    </Modal>
-  )
-}
-
-const FooterTab = () => {
-  const fetcher = useCallback(() => listFooterColumns(), [])
-  const { rows, loading, load } = useContentList(fetcher, 'Không tải được cột footer')
-  const [editing, setEditing] = useState<AdminFooterColumn | 'new' | null>(null)
-  const list = bySort(rows ?? [])
-
-  return (
-    <div className="space-y-4">
-      <SectionHeader
-        title="Cột footer"
-        actions={<Button size="sm" onClick={() => setEditing('new')}>+ Thêm cột</Button>}
-      />
-      {loading && !rows ? (
-        <LoadingTab />
-      ) : list.length === 0 ? (
-        <EmptyTab icon="🦶" />
-      ) : (
-        <Card>
-          <CardContent className="p-0">
-            <div className="px-6 pt-6 pb-4">
-              <TableWrap>
-                <thead>
-                  <tr>
-                    <Th>Title</Th>
-                    <Th>Links</Th>
-                    <Th>Sort</Th>
-                    <Th>Trạng thái</Th>
-                    <Th className="text-right">Thao tác</Th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {list.map((c) => (
-                    <tr key={c.id} className="hover:bg-surface-2/60">
-                      <Td className="font-semibold">{c.title}</Td>
-                      <Td className="text-xs text-muted">
-                        {c.links.length} link{c.links.length ? `: ${c.links.map((l) => l.label).join(', ')}` : ''}
-                      </Td>
-                      <Td className="tabular-nums text-muted">{c.sort_order}</Td>
-                      <Td><ActiveBadge active={c.is_active} /></Td>
-                      <Td className="text-right whitespace-nowrap">
-                        <Button size="sm" variant="secondary" onClick={() => setEditing(c)}>Sửa</Button>
-                        <InlineConfirm
-                          label="Xoá"
-                          confirmLabel="Xoá cột?"
-                          warning="kèm toàn bộ links của cột"
-                          onConfirm={async () => {
-                            try {
-                              await deleteFooterColumn(c.id)
-                              await load()
-                            } catch (err) {
-                              await showApiError(err, 'Không xoá được cột')
-                            }
-                          }}
-                        />
-                      </Td>
-                    </tr>
-                  ))}
-                </tbody>
-              </TableWrap>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-      {editing !== null && (
-        <FooterColumnFormModal editing={editing === 'new' ? null : editing} onClose={() => setEditing(null)} onSaved={load} />
-      )}
-    </div>
-  )
-}
 
 /* ================= Trang ================= */
 
@@ -1371,7 +1086,6 @@ export const AdminContentPage = () => {
       {tab === 'highlight' && <HighlightTab />}
       {tab === 'gallery' && <GalleryTab />}
       {tab === 'socials' && <SocialsTab />}
-      {tab === 'footer' && <FooterTab />}
     </div>
   )
 }

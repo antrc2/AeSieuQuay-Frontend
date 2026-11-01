@@ -62,6 +62,7 @@ interface MockServer {
   id: number
   cluster_id: number
   server_key: string
+  slug: string
   name: string
   role: string
   group_slug: string | null
@@ -134,7 +135,7 @@ const state = {
       id: 1,
       cluster_id: 1,
       server_key: 'proxy-1',
-      name: 'Proxy 1',
+      slug: 'proxy-1',      name: 'Proxy 1',
       role: 'proxy',
       group_slug: 'network',
       host: 'play.aesieuquay.com',
@@ -148,7 +149,7 @@ const state = {
       id: 2,
       cluster_id: 1,
       server_key: 'lobby-1',
-      name: 'Lobby 1',
+      slug: 'lobby-1',      name: 'Lobby 1',
       role: 'lobby',
       group_slug: 'lobby',
       host: 'lobby.aesieuquay.com',
@@ -166,7 +167,7 @@ const state = {
       id: 3,
       cluster_id: 1,
       server_key: 'survival-1',
-      name: 'Survival 1',
+      slug: 'survival-1',      name: 'Survival 1',
       role: 'game',
       group_slug: 'survival',
       host: 'survival.aesieuquay.com',
@@ -180,7 +181,7 @@ const state = {
       id: 4,
       cluster_id: 1,
       server_key: 'skyblock-1',
-      name: 'SkyBlock 1',
+      slug: 'skyblock-1',      name: 'SkyBlock 1',
       role: 'game',
       group_slug: 'skyblock',
       host: 'skyblock.aesieuquay.com',
@@ -194,7 +195,7 @@ const state = {
       id: 5,
       cluster_id: 2,
       server_key: 'creative-test',
-      name: 'Creative (test)',
+      slug: 'creative-test',      name: 'Creative (test)',
       role: 'game',
       group_slug: 'creative',
       host: 'test.aesieuquay.com',
@@ -216,12 +217,33 @@ const state = {
     mkMonitor('skyblock-1', { online: false, players: 0, max: 120, tps: null, mspt: null }),
   ] as AnyObj[],
 
+  /** Ban quản trị máy chủ. */
+  teamMembers: [
+    { id: 1, name: 'An Trc', role_title: 'Chủ server', avatar_url: null, avatar_key: null, sort_order: 1, is_active: true, created_at: null, updated_at: null },
+    { id: 2, name: 'Minh Tom', role_title: 'Quản lý', avatar_url: null, avatar_key: null, sort_order: 2, is_active: true, created_at: null, updated_at: null },
+  ],
+
+  /** Trang nội dung tĩnh. */
+  contentPages: [
+    { id: 1, slug: 'luat-le', title: 'Luật lệ', content_html: '<h2>Luật lệ máy chủ</h2><p>Nội dung do admin soạn.</p>', content_version: 0, show_in_footer: true, sort_order: 10, is_active: true, created_at: null, updated_at: null },
+    { id: 2, slug: 'dieu-khoan', title: 'Điều khoản dịch vụ', content_html: '<h2>Điều khoản dịch vụ</h2><p>Nội dung do admin soạn.</p>', content_version: 0, show_in_footer: true, sort_order: 20, is_active: true, created_at: null, updated_at: null },
+    { id: 3, slug: 'chinh-sach-bao-mat', title: 'Chính sách bảo mật', content_html: '<h2>Chính sách bảo mật</h2><p>Nội dung do admin soạn.</p>', content_version: 0, show_in_footer: true, sort_order: 30, is_active: true, created_at: null, updated_at: null },
+  ],
+
+  /** server_categories — danh mục thể loại máy chủ. */
+  serverCategories: [
+    { id: 1, slug: 'skyblock', name: 'SkyBlock', description: 'Các máy chủ skyblock', sort_order: 0, is_active: true, created_at: null, updated_at: null },
+    { id: 2, slug: 'giai-tri', name: 'Giải trí', description: 'Sáng tạo, PvP, minigame', sort_order: 1, is_active: true, created_at: null, updated_at: null },
+    { id: 3, slug: 'survival', name: 'Sinh tồn', description: null, sort_order: 2, is_active: true, created_at: null, updated_at: null },
+  ],
+
   /** game_modes — khớp schema `GameModeOut` (kèm field legacy). */
   gameModes: [
     {
       id: 1,
       slug: 'sinh-ton',
       name: 'Sinh tồn',
+      category_id: 3,
       tagline: 'Classic Survival',
       short_desc: 'Khám phá thế giới, bảo vệ lãnh thổ, chinh phục Boss mỗi cuối tuần.',
       desc: null,
@@ -248,6 +270,7 @@ const state = {
       id: 2,
       slug: 'skyblock',
       name: 'Skyblock',
+      category_id: 1,
       tagline: 'Sky Islands',
       short_desc: 'Bắt đầu từ đảo nhỏ trên không, mở rộng thành đảo vương quốc.',
       desc: null,
@@ -273,6 +296,7 @@ const state = {
       id: 3,
       slug: 'pvp',
       name: 'PvP',
+      category_id: 2,
       tagline: 'Arena Combat',
       short_desc: 'Sảnh combat tối ưu ping Việt Nam.',
       desc: null,
@@ -1010,6 +1034,117 @@ export const adminMock = {
 
   /* ================= game modes ================= */
 
+  async listTeamMembers() {
+    await wait()
+    return state.teamMembers.map((m) => ({ ...m }))
+  },
+
+  async createTeamMember(payload: AnyObj) {
+    await wait()
+    const row = { id: Math.max(0, ...state.teamMembers.map((m) => m.id)) + 1, ...payload, created_at: nowIso(), updated_at: nowIso() }
+    state.teamMembers.push(row as any)
+    return row
+  },
+
+  async updateTeamMember(id: number, payload: AnyObj) {
+    await wait()
+    const row = state.teamMembers.find((m) => m.id === id)
+    if (!row) fail('Thành viên không tồn tại', 404, 'not_found')
+    Object.assign(row, payload, { updated_at: nowIso() })
+    return { ...row }
+  },
+
+  async deleteTeamMember(id: number) {
+    await wait()
+    const row = state.teamMembers.find((m) => m.id === id)
+    if (row) row.is_active = false
+    return null
+  },
+
+  async listContentPages() {
+    await wait()
+    return state.contentPages.map((p) => ({ ...p }))
+  },
+
+  async getContentPage(id: number) {
+    await wait()
+    const p = state.contentPages.find((x) => x.id === id)
+    if (!p) fail('Trang không tồn tại', 404, 'not_found')
+    return { ...p }
+  },
+
+  async createContentPage(payload: AnyObj) {
+    await wait()
+    const row = { id: Math.max(0, ...state.contentPages.map((p) => p.id)) + 1, content_version: 0, ...payload, created_at: nowIso(), updated_at: nowIso() }
+    state.contentPages.push(row as any)
+    return row
+  },
+
+  async updateContentPage(id: number, payload: AnyObj) {
+    await wait()
+    const p = state.contentPages.find((x) => x.id === id)
+    if (!p) fail('Trang không tồn tại', 404, 'not_found')
+    const body = { ...payload }
+    if ('content_html' in body) { body.content_version = Number(p.content_version) + 1 }
+    delete body.base_content_version
+    Object.assign(p, body, { updated_at: nowIso() })
+    return { ...p }
+  },
+
+  async deleteContentPage(id: number) {
+    await wait()
+    const p = state.contentPages.find((x) => x.id === id)
+    if (p) p.is_active = false
+    return null
+  },
+
+  async listServerCategories(query: AnyObj = {}) {
+    await wait()
+    const rows = state.serverCategories
+    const withCounts = rows.map((c) => ({
+      ...c,
+      server_count: state.gameModes.filter((m: AnyObj) => m.category_id === c.id).length,
+    }))
+    if (query.include_inactive) return withCounts
+    return withCounts.filter((c) => c.is_active)
+  },
+
+  async createServerCategory(payload: AnyObj) {
+    await wait()
+    const slug = String(payload.slug ?? '').trim().toLowerCase()
+    if (!slug || !/^[a-z0-9-]+$/.test(slug)) fail('slug không hợp lệ', 422, 'validation_error')
+    if (state.serverCategories.some((c) => c.slug === slug)) fail('Slug thể loại đã tồn tại', 409, 'conflict')
+    const row = {
+      id: Math.max(0, ...state.serverCategories.map((c) => c.id)) + 1,
+      slug,
+      name: String(payload.name ?? '').trim(),
+      description: payload.description ?? null,
+      sort_order: Number(payload.sort_order ?? 0),
+      is_active: payload.is_active !== false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }
+    state.serverCategories.push(row)
+    return { ...row, server_count: 0 }
+  },
+
+  async updateServerCategory(id: number, payload: AnyObj) {
+    await wait()
+    const c = state.serverCategories.find((x) => x.id === id)
+    if (!c) fail('Thể loại không tồn tại', 404, 'not_found')
+    for (const field of ['name', 'description', 'sort_order', 'is_active']) {
+      if (field in payload) (c as AnyObj)[field] = payload[field]
+    }
+    return { ...c, server_count: state.gameModes.filter((m: AnyObj) => m.category_id === id).length }
+  },
+
+  async deleteServerCategory(id: number) {
+    await wait()
+    const c = state.serverCategories.find((x) => x.id === id)
+    if (c) c.is_active = false
+    return null
+  },
+
   async listGameModes() {
     await wait()
     return state.gameModes.map((m) => ({ ...m }))
@@ -1047,6 +1182,7 @@ export const adminMock = {
       content_version: 0,
       image_key: null,
       image_url: null,
+      category_id: payload.category_id ?? null,
       sort_order: Number(payload.sort_order ?? 0),
       is_active: payload.is_active !== false,
       created_at: nowIso(),
@@ -1241,7 +1377,7 @@ export const adminMock = {
     const commandId = uuid()
     state.commands.push({
       id: commandId, transfer_id: null, type: 'credit', server_key: 'lobby-1',
-      player_uuid: uuid(), player_name: t.username, amount: t.xu_amount ?? 0, status: 'pending',
+      slug: 'lobby-1',      player_uuid: uuid(), player_name: t.username, amount: t.xu_amount ?? 0, status: 'pending',
       attempts: 0, ok: null, balance: null, balance_before: null, error: null,
       expires_at_ms: nowMs() + 48 * 3_600_000, created_at_ms: nowMs(), claimed_at_ms: null, completed_at_ms: null, deposit_id: null,
     })
@@ -1722,12 +1858,15 @@ function validatePromotion(input: AnyObj, excludeId: number | null) {
   if (!['card', 'bank', 'all'].includes(appliesTo)) fail('applies_to phải là card|bank|all', 422, 'validation_error')
   const bonus = Number(input.bonus_percent)
   if (!Number.isFinite(bonus) || bonus <= 0 || bonus > 500) fail('bonus_percent phải trong (0, 500]', 422, 'validation_error')
-  const startsAt = String(input.starts_at ?? '').slice(0, 19)
+  // ends_at BẮT BUỘC; starts_at / max_* là OPTION.
   const endsAt = String(input.ends_at ?? '').slice(0, 19)
-  if (!startsAt || !endsAt) fail('starts_at/ends_at là bắt buộc', 422, 'validation_error')
+  if (!endsAt) fail('ends_at (kết thúc) là bắt buộc', 422, 'validation_error')
+  const startsAt = input.starts_at ? String(input.starts_at).slice(0, 19) : new Date().toISOString().slice(0, 19)
   if (startsAt >= endsAt) fail('starts_at phải trước ends_at', 422, 'validation_error')
-  const maxUsers = Number(input.max_users)
-  if (!Number.isFinite(maxUsers) || maxUsers < 1) fail('max_users phải ≥ 1', 422, 'validation_error')
+  const maxUsers = input.max_users == null ? null : Number(input.max_users)
+  if (maxUsers != null && (!Number.isFinite(maxUsers) || maxUsers < 1)) fail('max_users phải ≥ 1 hoặc để trống', 422, 'validation_error')
+  const maxPerUser = input.max_per_user == null ? null : Number(input.max_per_user)
+  if (maxPerUser != null && (!Number.isFinite(maxPerUser) || maxPerUser < 1)) fail('max_per_user phải ≥ 1 hoặc để trống', 422, 'validation_error')
   const isActive = input.is_active !== false
   if (isActive) {
     const sharesChannel = (a: string, b: string) => a === 'all' || b === 'all' || a === b
@@ -1743,7 +1882,7 @@ function validatePromotion(input: AnyObj, excludeId: number | null) {
     starts_at: startsAt,
     ends_at: endsAt,
     max_users: maxUsers,
-    max_per_user: Math.max(1, Number(input.max_per_user ?? 1)),
+    max_per_user: maxPerUser,
     is_active: isActive,
   }
 }

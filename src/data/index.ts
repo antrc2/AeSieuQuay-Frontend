@@ -9,7 +9,7 @@
  */
 
 import { useMockData } from '@/config/env'
-import { homePageMock, machineDetailsMock, machineListPageMock, topupPageMock, transferPageMock } from '@/mock-data/pages'
+import { homePageMock, machineDetailsMock, machineListPageMock, sitePagesMock, topupPageMock, transferPageMock } from '@/mock-data/pages'
 import { generateMachineDetail } from '@/mock-data/generate'
 
 import {
@@ -27,6 +27,7 @@ import {
   type MachineDetailPayload,
   type MachineListPayload,
   type SiteData,
+  type SitePagePayload,
   type TopupPayload,
   type TransferPagePayload,
 } from './contract'
@@ -104,7 +105,21 @@ export const getCaptchaConfig = (): CaptchaConfig | null => {
 /* ================= Danh sách máy chủ ================= */
 
 export const getMachineListData = (): DataResult<MachineListPayload> => {
-  if (useMockData) return ok(machineListPageMock as MachineListPayload)
+  if (useMockData) {
+    const base = machineListPageMock as MachineListPayload
+    // Mock: /may-chu/the-loai/<slug> → lọc theo thể loại + set tiêu đề.
+    const path = typeof window !== 'undefined' ? window.location.pathname : ''
+    const match = path.match(/^\/may-chu\/the-loai\/([^/]+)\/?$/)
+    const slug = match ? decodeURIComponent(match[1]) : null
+    if (!slug) return ok(base)
+    const category = (base.categories ?? []).find((c) => c.slug === slug) ?? null
+    return ok({
+      ...base,
+      title: category ? `Máy chủ ${category.name}` : base.title,
+      current_category: category ? { slug: category.slug, name: category.name } : null,
+      modes: (base.modes ?? []).filter((m) => m.category_slug === slug),
+    })
+  }
 
   const w = readWindowData()
   if (!w) return missing()
@@ -236,3 +251,20 @@ export type {
   TransferPagePayload,
 } from './contract'
 export type { DataResult } from './contract'
+
+/* ================= Trang tĩnh (Ban quản trị + pháp lý) ================= */
+
+export const getSitePageData = (slug: string): DataResult<SitePagePayload> => {
+  if (useMockData) {
+    const mockPage = (sitePagesMock as Record<string, SitePagePayload>)[slug]
+    return mockPage ? ok(mockPage) : notFound()
+  }
+
+  const w = readWindowData()
+  if (!w) return missing()
+  if (w.notFound || w.page === 'not_found') return notFound()
+  if (w.page === 'site_page' && isObject(w.payload)) {
+    return ok(w.payload as unknown as SitePagePayload, 'window')
+  }
+  return missing()
+}

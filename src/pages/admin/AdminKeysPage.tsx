@@ -51,7 +51,7 @@ export const AdminKeysPage = () => {
       setServers(s)
       setSelectedId((prev) => {
         if (prev && s.some((x) => x.id === prev)) return prev
-        const byQuery = wanted ? s.find((x) => x.server_key === wanted) : null
+        const byQuery = wanted ? s.find((x) => x.slug === wanted) : null
         return byQuery?.id ?? s[0]?.id ?? null
       })
     } catch (err) {
@@ -80,7 +80,7 @@ export const AdminKeysPage = () => {
   }, [selectedId])
 
   const visible = (servers ?? []).filter(
-    (s) => !filter || s.server_key.toLowerCase().includes(filter.toLowerCase()) || s.name.toLowerCase().includes(filter.toLowerCase()),
+    (s) => !filter || s.slug.toLowerCase().includes(filter.toLowerCase()) || s.name.toLowerCase().includes(filter.toLowerCase()),
   )
 
   const rotate = async (kind: KeyKind) => {
@@ -103,7 +103,7 @@ export const AdminKeysPage = () => {
     setBusy(true)
     try {
       setKeys(await revokeServerKey(selected.id, kind))
-      await showSuccess('Đã thu hồi key', `Mọi request agent của ${selected.server_key} (loại ${kind}) sẽ trả 401.`)
+      await showSuccess('Đã thu hồi key', `Mọi request agent của ${selected.slug} (loại ${kind}) sẽ trả 401.`)
       load()
     } catch (err) {
       await showApiError(err, 'Thu hồi key thất bại')
@@ -229,7 +229,7 @@ export const AdminKeysPage = () => {
                       )}
                     >
                       <span className="flex items-center justify-between gap-2">
-                        <span className="truncate font-mono text-sm font-semibold">{s.server_key}</span>
+                        <span className="truncate font-mono text-sm font-semibold">{s.slug}</span>
                         <RoleBadge role={s.role} />
                       </span>
                       <span className="mt-1 flex gap-1">
@@ -260,7 +260,8 @@ export const AdminKeysPage = () => {
                   <div>
                     <h2 className="text-lg font-bold text-fg">{selected.name}</h2>
                     <p className="font-mono text-xs text-muted">
-                      {selected.server_key} · cụm {selected.cluster_slug ?? `#${selected.cluster_id}`}
+                      {selected.slug}
+                      {selected.public_page ? ' · có trang public' : ''}
                     </p>
                   </div>
                   <RoleBadge role={selected.role} />
@@ -283,7 +284,7 @@ const GeneratedKeyModal = ({ result, onClose }: { result: RotateKeyResult; onClo
   <Modal
     open
     onClose={onClose}
-    title={`Key ${result.kind} mới — ${result.server_key}`}
+    title={`Key ${result.kind} mới — ${result.slug}`}
     description="Raw key chỉ được hiển thị ĐÚNG MỘT LẦN này. Backend chỉ lưu SHA-256 hash."
     footer={<Button onClick={onClose}>Đã lưu key — đóng</Button>}
   >
@@ -294,7 +295,7 @@ const GeneratedKeyModal = ({ result, onClose }: { result: RotateKeyResult; onClo
       </div>
       <p className="text-sm text-muted">
         Dán vào <code className="font-mono">api-key</code> trong <code className="font-mono">config.yml</code> của plugin{' '}
-        {result.kind === 'monitor' ? 'AESQ-Monitor' : 'AESQ-Points'} trên server <b>{result.server_key}</b>, rồi reload plugin.
+        {result.kind === 'monitor' ? 'AESQ-Monitor' : 'AESQ-Points'} trên server <b>{result.slug}</b>, rồi reload plugin.
         Key cũ không còn dùng được (401 ngay).
       </p>
     </div>

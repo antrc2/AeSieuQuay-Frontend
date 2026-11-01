@@ -4,12 +4,10 @@ import { Link } from 'react-router-dom'
 import { useSeo } from '@/hooks/useSeo'
 import {
   listBankDeposits,
-  listClusters,
   listServers,
   monitorOverview,
   monitorServers,
   refreshPublicCache,
-  type AdminCluster,
   type AdminServer,
   type MonitorOverview,
   type MonitorServerSummary,
@@ -41,7 +39,6 @@ const readCacheLockUntil = (): number => {
 export const AdminOverviewPage = () => {
   useSeo({ title: 'Quản trị — Tổng quan — SV AeSieuQuay', noindex: true })
 
-  const [clusters, setClusters] = useState<AdminCluster[] | null>(null)
   const [servers, setServers] = useState<AdminServer[] | null>(null)
   const [overview, setOverview] = useState<MonitorOverview | null>(null)
   const [summaries, setSummaries] = useState<MonitorServerSummary[] | null>(null)
@@ -109,9 +106,8 @@ export const AdminOverviewPage = () => {
   const load = useCallback(async () => {
     try {
       setUpdatedAt(Date.now())
-      const [c, s] = await Promise.all([listClusters().catch(() => []), listServers({ include_inactive: true }).catch(() => [])])
+      const s = await listServers({ include_inactive: true }).catch(() => [])
       if (!aliveRef.current) return
-      setClusters(c)
       setServers(s)
       // quick-link "Nạp chờ xử lý" — chỉ cần total, limit 1 cho nhẹ (§2.1)
       listBankDeposits({ status: 'unmatched', limit: 1 })
@@ -152,7 +148,7 @@ export const AdminOverviewPage = () => {
   const alertCount = (alerts?.low_tps.length ?? 0) + (alerts?.high_mspt.length ?? 0) + (alerts?.offline.length ?? 0)
   const allGood = keyMissing.length === 0 && alertCount === 0
 
-  if (loading && !clusters) {
+  if (loading && !servers) {
     return (
       <div className="space-y-5">
         <PageHeader title="Tổng quan" />
@@ -204,9 +200,9 @@ export const AdminOverviewPage = () => {
       {/* 6 card số liệu — hàng gọn, label 1 dòng */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
         <StatCard
-          icon="🗂️"
-          label="Cụm đang bật"
-          value={`${(clusters ?? []).filter((c) => c.is_active).length}/${(clusters ?? []).length}`}
+          icon="🖥️"
+          label="Máy chủ đang bật"
+          value={`${(servers ?? []).filter((s) => s.is_active).length}/${(servers ?? []).length}`}
         />
         <StatCard
           icon="🖥️"
@@ -250,10 +246,10 @@ export const AdminOverviewPage = () => {
               {keyMissing.map((s) => (
                 <Link
                   key={s.id}
-                  to={`/admin/keys?server=${encodeURIComponent(s.server_key)}`}
+                  to={`/admin/keys?server=${encodeURIComponent(s.slug)}`}
                   className="flex items-center gap-2 rounded-full border border-border-c bg-surface-2 px-3 py-1 text-xs transition-colors hover:border-primary"
                 >
-                  <span className="font-mono font-semibold">{s.server_key}</span>
+                  <span className="font-mono font-semibold">{s.slug}</span>
                   {!s.monitor_key_configured && <KeyBadge kind="monitor" configured={false} />}
                   {s.points_enabled && s.role !== 'proxy' && !s.points_key_configured && <KeyBadge kind="points" configured={false} />}
                 </Link>

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
+import ScrollTopButton from '@/components/layout/ScrollTopButton'
 import { getSiteData } from '@/data'
 import { useSeo, type SeoInput } from '@/hooks/useSeo'
 
@@ -28,6 +29,7 @@ export const SiteLayout = ({ seo, children }: SiteLayoutProps) => {
         copyright={site.footer.copyright}
         ip={site.server_info.ip}
       />
+      <ScrollTopButton />
     </div>
   )
 }

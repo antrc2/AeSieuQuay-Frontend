@@ -257,11 +257,17 @@ export const AdminCardTransactionsPage = () => {
                           <PlCell t={t} />
                         </Td>
                         <Td className="tabular-nums text-muted">
-                          {t.xu_amount != null ? fmtXu(t.xu_amount) : '—'}
-                          {t.bonus_xu != null && t.bonus_xu > 0 && (
-                            <span className="ml-1 rounded-full bg-emerald-500/10 px-1.5 text-[10px] font-semibold text-emerald-500" title="Thưởng khuyến mãi nạp">
-                              +{t.bonus_xu} KM
-                            </span>
+                          {t.bonus_xu != null && t.bonus_xu > 0 ? (
+                            <>
+                              <span title="Gốc + thưởng KM = tổng nhận">{fmtXu(t.xu_amount)} +{t.bonus_xu} = <b className="text-emerald-500">{fmtXu((t.xu_amount ?? 0) + t.bonus_xu)}</b></span>
+                              {t.promotion_name && (
+                                <span className="ml-1 rounded-full bg-emerald-500/10 px-1.5 text-[10px] font-semibold text-emerald-500" title={`Event: ${t.promotion_name}`}>
+                                  🎁 {t.promotion_name}
+                                </span>
+                              )}
+                            </>
+                          ) : (
+                            t.xu_amount != null ? fmtXu(t.xu_amount) : '—'
                           )}
                         </Td>
                         <Td>

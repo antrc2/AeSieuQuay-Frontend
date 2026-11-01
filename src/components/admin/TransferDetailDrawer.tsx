@@ -62,7 +62,7 @@ export const TransferDetailDrawer = ({
             <TransferStatusBadge status={t.status} error={t.error} />
             <span className="font-semibold text-fg">{fmtXu(t.amount)}</span>
             <span className="text-sm text-muted">
-              {t.player_name ?? '—'} · {t.from_server_key} → {t.to_server_key}
+              {t.player_name ?? '—'} · {t.from_server_slug} → {t.to_server_slug}
             </span>
             <CopyButton text={t.transfer_id} label="copy id" />
           </div>
@@ -106,7 +106,7 @@ export const TransferDetailDrawer = ({
                 <li key={c.id} className="rounded-xl border border-border-c bg-surface-2/50 p-3">
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge variant={CMD_STATUS_TONE[c.status] ?? 'default'}>{c.type}</Badge>
-                    <span className="font-mono text-xs text-muted">{c.server_key}</span>
+                    <span className="font-mono text-xs text-muted">{c.server_slug}</span>
                     <span className="text-sm text-fg">{fmtXu(c.amount)}</span>
                     <span className="ml-auto text-xs text-muted">lần {c.attempts}</span>
                   </div>

@@ -57,14 +57,16 @@ interface Draft {
   is_active: boolean
 }
 
+// starts_at / max_users / max_per_user là OPTION — để trống:
+//   start trống = chạy ngay | max trống = không giới hạn. Chỉ ends_at bắt buộc.
 const EMPTY_DRAFT: Draft = {
   name: '',
   applies_to: 'all',
   bonus_percent: '20',
   starts_at: '',
   ends_at: '',
-  max_users: '10',
-  max_per_user: '1',
+  max_users: '',
+  max_per_user: '',
   is_active: true,
 }
 
@@ -72,10 +74,10 @@ const toDraft = (p: AdminPromotion): Draft => ({
   name: p.name,
   applies_to: p.applies_to,
   bonus_percent: String(p.bonus_percent),
-  starts_at: String(p.starts_at).slice(0, 16).replace(' ', 'T'),
+  starts_at: p.starts_at ? String(p.starts_at).slice(0, 16).replace(' ', 'T') : '',
   ends_at: String(p.ends_at).slice(0, 16).replace(' ', 'T'),
-  max_users: String(p.max_users),
-  max_per_user: String(p.max_per_user),
+  max_users: p.max_users == null ? '' : String(p.max_users),
+  max_per_user: p.max_per_user == null ? '' : String(p.max_per_user),
   is_active: p.is_active,
 })
 
@@ -108,13 +110,19 @@ const PromotionFormModal = ({
     if (!draft.name.trim()) e.name = 'Bắt buộc'
     const bonus = Number(draft.bonus_percent)
     if (!Number.isFinite(bonus) || bonus <= 0 || bonus > 500) e.bonus_percent = 'Phải trong (0, 500]'
-    if (!draft.starts_at || !draft.ends_at) e.ends_at = 'Bắt buộc chọn khoảng thời gian'
+    // CHỈ kết thúc là bắt buộc; start trống = chạy ngay (backend điền now).
+    if (!draft.ends_at) e.ends_at = 'Bắt buộc chọn thời gian kết thúc'
     // client-check TRƯỚC: starts_at >= ends_at là sai (backend-4 §4.2)
-    else if (draft.starts_at >= draft.ends_at) e.starts_at = 'Bắt đầu phải trước khi kết thúc'
-    const mu = Number(draft.max_users)
-    if (!Number.isInteger(mu) || mu < 1) e.max_users = '≥ 1 (số người chơi DUy NHẤT nhận bonus)'
-    const mpu = Number(draft.max_per_user || '1')
-    if (!Number.isInteger(mpu) || mpu < 1) e.max_per_user = '≥ 1'
+    else if (draft.starts_at && draft.starts_at >= draft.ends_at) e.starts_at = 'Bắt đầu phải trước khi kết thúc'
+    // max_* là option — để trống = không giới hạn, có nhập thì phải ≥ 1.
+    if (draft.max_users !== '') {
+      const mu = Number(draft.max_users)
+      if (!Number.isInteger(mu) || mu < 1) e.max_users = '≥ 1, hoặc để trống = không giới hạn'
+    }
+    if (draft.max_per_user !== '') {
+      const mpu = Number(draft.max_per_user)
+      if (!Number.isInteger(mpu) || mpu < 1) e.max_per_user = '≥ 1, hoặc để trống = không giới hạn'
+    }
     setErrors(e)
     return Object.keys(e).length === 0
   }
@@ -127,10 +135,11 @@ const PromotionFormModal = ({
         name: draft.name.trim(),
         applies_to: draft.applies_to,
         bonus_percent: Number(draft.bonus_percent),
-        starts_at: draft.starts_at,
+        // Option: trống = backend tự hiểu (start = now; max = không giới hạn).
+        starts_at: draft.starts_at || null,
         ends_at: draft.ends_at,
-        max_users: Number(draft.max_users),
-        max_per_user: Number(draft.max_per_user || '1'),
+        max_users: draft.max_users === '' ? null : Number(draft.max_users),
+        max_per_user: draft.max_per_user === '' ? null : Number(draft.max_per_user),
         is_active: draft.is_active,
       }
       if (editing && editing !== 'new') await updatePromotion(editing.id, body)
@@ -178,17 +187,17 @@ const PromotionFormModal = ({
         <Field label="Bonus (%)" error={errors.bonus_percent} hint="0 < x ≤ 500">
           <input className={cn(ctlCls, 'tabular-nums')} type="number" min={0.5} max={500} step={0.5} value={draft.bonus_percent} onChange={(e) => set({ bonus_percent: e.target.value })} />
         </Field>
-        <Field label="Bắt đầu" error={errors.starts_at}>
+        <Field label="Bắt đầu" error={errors.starts_at} hint="Bỏ trống = chạy ngay khi lưu">
           <input className={ctlCls} type="datetime-local" value={draft.starts_at} onChange={(e) => set({ starts_at: e.target.value })} />
         </Field>
-        <Field label="Kết thúc" error={errors.ends_at}>
+        <Field label="Kết thúc *" error={errors.ends_at} hint="Bắt buộc">
           <input className={ctlCls} type="datetime-local" value={draft.ends_at} onChange={(e) => set({ ends_at: e.target.value })} />
         </Field>
-        <Field label="Suất tối đa (max_users)" error={errors.max_users} hint="Đếm user DISTINCT nhận bonus">
-          <input className={cn(ctlCls, 'tabular-nums')} type="number" min={1} value={draft.max_users} onChange={(e) => set({ max_users: e.target.value })} />
+        <Field label="Suất tối đa (max_users)" error={errors.max_users} hint="Bỏ trống = không giới hạn">
+          <input className={cn(ctlCls, 'tabular-nums')} type="number" min={1} placeholder="∞" value={draft.max_users} onChange={(e) => set({ max_users: e.target.value })} />
         </Field>
-        <Field label="GD tối đa / user" error={errors.max_per_user}>
-          <input className={cn(ctlCls, 'tabular-nums')} type="number" min={1} value={draft.max_per_user} onChange={(e) => set({ max_per_user: e.target.value })} />
+        <Field label="GD tối đa / user" error={errors.max_per_user} hint="Bỏ trống = không giới hạn">
+          <input className={cn(ctlCls, 'tabular-nums')} type="number" min={1} placeholder="∞" value={draft.max_per_user} onChange={(e) => set({ max_per_user: e.target.value })} />
         </Field>
         <label className="flex items-center gap-2 text-sm font-medium sm:col-span-2">
           <input type="checkbox" checked={draft.is_active} onChange={(e) => set({ is_active: e.target.checked })} className="h-4 w-4 accent-[var(--primary)]" />
@@ -271,12 +280,15 @@ export const AdminPromotionsPage = () => {
                   <tbody>
                     {data.items.map((p) => {
                       const st = promoState(p, nowMs)
-                      const pct = p.max_users > 0 ? Math.min(100, Math.round(((p.claimed_users ?? 0) / p.max_users) * 100)) : 0
+                      // max_users null = không giới hạn → không có % đầy.
+                      const pct = p.max_users && p.max_users > 0
+                        ? Math.min(100, Math.round(((p.claimed_users ?? 0) / p.max_users) * 100))
+                        : 0
                       return (
                         <tr key={p.id} className="hover:bg-surface-2/60">
                           <Td>
                             <p className="font-semibold text-fg">#{p.id} {p.name}</p>
-                            <p className="text-xs text-muted">≤{p.max_per_user} GD/user</p>
+                            <p className="text-xs text-muted">{p.max_per_user == null ? 'không giới hạn GD/user' : `≤${p.max_per_user} GD/user`}</p>
                           </Td>
                           <Td>
                             <Badge variant={CHANNEL_VARIANT[p.applies_to]}>{CHANNEL_LABEL[p.applies_to]}</Badge>
@@ -300,7 +312,7 @@ export const AdminPromotionsPage = () => {
                                 />
                               </span>
                               <span className="text-xs tabular-nums text-muted">
-                                {p.claimed_users ?? 0}/{p.max_users}
+                                {p.claimed_users ?? 0}/{p.max_users ?? '∞'}
                               </span>
                             </div>
                           </Td>
