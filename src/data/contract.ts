@@ -454,6 +454,7 @@ export type PageKey =
   | 'machine_detail'
   | 'topup'
   | 'transfer'
+  | 'chuyen_xu' // key thực tế backend phát cho trang /chuyen-xu
   | 'auth'
   | 'not_found'
 
@@ -563,7 +564,7 @@ export const normalizeSlug = (slug: unknown): string => {
   }
 }
 
-/* ================= Trang tĩnh mới (Ban quản trị + pháp lý) ================= */
+/* ================= Trang tĩnh mới(pháp lý) ================= */
 
 export interface SiteTeamMember {
   id: number

@@ -157,7 +157,7 @@ export const TransferPage = () => {
   const idemRef = useRef<string | null>(null) // giữ nguyên tới khi terminal/timeout (chống double-click)
 
   const data = result.status === 'ok' ? result.data : null
-
+  
   const isLoggedIn = Boolean(data?.my) || Boolean(user)
   const guest = !isLoggedIn && !authLoading
 

@@ -230,7 +230,10 @@ export const getTransferPageData = (): DataResult<TransferPagePayload> => {
   if (!w) return missing()
   if (w.notFound || w.page === 'not_found') return notFound()
 
-  if ((w.page === 'transfer' || !w.page) && isTransferPayload(w.payload)) {
+  // Backend thực tế phát page='chuyen_xu' (modules/web/topup). Giữ 'transfer'
+  // cho tương thích mock/contract cũ, và !w.page cho payload trần.
+  const PAGE_KEYS = new Set(['transfer', 'chuyen_xu'])
+  if ((PAGE_KEYS.has(String(w.page)) || !w.page) && isTransferPayload(w.payload)) {
     return ok(normalizeTransferPayload(w.payload as unknown as Record<string, unknown>), 'window')
   }
 
@@ -252,7 +255,7 @@ export type {
 } from './contract'
 export type { DataResult } from './contract'
 
-/* ================= Trang tĩnh (Ban quản trị + pháp lý) ================= */
+/* ================= Trang tĩnh(pháp lý) ================= */
 
 export const getSitePageData = (slug: string): DataResult<SitePagePayload> => {
   if (useMockData) {
