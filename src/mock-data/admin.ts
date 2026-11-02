@@ -217,11 +217,7 @@ const state = {
     mkMonitor('skyblock-1', { online: false, players: 0, max: 120, tps: null, mspt: null }),
   ] as AnyObj[],
 
-  /** Ban quản trị máy chủ. */
-  teamMembers: [
-    { id: 1, name: 'An Trc', role_title: 'Chủ server', avatar_url: null, avatar_key: null, sort_order: 1, is_active: true, created_at: null, updated_at: null },
-    { id: 2, name: 'Minh Tom', role_title: 'Quản lý', avatar_url: null, avatar_key: null, sort_order: 2, is_active: true, created_at: null, updated_at: null },
-  ],
+  
 
   /** Trang nội dung tĩnh. */
   contentPages: [
@@ -1032,34 +1028,7 @@ export const adminMock = {
     }))
   },
 
-  /* ================= game modes ================= */
-
-  async listTeamMembers() {
-    await wait()
-    return state.teamMembers.map((m) => ({ ...m }))
-  },
-
-  async createTeamMember(payload: AnyObj) {
-    await wait()
-    const row = { id: Math.max(0, ...state.teamMembers.map((m) => m.id)) + 1, ...payload, created_at: nowIso(), updated_at: nowIso() }
-    state.teamMembers.push(row as any)
-    return row
-  },
-
-  async updateTeamMember(id: number, payload: AnyObj) {
-    await wait()
-    const row = state.teamMembers.find((m) => m.id === id)
-    if (!row) fail('Thành viên không tồn tại', 404, 'not_found')
-    Object.assign(row, payload, { updated_at: nowIso() })
-    return { ...row }
-  },
-
-  async deleteTeamMember(id: number) {
-    await wait()
-    const row = state.teamMembers.find((m) => m.id === id)
-    if (row) row.is_active = false
-    return null
-  },
+  
 
   async listContentPages() {
     await wait()

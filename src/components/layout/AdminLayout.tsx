@@ -69,7 +69,6 @@ const NAV_GROUPS: Group[] = [
     label: 'Nội dung',
     items: [
       { to: '/admin/content', label: 'Nội dung', icon: Image },
-      { to: '/admin/team', label: 'Ban quản trị', icon: UsersRound },
       { to: '/admin/pages', label: 'Trang nội dung', icon: FileText },
     ],
   },

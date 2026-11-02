@@ -6,7 +6,6 @@ import AuthPage from '@/pages/auth/AuthPage'
 import NapThePage from '@/pages/topup/NapThePage'
 import TransferPage from '@/pages/transfer/TransferPage'
 import GameModesListPage from '@/pages/game/GameModesListPage'
-import TeamPage from '@/pages/site/TeamPage'
 import ContentPage from '@/pages/site/ContentPage'
 import GameModeDetailPage from '@/pages/game/GameModeDetailPage'
 import NotFound from '@/pages/errors/NotFound'
@@ -16,7 +15,6 @@ import AdminLayout from '@/components/layout/AdminLayout'
 import AdminOverviewPage from '@/pages/admin/AdminOverviewPage'
 import AdminServersPage from '@/pages/admin/AdminServersPage'
 import AdminServerCategoriesPage from '@/pages/admin/AdminServerCategoriesPage'
-import AdminTeamPage from '@/pages/admin/AdminTeamPage'
 import AdminContentPagesPage from '@/pages/admin/AdminContentPagesPage'
 import AdminPageEditorPage from '@/pages/admin/AdminPageEditorPage'
 import AdminCheckinsPage from '@/pages/admin/AdminCheckinsPage'
@@ -74,8 +72,6 @@ export const router = createBrowserRouter([
         path: '/chuyen-xu',
         element: <TransferPage />,
       },
-      // Trang tĩnh mới: Ban quản trị + pháp lý (HTML do admin soạn).
-      { path: '/ban-quan-tri', element: <TeamPage /> },
       { path: '/luat-le', element: <ContentPage slug="luat-le" fallbackTitle="Luật lệ" /> },
       { path: '/dieu-khoan', element: <ContentPage slug="dieu-khoan" fallbackTitle="Điều khoản dịch vụ" /> },
       { path: '/chinh-sach-bao-mat', element: <ContentPage slug="chinh-sach-bao-mat" fallbackTitle="Chính sách bảo mật" /> },
@@ -96,7 +92,6 @@ export const router = createBrowserRouter([
           },
           { path: 'servers', element: <AdminServersPage /> },
           { path: 'server-categories', element: <AdminServerCategoriesPage /> },
-          { path: 'team', element: <AdminTeamPage /> },
           { path: 'pages', element: <AdminContentPagesPage /> },
           { path: 'pages/:id/content', element: <AdminPageEditorPage /> },
           { path: 'checkins', element: <AdminCheckinsPage /> },

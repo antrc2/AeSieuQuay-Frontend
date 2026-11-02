@@ -505,20 +505,9 @@ export default {
   topupPageMock,
   transferPageMock,
 }
-/* ================== TRANG TĨNH (Ban quản trị + pháp lý) ================== */
+/* ================== TRANG TĨNH (Pháp lý) ================== */
 
 export const sitePagesMock = {
-  'ban-quan-tri': {
-    kind: 'team',
-    title: 'Ban Quản Trị',
-    subtitle: 'Đội ngũ vận hành & hỗ trợ máy chủ Minecraft AeSieuQuay',
-    members: [
-      { id: 1, name: 'An Trc', role_title: 'Chủ server', avatar: null },
-      { id: 2, name: 'Minh Tom', role_title: 'Quản lý', avatar: null },
-      { id: 3, name: 'Bi Sity', role_title: 'Moderator', avatar: null },
-      { id: 4, name: 'Pro Gamer', role_title: 'Builder', avatar: null },
-    ],
-  },
   'luat-le': {
     kind: 'content_page',
     page: {

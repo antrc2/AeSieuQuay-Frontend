@@ -6,9 +6,9 @@ Frontend website cho máy chủ Minecraft **SV AeSieuQuay** được xây dựng
 
 - **Admin**: layout full-width, sidebar gập/kéo giãn, submenu accordion; nút
   **lên đầu trang** nổi (thay link trong footer).
-- **Trang quản trị mới**: Thể loại máy chủ, Ban quản trị, Trang nội dung
+- **Trang quản trị mới**: Thể loại máy chủ, Trang nội dung
   (+ editor HTML với preview Light/Dark), Điểm danh (thống kê 30 ngày + lịch sử).
-- **Trang user mới**: `/ban-quan-tri`, `/luat-le`, `/dieu-khoan`,
+- **Trang user mới**: `/luat-le`, `/dieu-khoan`,
   `/chinh-sach-bao-mat`, `/trang/:slug`, `/may-chu/the-loai/:slug`; widget
   **điểm danh hằng ngày** trên trang chủ.
 - **API field**: bỏ `server_key`; dùng `slug`, `server_slug`,
