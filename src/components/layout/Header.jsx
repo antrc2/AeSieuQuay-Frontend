@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import Logo from '@/components/Logo'
+import CheckinDialog from '@/components/CheckinDialog'
 import ThemeToggle from '@/components/theme/ThemeToggle'
 import CopyIpButton from '@/components/ui/CopyIpButton'
 import { DEFAULT_MENU } from '@/data/site'
@@ -151,6 +152,8 @@ const AuthButton = ({ className }) => {
 export const Header = ({ menu = DEFAULT_MENU }) => {
   const [scrolled, setScrolled] = useState(false)
   const [open, setOpen] = useState(false)
+  // Dialog điểm danh (mở từ navbar — kiểm tra login bên trong CheckinCard).
+  const [checkinOpen, setCheckinOpen] = useState(false)
   const location = useLocation()
 
   useEffect(() => {
@@ -199,6 +202,17 @@ export const Header = ({ menu = DEFAULT_MENU }) => {
               </a>
             )
           })}
+          {/* Điểm danh: luôn hiện; bấm → dialog (CheckinCard tự chặn nếu chưa login). */}
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false)
+              setCheckinOpen(true)
+            }}
+            className="rounded-xl px-3.5 py-2 text-sm font-semibold text-amber-500 transition-all hover:bg-amber-500/10"
+          >
+            🎁 Điểm danh
+          </button>
         </nav>
 
         <div className="flex items-center gap-2">
@@ -258,8 +272,20 @@ export const Header = ({ menu = DEFAULT_MENU }) => {
               </a>
             )
           })}
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false)
+              setCheckinOpen(true)
+            }}
+            className="block rounded-lg px-3 py-2.5 text-left text-sm font-semibold text-amber-500 transition-colors hover:bg-amber-500/10"
+          >
+            🎁 Điểm danh
+          </button>
         </nav>
       )}
+
+      <CheckinDialog open={checkinOpen} onClose={() => setCheckinOpen(false)} />
     </header>
   )
 }

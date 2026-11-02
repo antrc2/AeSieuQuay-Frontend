@@ -1132,43 +1132,6 @@ export const refreshSiteCache = async (): Promise<SiteCacheRefreshResult> => {
 export const uploadContentImage = (file: File): Promise<AdminUploadResult> => uploadAdminImage(file, 'content')
 
 
-/* ================= Ban quản trị (team) ================= */
-
-export interface AdminTeamMember {
-  id: number
-  name: string
-  role_title: string
-  avatar_key: string | null
-  avatar_url: string | null
-  sort_order: number
-  is_active: boolean
-  created_at?: string | null
-  updated_at?: string | null
-}
-
-export const listTeamMembers = async (query: { include_inactive?: boolean } = {}): Promise<AdminTeamMember[]> => {
-  if (useAdminMock) return mock.listTeamMembers?.() ?? []
-  return unwrap(await apiGet('/admin/team-members', {
-    params: cleanParams({ include_inactive: query.include_inactive ? '1' : undefined }),
-  })) ?? []
-}
-
-export const createTeamMember = async (body: Partial<AdminTeamMember>): Promise<AdminTeamMember> => {
-  if (useAdminMock) return mock.createTeamMember(body)
-  return unwrap(await apiPost('/admin/team-members', body))
-}
-
-export const updateTeamMember = async (id: number, body: Partial<AdminTeamMember>): Promise<AdminTeamMember> => {
-  if (useAdminMock) return mock.updateTeamMember(id, body)
-  return unwrap(await apiPatch(`/admin/team-members/${id}`, body))
-}
-
-export const deleteTeamMember = async (id: number): Promise<null> => {
-  if (useAdminMock) return mock.deleteTeamMember(id)
-  await apiDelete(`/admin/team-members/${id}`)
-  return null
-}
-
 /* ================= Trang nội dung (luật lệ/điều khoản/chính sách) ================= */
 
 export interface AdminContentPage {
@@ -1221,6 +1184,8 @@ export interface CheckinStatus {
   total_days: number
   streak: number
   next_reset_at: string | null
+  /** CSRF stateless (HMAC) — backend trả trong JSON của GET /checkin/status. */
+  csrf_token?: string
 }
 
 export interface AdminCheckinRow {
@@ -1247,9 +1212,26 @@ export const getCheckinStatus = async (): Promise<CheckinStatus> => {
   return unwrap(await apiGet('/checkin/status'))
 }
 
+/**
+ * Điểm danh — CSRF stateless: lấy token từ GET /checkin/status rồi gửi lại qua
+ * header `X-CSRF-TOKEN` ở POST /checkin (không cookie, không lưu DB).
+ * Token tự hết hạn 15' → 403 csrf_failed thì tự làm mới + thử lại 1 lần.
+ */
 export const doCheckin = async (): Promise<CheckinStatus & { command_id?: string | null; server_slug?: string }> => {
   if (useAdminMock) return { enabled: true, reward_xu: 1, checked_today: true, total_days: 1, streak: 1, next_reset_at: null }
-  return unwrap(await apiPost('/checkin'))
+
+  const post = async () => {
+    const status = await getCheckinStatus()
+    return unwrap(await apiPost('/checkin', undefined, {
+      headers: status.csrf_token ? { 'X-CSRF-TOKEN': status.csrf_token } : {},
+    }))
+  }
+  try {
+    return await post()
+  } catch (err) {
+    if ((err as { status?: number })?.status === 403) return await post()
+    throw err
+  }
 }
 
 export const listCheckins = async (query: { user_id?: number; date_from?: string; date_to?: string; status?: string; page?: number; limit?: number } = {}) => {
