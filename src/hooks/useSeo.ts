@@ -126,5 +126,3 @@ export const useSeo = ({
     }
   }, [title, description, path, noindex, ogType, ogImage, jsonLdKey])
 }
-
-export default useSeo

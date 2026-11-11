@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/States'
 import { cn } from '@/lib/utils'
-import { HtmlEditor, type HtmlEditorHandle } from '@/pages/admin/AdminGameModeContentPage'
+import { HtmlEditor, type HtmlEditorHandle } from '@/components/admin/HtmlEditor'
 
 /** Editor HTML cho trang nội dung tĩnh (luật lệ / điều khoản / chính sách). */
 export const AdminPageEditorPage = () => {

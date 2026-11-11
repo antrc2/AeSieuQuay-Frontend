@@ -65,8 +65,7 @@ export const getSiteData = (): SiteData => {
 /* ================= Trang chủ ================= */
 
 export const getHomePageData = (): DataResult<HomePayload> => {
-  // Mock viết tay bằng JS → literal union bị suy diễn thành string; cast tại ranh giới mock.
-  if (useMockData) return ok(homePageMock as HomePayload)
+  if (useMockData) return ok(homePageMock)
 
   const w = readWindowData()
   if (!w) return missing()
@@ -87,7 +86,7 @@ export const getHomePageData = (): DataResult<HomePayload> => {
  * `site_key === null` (hoặc thiếu block) = backend chưa bật captcha (dev) → FE ẩn widget, submit thẳng.
  */
 export const getCaptchaConfig = (): CaptchaConfig | null => {
-  if (useMockData) return (homePageMock as HomePayload).captcha ?? { site_key: null }
+  if (useMockData) return homePageMock.captcha ?? { site_key: null }
 
   const w = readWindowData()
   if (!w) return null
@@ -106,7 +105,7 @@ export const getCaptchaConfig = (): CaptchaConfig | null => {
 
 export const getMachineListData = (): DataResult<MachineListPayload> => {
   if (useMockData) {
-    const base = machineListPageMock as MachineListPayload
+    const base = machineListPageMock
     // Mock: /may-chu/the-loai/<slug> → lọc theo thể loại + set tiêu đề.
     const path = typeof window !== 'undefined' ? window.location.pathname : ''
     const match = path.match(/^\/may-chu\/the-loai\/([^/]+)\/?$/)
@@ -145,10 +144,10 @@ export const getMachineDetailData = (slug: string): DataResult<MachineDetailPayl
 
   if (useMockData) {
     // Trả đúng object mock, không thêm field phụ (giống payload backend).
-    const detail = (machineDetailsMock as Record<string, MachineDetailPayload>)[normalized]
+    const detail = machineDetailsMock[normalized]
     if (detail) return ok(detail)
     // Slug lạ ở development: sinh dữ liệu giả ổn định để luôn render được UI.
-    return ok(generateMachineDetail(normalized) as MachineDetailPayload)
+    return ok(generateMachineDetail(normalized))
   }
 
   const w = readWindowData()
@@ -192,8 +191,7 @@ const normalizeTopupPayload = (raw: Record<string, unknown>): TopupPayload => {
 }
 
 export const getTopupPageData = (): DataResult<TopupPayload> => {
-  // Mock viết tay bằng JS → literal union bị suy diễn thành string; cast tại ranh giới mock.
-  if (useMockData) return ok(topupPageMock as unknown as TopupPayload)
+  if (useMockData) return ok(topupPageMock)
 
   const w = readWindowData()
   if (!w) return missing()
@@ -224,7 +222,7 @@ const normalizeTransferPayload = (raw: Record<string, unknown>): TransferPagePay
 }
 
 export const getTransferPageData = (): DataResult<TransferPagePayload> => {
-  if (useMockData) return ok(transferPageMock as unknown as TransferPagePayload)
+  if (useMockData) return ok(transferPageMock)
 
   const w = readWindowData()
   if (!w) return missing()
@@ -259,7 +257,7 @@ export type { DataResult } from './contract'
 
 export const getSitePageData = (slug: string): DataResult<SitePagePayload> => {
   if (useMockData) {
-    const mockPage = (sitePagesMock as Record<string, SitePagePayload>)[slug]
+    const mockPage = sitePagesMock[slug]
     return mockPage ? ok(mockPage) : notFound()
   }
 

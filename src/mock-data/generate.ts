@@ -10,13 +10,14 @@
  * số liệu động nằm trong `stats`.
  */
 
+import type { MachineDetailPayload, MachineModeCard } from '@/data/contract'
 import { machineListPageMock } from './pages'
 
 const TAGLINES = ['Khám phá thế giới', 'Cộng đồng AE', 'Thử thách mới', 'Phiêu lưu bất tận']
 const STATUSES = ['normal', 'new', 'hot']
 
 /** FNV-1a 32-bit — ổn định, không phụ thuộc thứ tự. */
-const fnv1a = (value) => {
+const fnv1a = (value: string): number => {
   let hash = 0x811c9dc5
   for (let i = 0; i < value.length; i += 1) {
     hash ^= value.charCodeAt(i)
@@ -26,7 +27,7 @@ const fnv1a = (value) => {
 }
 
 /** PRNG nhỏ, seed cố định để kết quả lặp lại được. */
-const mulberry32 = (seed) => {
+const mulberry32 = (seed: number): (() => number) => {
   let a = seed >>> 0
   return () => {
     a = (a + 0x6d2b79f5) >>> 0
@@ -38,26 +39,21 @@ const mulberry32 = (seed) => {
 }
 
 /** 'dao-muoi' → 'Dao Muoi' */
-const humanizeSlug = (slug) => {
+const humanizeSlug = (slug: string): string => {
   const words = slug.split(/[-_\s]+/).filter(Boolean)
   if (!words.length) return 'Máy chủ mới'
   return words.map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
 }
 
-
-/**
- * @param {string} slug
- * @returns {import('@/data/contract').MachineDetailPayload}
- */
-export const generateMachineDetail = (slug) => {
+export const generateMachineDetail = (slug: string): MachineDetailPayload => {
   const normalized = String(slug ?? '').trim().toLowerCase()
   const modes = machineListPageMock.modes ?? []
   const hash = fnv1a(normalized || 'may-chu')
   const rnd = mulberry32(hash)
-  const base = modes[hash % Math.max(modes.length, 1)] ?? {}
+  const base: Partial<MachineModeCard> = modes[hash % Math.max(modes.length, 1)] ?? {}
   const name = humanizeSlug(normalized)
 
-  const pick = (list) => list[Math.floor(rnd() * list.length)]
+  const pick = <T>(list: T[]): T => list[Math.floor(rnd() * list.length)]
   const image = base.image ?? null
   const players = 20 + Math.floor(rnd() * 380)
   const max = 200 + Math.floor(rnd() * 8) * 50
@@ -101,7 +97,7 @@ ${image ? `<img src="${image}" alt="${name}" loading="lazy" class="rounded-xl w-
       servers: { total: 2, online: 2 },
       server_status: [
         {
-          server_key: normalized,
+          server_slug: normalized,
           name,
           role: 'game',
           online: true,

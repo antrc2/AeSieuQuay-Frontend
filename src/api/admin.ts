@@ -10,7 +10,7 @@
  * Mọi hàm trả thẳng `data` của envelope `{ success, code, message, data, request_id }`.
  * Lỗi bắn `ApiError` (err.message = message backend, err.status, err.data = envelope).
  */
-import { apiDelete, apiGet, apiPatch, apiPost, apiPut } from '@/api/client'
+import { apiDelete, apiGet, apiPatch, apiPost, apiPut, type ApiEnvelope } from '@/api/client'
 import { adminMock } from '@/mock-data/admin'
 
 /**
@@ -139,7 +139,7 @@ const cleanParams = (params: object = {}) => {
   return out
 }
 
-const unwrap = (res: any) => res?.data ?? null
+const unwrap = <T>(res: ApiEnvelope<T> | null | undefined): T | null => res?.data ?? null
 
 /* ================= Thể loại máy chủ (như danh mục sản phẩm) ================= */
 
@@ -255,7 +255,7 @@ export const refreshPublicCache = async (): Promise<CacheRefreshResult> => {
   if (useAdminMock) return mock.refreshPublicCache()
   // Interceptor client trả thẳng ENVELOPE `{ success, code, message, data }`
   // (khác `unwrap()` các hàm khác — ở đây cần cả `message` để toast nguyên văn).
-  const env: any = await apiPost('/admin/cache/refresh')
+  const env = await apiPost<Partial<CacheRefreshResult>>('/admin/cache/refresh')
   return {
     refreshed: env?.data?.refreshed ?? [],
     errors: env?.data?.errors ?? {},
@@ -468,19 +468,9 @@ export interface AdminGameMode {
   updated_at: string | null
 }
 
-export const listGameModes = async (): Promise<AdminGameMode[]> => {
-  if (useAdminMock) return mock.listGameModes()
-  return unwrap(await apiGet('/admin/game-modes')) ?? []
-}
-
 export const getGameMode = async (id: number): Promise<AdminGameMode> => {
   if (useAdminMock) return mock.getGameMode(id)
   return unwrap(await apiGet(`/admin/game-modes/${id}`))
-}
-
-export const createGameMode = async (body: Partial<AdminGameMode>): Promise<AdminGameMode> => {
-  if (useAdminMock) return mock.createGameMode(body)
-  return unwrap(await apiPost('/admin/game-modes', body))
 }
 
 /**
@@ -494,12 +484,6 @@ export const updateGameMode = async (
 ): Promise<AdminGameMode> => {
   if (useAdminMock) return mock.updateGameMode(id, body)
   return unwrap(await apiPatch(`/admin/game-modes/${id}`, body))
-}
-
-export const deleteGameMode = async (id: number): Promise<null> => {
-  if (useAdminMock) return mock.deleteGameMode(id)
-  await apiDelete(`/admin/game-modes/${id}`)
-  return null
 }
 
 export interface AdminUploadResult {
@@ -669,11 +653,6 @@ export const listBankDeposits = async (
 ): Promise<PagedAdmin<BankDepositAdmin>> => {
   if (useAdminMock) return mock.listBankDeposits(query)
   return unwrap(await apiGet('/admin/bank-deposits', { params: cleanParams(query) }))
-}
-
-export const getBankDeposit = async (id: number): Promise<BankDepositAdmin> => {
-  if (useAdminMock) return mock.getBankDeposit(id)
-  return unwrap(await apiGet(`/admin/bank-deposits/${id}`))
 }
 
 /** Body { username? } — unmatched bắt buộc username. 400 message tiếng Việt, toast thẳng. */
@@ -1123,9 +1102,9 @@ export interface SiteCacheRefreshResult {
  * → 429 (Redis lock NX phía backend; mock cũng mô phỏng).
  */
 export const refreshSiteCache = async (): Promise<SiteCacheRefreshResult> => {
-  if (useAdminMock) return mock.refreshSiteCache()
-  const env: any = await apiPost('/admin/cache/refresh')
-  return { refreshed: env?.data?.refreshed ?? [], errors: env?.data?.errors ?? {} }
+  // Cùng endpoint với refreshPublicCache — chỉ lấy subset {refreshed, errors}.
+  const { refreshed, errors } = await refreshPublicCache()
+  return { refreshed, errors }
 }
 
 /** Ảnh nội dung site —复用 uploadAdminImage, prefix `content` (backend-5 §4.2). */

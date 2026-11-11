@@ -1,11 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard,
-  Layers,
   Server,
   KeyRound,
-  Gamepad2,
   Image,
   Landmark,
   Gift,
@@ -23,7 +21,6 @@ import {
   Tags,
   FileText,
   CalendarCheck,
-  UsersRound,
 } from 'lucide-react'
 
 import Logo from '@/components/Logo'
@@ -291,7 +288,6 @@ export const AdminLayout = () => {
   if (!user || user.role_slug !== 'admin') return <Forbidden />
 
   const displayName = user.realname || user.username || 'Admin'
-  const allLeaves = NAV_GROUPS.flatMap(flatTo)
   const mobileNav = NAV_GROUPS.flatMap((g) => g.items.flatMap((it) => (isSub(it) ? it.children : [it])))
 
   return (

@@ -5,22 +5,23 @@ import CheckinDialog from '@/components/CheckinDialog'
 import ThemeToggle from '@/components/theme/ThemeToggle'
 import CopyIpButton from '@/components/ui/CopyIpButton'
 import { DEFAULT_MENU } from '@/data/site'
+import type { MenuItem } from '@/data/contract'
 import useAuth from '@/hooks/useAuth'
 import { cn } from '@/lib/utils'
 
 /* ================= Auth button ================= */
 
-const AuthButton = ({ className }) => {
+const AuthButton = ({ className }: { className?: string }) => {
   const { user, loading, logout } = useAuth()
   const [open, setOpen] = useState(false)
-  const ref = useRef(null)
+  const ref = useRef<HTMLDivElement>(null)
 
   // Đóng dropdown khi click ra ngoài / nhấn Esc
   useEffect(() => {
-    const onClick = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false)
+    const onClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
     }
-    const onKey = (e) => e.key === 'Escape' && setOpen(false)
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false)
     document.addEventListener('mousedown', onClick)
     document.addEventListener('keydown', onKey)
     return () => {
@@ -31,7 +32,7 @@ const AuthButton = ({ className }) => {
 
   // Ưu tiên tên hiển thị (realname), sau đó mới tới username/email.
   const displayName =
-    user?.realname || user?.username || user?.name || user?.nickname || user?.email?.split('@')[0] || 'AE'
+    user?.realname || user?.username || user?.email?.split('@')[0] || 'AE'
 
   if (loading) {
     // Skeleton khi đang kiểm tra phiên
@@ -146,10 +147,7 @@ const AuthButton = ({ className }) => {
 
 /* ================= Header ================= */
 
-/**
- * @param {{ menu?: Array<{ label: string, to: string }> }} props
- */
-export const Header = ({ menu = DEFAULT_MENU }) => {
+export const Header = ({ menu = DEFAULT_MENU }: { menu?: MenuItem[] }) => {
   const [scrolled, setScrolled] = useState(false)
   const [open, setOpen] = useState(false)
   // Dialog điểm danh (mở từ navbar — kiểm tra login bên trong CheckinCard).

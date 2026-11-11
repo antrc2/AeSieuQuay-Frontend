@@ -10,7 +10,7 @@
 
 export const DEFAULT_TELCO = 'VIETTEL'
 
-export const TELCO_LABELS = {
+export const TELCO_LABELS: Record<string, string> = {
   VIETTEL: 'Viettel',
   MOBIFONE: 'Mobifone',
   VINAPHONE: 'Vinaphone',
@@ -25,8 +25,13 @@ export const TELCO_LABELS = {
   VCOIN: 'Vcoin',
 }
 
+export interface CardTelcoOption {
+  telco: string
+  values: number[]
+}
+
 /** Thứ tự hiển thị: nhà mạng phổ biến trước, sau đó tới cổng game/khác. */
-export const CARD_TELCO_OPTIONS = [
+export const CARD_TELCO_OPTIONS: CardTelcoOption[] = [
   {
     telco: 'VIETTEL',
     values: [10000, 20000, 30000, 50000, 100000, 200000, 300000, 500000, 1000000],
@@ -77,12 +82,12 @@ export const CARD_TELCO_OPTIONS = [
   },
 ]
 
-export const telcoLabel = (telco) => TELCO_LABELS[telco] ?? telco
+export const telcoLabel = (telco: string): string => TELCO_LABELS[telco] ?? telco
 
-export const getCardValues = (telco) =>
+export const getCardValues = (telco: string): number[] =>
   CARD_TELCO_OPTIONS.find((option) => option.telco === telco)?.values ?? []
 
-export const formatCardValue = (value) =>
+export const formatCardValue = (value: number): string =>
   `${new Intl.NumberFormat('vi-VN').format(value)}đ`
 
 export default CARD_TELCO_OPTIONS

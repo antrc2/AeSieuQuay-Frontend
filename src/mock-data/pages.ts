@@ -6,13 +6,23 @@
  * - Chi tiết máy chủ: slug có trong danh sách → dùng entry thật;
  *   slug lạ → `generateMachineDetail()` sinh dữ liệu giả ổn định.
  *
- * Shape khớp với payload backend:
+ * Shape khớp với payload backend (type từ `src/data/contract.ts`):
  * - gallery dùng `src_asset`
  * - highlight icon là emoji
  * - ảnh dùng URL https:// đầy đủ, không ghép CDN
  */
 
 import { DEFAULT_FOOTER, DEFAULT_HEADER, DEFAULT_SERVER_INFO, DEFAULT_DISCORD_URL } from '@/data/site'
+import type {
+  ClusterStats,
+  ClusterStatsServerStatus,
+  HomePayload,
+  MachineDetailPayload,
+  MachineListPayload,
+  SitePagePayload,
+  TopupPayload,
+  TransferPagePayload,
+} from '@/data/contract'
 
 /* ================== Stat cụm mock (shape backend.md 0.1) ================== */
 
@@ -22,7 +32,14 @@ const MOCK_CLUSTER = { id: 1, slug: 'aesq', name: 'AESQ Network' }
  * ClusterStats mẫu — plausible để test UI. Muốn test "ẩn strip khi
  * backend chưa từng report", đổi thành `null` (payload.stats == null).
  */
-const clusterStats = (players, max, tps, uptime, serversOnline, serverStatus) => ({
+const clusterStats = (
+  players: number,
+  max: number,
+  tps: number,
+  uptime: number,
+  serversOnline: number,
+  serverStatus: ClusterStatsServerStatus[],
+): ClusterStats => ({
   cluster: MOCK_CLUSTER,
   scope: 'cluster',
   status: 'online',
@@ -34,7 +51,7 @@ const clusterStats = (players, max, tps, uptime, serversOnline, serverStatus) =>
   server_status: serverStatus,
 })
 
-const MOCK_SERVER_STATUS = [
+const MOCK_SERVER_STATUS: ClusterStatsServerStatus[] = [
   { server_slug: 'proxy-1', name: 'Proxy 1', role: 'proxy', online: true, maintenance: false, players_online: 210, players_max: 1000 },
   { server_slug: 'survival-1', name: 'Survival 1', role: 'game', online: true, maintenance: false, players_online: 96, players_max: 300 },
   { server_slug: 'pvp-1', name: 'PvP 1', role: 'game', online: true, maintenance: false, players_online: 58, players_max: 200 },
@@ -43,7 +60,7 @@ const MOCK_SERVER_STATUS = [
 
 /* ================== TRANG DANH SÁCH MÁY CHỦ ================== */
 
-export const machineListPageMock = {
+export const machineListPageMock: MachineListPayload = {
   title: 'Máy chủ',
   subtitle: 'Khám phá tất cả máy chủ tại SV AeSieuQuay',
   cluster: MOCK_CLUSTER,
@@ -113,7 +130,7 @@ export const machineListPageMock = {
  * scanner) nên mọi class dùng ở đây phải có trong `tailwind-safelist.html`
  * hoặc mặc định `.aqs-prose` lo.
  */
-const sampleContentHtml = (name, image) => `
+const sampleContentHtml = (name: string, image?: string | null): string => `
 <h2>Chào mừng đến với ${name}</h2>
 <p>Nội dung trang này do admin soạn tự do ở <b>/admin/game-modes</b> — trình soạn HTML 2 cột (mã nguồn + preview). Backend đã sanitize allowlist tags/attrs trước khi ghi DB.</p>
 ${image ? `<img src="${image}" alt="${name}" loading="lazy" class="rounded-xl w-full" />` : ''}
@@ -137,8 +154,9 @@ ${image ? `<img src="${image}" alt="${name}" loading="lazy" class="rounded-xl w-
 /**
  * Payload chi tiết mẫu cho development — giống hệt object backend trả cho
  * /may-chu/:slug (GameModeOut đã cắt còn field frontend cần).
+ * `id` là field phụ của mock (contract không có) — giữ để debug.
  */
-export const machineDetailsMock = {
+export const machineDetailsMock: Record<string, MachineDetailPayload & { id?: number }> = {
   skyop: {
     id: 1,
     slug: 'skyop',
@@ -146,12 +164,12 @@ export const machineDetailsMock = {
     tagline: 'Skyblock OP',
     short_desc: 'Skyblock nâng cao: khoáng sản, đảo PvP và kinh tế mạnh.',
     status: 'hot',
-    image: machineListPageMock.modes[0].image,
-    images: [machineListPageMock.modes[0].image],
+    image: machineListPageMock.modes?.[0].image,
+    images: [machineListPageMock.modes?.[0].image ?? ''],
     cluster: null,
     category: { slug: 'skyblock', name: 'SkyBlock' },
     stats: clusterStats(58, 200, 20, 100, 1, [MOCK_SERVER_STATUS[1]]),
-    content_html: sampleContentHtml('SkyOp', machineListPageMock.modes[0].image),
+    content_html: sampleContentHtml('SkyOp', machineListPageMock.modes?.[0].image),
   },
   skyfree: {
     id: 2,
@@ -160,12 +178,12 @@ export const machineDetailsMock = {
     tagline: 'Skyblock miễn phí',
     short_desc: 'Bắt đầu từ đảo nhỏ trên không, mở rộng thành đảo vương quốc.',
     status: 'new',
-    image: machineListPageMock.modes[1].image,
-    images: [machineListPageMock.modes[1].image],
+    image: machineListPageMock.modes?.[1].image,
+    images: [machineListPageMock.modes?.[1].image ?? ''],
     cluster: null,
     category: { slug: 'skyblock', name: 'SkyBlock' },
     stats: clusterStats(42, 200, 19.7, 99.1, 1, [MOCK_SERVER_STATUS[1]]),
-    content_html: sampleContentHtml('SkyFree', machineListPageMock.modes[1].image),
+    content_html: sampleContentHtml('SkyFree', machineListPageMock.modes?.[1].image),
   },
   'sinh-ton': {
     id: 3,
@@ -174,15 +192,15 @@ export const machineDetailsMock = {
     tagline: 'Classic Survival',
     short_desc: 'Khám phá thế giới, bảo vệ lãnh thổ, chinh phục Boss mỗi cuối tuần.',
     status: 'hot',
-    image: machineListPageMock.modes[2].image,
+    image: machineListPageMock.modes?.[2].image,
     images: [
-      machineListPageMock.modes[2].image,
+      machineListPageMock.modes?.[2].image ?? '',
       'https://images.unsplash.com/photo-1551103782-8ab07afd45c1?q=80&w=2070&auto=format&fit=crop',
     ],
     cluster: null,
     category: { slug: 'survival', name: 'Sinh tồn' },
     stats: clusterStats(96, 300, 19.9, 99.6, 1, MOCK_SERVER_STATUS.slice(1, 2)),
-    content_html: sampleContentHtml('Sinh tồn', machineListPageMock.modes[2].image),
+    content_html: sampleContentHtml('Sinh tồn', machineListPageMock.modes?.[2].image),
   },
   creative: {
     id: 4,
@@ -191,12 +209,12 @@ export const machineDetailsMock = {
     tagline: 'Sáng tạo không giới hạn',
     short_desc: 'Đất trống để build tự do, chia sẻ công trình với cộng đồng.',
     status: 'normal',
-    image: machineListPageMock.modes[3].image,
-    images: [machineListPageMock.modes[3].image],
+    image: machineListPageMock.modes?.[3].image,
+    images: [machineListPageMock.modes?.[3].image ?? ''],
     cluster: null,
     category: { slug: 'giai-tri', name: 'Giải trí' },
     stats: null,
-    content_html: sampleContentHtml('Creative', machineListPageMock.modes[3].image),
+    content_html: sampleContentHtml('Creative', machineListPageMock.modes?.[3].image),
   },
   pvp: {
     id: 5,
@@ -205,19 +223,19 @@ export const machineDetailsMock = {
     tagline: 'Arena Combat',
     short_desc: 'Sảnh combat tối ưu ping Việt Nam.',
     status: 'new',
-    image: machineListPageMock.modes[4].image,
-    images: [machineListPageMock.modes[4].image],
+    image: machineListPageMock.modes?.[4].image,
+    images: [machineListPageMock.modes?.[4].image ?? ''],
     cluster: null,
     category: { slug: 'giai-tri', name: 'Giải trí' },
     // stats === null: test trường hợp backend chưa từng report → strip ẩn.
     stats: null,
-    content_html: sampleContentHtml('PvP Arena', machineListPageMock.modes[4].image),
+    content_html: sampleContentHtml('PvP Arena', machineListPageMock.modes?.[4].image),
   },
 }
 
 /* ================== TRANG CHỦ ================== */
 
-export const homePageMock = {
+export const homePageMock: HomePayload = {
   header: DEFAULT_HEADER,
   hero: {
     name: 'SV AeSieuQuay',
@@ -300,7 +318,7 @@ export const homePageMock = {
     title: 'Máy chủ',
     subtitle: 'Chọn máy chủ bạn yêu thích để bắt đầu chơi',
     // Dẫn xuất từ source of truth — không lặp dữ liệu.
-    modes: machineListPageMock.modes.map((mode) => ({
+    modes: (machineListPageMock.modes ?? []).map((mode) => ({
       slug: mode.slug,
       name: mode.name,
       tagline: mode.tagline,
@@ -374,22 +392,22 @@ export const homePageMock = {
  * Mock dựng sẵn `promotion` + `my` (user đã đăng nhập) + telcos thật shape
  * CardFeeTelco để test toàn bộ block lịch sử. Muốn test khách vãng lai:
  * sửa `my: null`. Muốn test cổng lỗi: sửa `card.telcos: []` → fallback
- * card-options.js + cảnh báo.
+ * card-options.ts + cảnh báo.
  */
 
 /** Phí HIỂN THỊ CHO USER = user_fee_rate 10% (chủ server chốt 27/10): cổng chiết khấu
  *  sâu hơn nhưng admin bù chênh (admin_adjustment) — UI nạp thẻ KHÔNG lộ 21% của cổng. */
 const USER_FEE_PERCENT = 10
-const mkFeeValues = (feePercent, vndPerXu) =>
+const mkFeeValues = (feePercent: number, vndPerXu: number) =>
   [50000, 100000, 200000, 300000, 500000].map((amount) => {
     const real = Math.floor((amount * (100 - feePercent)) / 100)
     return { amount, fee_percent: feePercent, real_receive_vnd: real, xu: Math.floor(real / vndPerXu) }
   })
 
-/* Tỷ giá chuẩn chủ server chốt 27/10: 1.000đ = 1 Xu (khớp BANK_VND_PER_XU_FALLBACK site.js). */
+/* Tỷ giá chuẩn chủ server chốt 27/10: 1.000đ = 1 Xu (khớp BANK_VND_PER_XU_FALLBACK site.ts). */
 const MOCK_VND_PER_XU = 1000
 
-export const topupPageMock = {
+export const topupPageMock: TopupPayload = {
   title: 'Nạp thẻ',
   subtitle: 'Chọn hình thức nạp phù hợp với bạn — Thẻ cào hoặc Chuyển khoản ngân hàng',
   card: {
@@ -471,9 +489,9 @@ export const topupPageMock = {
  * Test khách: sửa `my: null`.
  */
 
-const transferIso = (minsAgo) => new Date(Date.now() - minsAgo * 60_000).toISOString()
+const transferIso = (minsAgo: number): string => new Date(Date.now() - minsAgo * 60_000).toISOString()
 
-export const transferPageMock = {
+export const transferPageMock: TransferPagePayload = {
   title: 'Chuyển Xu',
   lobby: { server_slug: 'lobby-1', name: 'Lobby' },
   targets: [
@@ -498,16 +516,9 @@ export const transferPageMock = {
   },
 }
 
-export default {
-  homePageMock,
-  machineListPageMock,
-  machineDetailsMock,
-  topupPageMock,
-  transferPageMock,
-}
 /* ================== TRANG TĨNH (Pháp lý) ================== */
 
-export const sitePagesMock = {
+export const sitePagesMock: Record<string, SitePagePayload> = {
   'luat-le': {
     kind: 'content_page',
     page: {
@@ -536,3 +547,4 @@ export const sitePagesMock = {
     },
   },
 }
+

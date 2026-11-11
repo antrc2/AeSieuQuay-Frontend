@@ -1,4 +1,4 @@
-import { FiShield, FiAlertCircle, FiLogIn, FiArrowLeft } from 'react-icons/fi'
+import { ArrowLeft, CircleAlert, LogIn, Shield } from 'lucide-react'
 import Logo from '@/components/Logo'
 import { useSeo } from '@/hooks/useSeo'
 import { getBackHref } from '@/lib/utils'
@@ -24,7 +24,7 @@ export const Forbidden = () => {
         <Logo size="md" className="mb-8" />
 
         <div className="glass glow-ring w-full max-w-md rounded-2xl p-8 text-center shadow-2xl shadow-black/30">
-          <FiShield className="mx-auto mb-4 h-16 w-16 text-warning" />
+          <Shield className="mx-auto mb-4 h-16 w-16 text-warning" />
 
           <h1 className="text-4xl font-extrabold tracking-tight text-warning">403 — Từ chối truy cập</h1>
 
@@ -41,7 +41,7 @@ export const Forbidden = () => {
 
           <div className="mt-5 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
             <div className="flex items-center gap-2">
-              <FiAlertCircle className="w-5 h-5 shrink-0 text-warning" />
+              <CircleAlert className="w-5 h-5 shrink-0 text-warning" />
               <span className="text-left text-sm text-muted">
                 Vui lòng{' '}
                 <a href="/dang-nhap" className="font-medium text-primary underline">
@@ -57,14 +57,14 @@ export const Forbidden = () => {
               href={backHref}
               className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 font-semibold text-white shadow-lg shadow-primary/30 transition-all hover:bg-primary-strong active:scale-[0.98]"
             >
-              <FiArrowLeft /> Quay về trang trước
+              <ArrowLeft className="h-4 w-4" /> Quay về trang trước
             </a>
 
             <a
               href="/dang-nhap"
               className="inline-flex items-center justify-center gap-2 rounded-xl border border-border-c bg-surface px-4 py-2.5 font-semibold text-fg transition-all hover:bg-surface-2 active:scale-[0.98]"
             >
-              <FiLogIn /> Đăng nhập lại
+              <LogIn className="h-4 w-4" /> Đăng nhập lại
             </a>
           </div>
         </div>

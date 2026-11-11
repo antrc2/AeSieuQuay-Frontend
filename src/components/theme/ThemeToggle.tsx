@@ -1,6 +1,6 @@
 import { toggleTheme, useTheme } from '@/hooks/useTheme'
 
-export const ThemeToggle = ({ className = '' }) => {
+export const ThemeToggle = ({ className = '' }: { className?: string }) => {
   const theme = useTheme()
   const isDark = theme === 'dark'
 

@@ -42,10 +42,9 @@ const statusFromWindow = (): ServerStatusBlock | null => {
  */
 export const getSiteAddress = (): string => {
   if (useMockData) {
-    const s = (homePageMock as { server_status?: ServerStatusBlock }).server_status
+    const s = homePageMock.server_status
     if (s?.ip) return formatAddress(s.ip, s.port)
-    const legacy = (homePageMock as { server_info?: { ip?: string } }).server_info?.ip
-    return legacy ?? ''
+    return homePageMock.server_info?.ip ?? ''
   }
   const st = statusFromWindow()
   if (st?.ip) return formatAddress(st.ip, st.port)

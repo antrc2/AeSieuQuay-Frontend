@@ -292,7 +292,7 @@ const TtlBar = ({ c, now }: { c: PointCommandAdmin; now: number }) => {
   )
 }
 
-export const CommandsTable = ({ rows }: { rows: PointCommandAdmin[] }) => {
+const CommandsTable = ({ rows }: { rows: PointCommandAdmin[] }) => {
   // ảnh chụp "bây giờ" lúc mount/đổi trang — thanh TTL không cần tick từng giây
   const [nowMs] = useState(() => Date.now())
   return (

@@ -16,7 +16,6 @@ import AdminOverviewPage from '@/pages/admin/AdminOverviewPage'
 import AdminServersPage from '@/pages/admin/AdminServersPage'
 import AdminServerCategoriesPage from '@/pages/admin/AdminServerCategoriesPage'
 import AdminContentPagesPage from '@/pages/admin/AdminContentPagesPage'
-import AdminPageEditorPage from '@/pages/admin/AdminPageEditorPage'
 import AdminCheckinsPage from '@/pages/admin/AdminCheckinsPage'
 import AdminKeysPage from '@/pages/admin/AdminKeysPage'
 import { lazy } from 'react'
@@ -29,9 +28,12 @@ import AdminPromotionsPage from '@/pages/admin/AdminPromotionsPage'
 import AdminUsersPage from '@/pages/admin/AdminUsersPage'
 import { LegacyRedirect, LegacySlugRedirect, RootLayout } from '@/router/RouteHelpers'
 
-/** Editor HTML admin kéo theo CodeMirror (~450KB) — chỉ tải khi admin mở trang soạn. */
+/** Editor HTML admin kéo theo CodeMirror (~450KB) — chỉ tải khi admin mở trang soạn.
+ *  CẢ HAI trang editor phải lazy: HtmlEditor (components/admin) nằm trong chunk
+ *  riêng, không kéo CodeMirror vào bundle admin mặc định. */
 const AdminGameModeContentPage = lazy(() => import('@/pages/admin/AdminGameModeContentPage'))
-/** FRONTEND-5 §4 — trang Nội dung website (6 tab CRUD), lazy cho nhẹ bundle admin mặc định. */
+const AdminPageEditorPage = lazy(() => import('@/pages/admin/AdminPageEditorPage'))
+/** FRONTEND-5 §4 — trang Nội dung website (5 tab CRUD), lazy cho nhẹ bundle admin mặc định. */
 const AdminContentPage = lazy(() => import('@/pages/admin/AdminContentPage'))
 
 export const router = createBrowserRouter([
@@ -93,7 +95,14 @@ export const router = createBrowserRouter([
           { path: 'servers', element: <AdminServersPage /> },
           { path: 'server-categories', element: <AdminServerCategoriesPage /> },
           { path: 'pages', element: <AdminContentPagesPage /> },
-          { path: 'pages/:id/content', element: <AdminPageEditorPage /> },
+          {
+            path: 'pages/:id/content',
+            element: (
+              <Suspense fallback={<div className="p-8 text-sm text-muted">Đang tải editor…</div>}>
+                <AdminPageEditorPage />
+              </Suspense>
+            ),
+          },
           { path: 'checkins', element: <AdminCheckinsPage /> },
           // Bỏ cụm + tách trang máy chủ game: 2 route cũ chuyển về trang Servers hợp nhất.
           { path: 'clusters', element: <Navigate to="/admin/servers" replace /> },

@@ -1,4 +1,4 @@
-import { FiAlertTriangle, FiRotateCcw } from 'react-icons/fi'
+import { RotateCcw, TriangleAlert } from 'lucide-react'
 import { useSeo } from '@/hooks/useSeo'
 import { getBackHref } from '@/lib/utils'
 
@@ -20,7 +20,7 @@ export const ErrorPage = ({ status = 500, message = 'Có lỗi xảy ra. Vui lò
       </div>
 
       <div className="glass glow-ring relative w-full max-w-md rounded-2xl p-10 text-center shadow-2xl shadow-black/30">
-        <FiAlertTriangle className="mx-auto mb-4 h-14 w-14 text-warning" />
+        <TriangleAlert className="mx-auto mb-4 h-14 w-14 text-warning" />
 
         <h1 className="text-gradient-brand mb-4 text-6xl font-extrabold tracking-tight">{status}</h1>
 
@@ -30,7 +30,7 @@ export const ErrorPage = ({ status = 500, message = 'Có lỗi xảy ra. Vui lò
           href={backHref}
           className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-8 py-2.5 font-semibold text-white shadow-lg shadow-primary/30 transition-all hover:bg-primary-strong active:scale-[0.98]"
         >
-          <FiRotateCcw /> Quay lại trang trước
+          <RotateCcw className="h-4 w-4" /> Quay lại trang trước
         </a>
       </div>
     </section>

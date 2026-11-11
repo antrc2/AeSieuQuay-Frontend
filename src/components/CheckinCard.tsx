@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
 
 import { doCheckin, getCheckinStatus, type CheckinStatus } from '@/api/admin'
 import { showApiError, showSuccess } from '@/utils/swal'
@@ -34,12 +33,12 @@ export const CheckinCard = ({ className }: { className?: string }) => {
     return (
       <div className={cn('mx-auto mt-6 flex max-w-2xl flex-wrap items-center justify-center gap-3 rounded-2xl border border-border-c bg-surface/70 px-5 py-4 text-center text-sm', className)}>
         <span className="text-muted">Đăng nhập để điểm danh nhận Xu mỗi ngày.</span>
-        <Link
-          to="/dang-nhap"
+        <a
+          href="/dang-nhap"
           className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-strong"
         >
           Đăng nhập
-        </Link>
+        </a>
       </div>
     )
   }

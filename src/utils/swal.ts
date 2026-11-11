@@ -6,14 +6,27 @@ import Swal from 'sweetalert2'
  * - showSuccess(title, text): hiển thị thông báo thành công
  */
 
-const escapeHtml = (s = '') =>
-  String(s).replace(/[&<>"']/g, (c) => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
-  }[c]))
+/** Shape tối thiểu của ApiError mà helper này đọc (tránh phụ thuộc vòng vào api/client). */
+interface ApiErrorLike {
+  message?: string
+  data?: {
+    message?: string
+    data?: {
+      errors?: Array<{ loc?: unknown; msg?: string }>
+    }
+  }
+}
+
+const HTML_ESCAPES: Record<string, string> = {
+  '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+}
+
+const escapeHtml = (s: unknown = ''): string =>
+  String(s).replace(/[&<>"']/g, (c) => HTML_ESCAPES[c])
 
 /** Lấy danh sách lỗi validation từ envelope 422 */
-const validationRows = (err) => {
-  const errors = err?.data?.data?.errors
+const validationRows = (err: unknown): string[] => {
+  const errors = (err as ApiErrorLike | null | undefined)?.data?.data?.errors
   if (!Array.isArray(errors) || !errors.length) return []
   return errors.map((e) => {
     const field = Array.isArray(e.loc) ? e.loc.join('.') : ''
@@ -23,13 +36,13 @@ const validationRows = (err) => {
 }
 
 /** Hiển thị lỗi API (axios + ApiError) */
-export const showApiError = async (err, fallbackTitle = 'Thất bại') => {
+export const showApiError = async (err: unknown, fallbackTitle = 'Thất bại') => {
+  const e = err as ApiErrorLike | null | undefined
   // Ưu tiên message backend trả về trong envelope { success, code, message, data }
-  const message =
-    err?.data?.message || err?.message || 'Đã có lỗi xảy ra, vui lòng thử lại.'
+  const message = e?.data?.message || e?.message || 'Đã có lỗi xảy ra, vui lòng thử lại.'
   const rows = validationRows(err)
 
-  await Swal.fire({
+  return Swal.fire({
     icon: 'error',
     title: fallbackTitle,
     // Không có lỗi validation → hiển thị thẳng message backend
@@ -48,8 +61,8 @@ export const showApiError = async (err, fallbackTitle = 'Thất bại') => {
 
 /** Hiển thị thành công — có nút OK, ĐỒNG THỜI tự đóng sau `timer` ms (1.5s).
  *  Bấm OK nếu vội; truyền `timer` khác nếu muốn nhanh/chậm hơn. */
-export const showSuccess = async (title, text, timer = 1500) => {
-  await Swal.fire({
+export const showSuccess = async (title: string, text?: string, timer = 1500) =>
+  Swal.fire({
     icon: 'success',
     title,
     text,
@@ -59,16 +72,6 @@ export const showSuccess = async (title, text, timer = 1500) => {
     confirmButtonText: 'OK',
     confirmButtonColor: '#1e90ff',
     allowOutsideClick: false,
-  })
-}
-
-/** Thông báo thông thường (info) */
-export const showInfo = (title, text) =>
-  Swal.fire({
-    icon: 'info',
-    title,
-    text,
-    confirmButtonColor: '#1e90ff',
   })
 
 export default Swal

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 
+import { useAdminList } from '@/hooks/useAdminList'
 import { useSeo } from '@/hooks/useSeo'
 import {
   createServerCategory,
@@ -121,23 +122,10 @@ const CategoryModal = ({
 export const AdminServerCategoriesPage = () => {
   useSeo({ title: 'Quản trị — Thể loại máy chủ — SV AeSieuQuay', noindex: true })
 
-  const [rows, setRows] = useState<AdminServerCategory[] | null>(null)
-  const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState<AdminServerCategory | 'new' | null>(null)
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    try {
-      setRows(await listServerCategories({ include_inactive: true }))
-    } catch (err) {
-      await showApiError(err, 'Không tải được thể loại')
-      setRows([])
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => { load() }, [load])
+  const fetchCategories = useCallback(() => listServerCategories({ include_inactive: true }), [])
+  const { rows, loading, load } = useAdminList(fetchCategories, 'Không tải được thể loại')
 
   return (
     <div className="space-y-6">

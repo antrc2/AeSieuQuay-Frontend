@@ -20,7 +20,7 @@ export interface DepositLike {
 }
 
 /** Bảng màu đúng §1.3 admin-history-api.md. */
-export const depositBadge = (d: DepositLike) => {
+const depositBadge = (d: DepositLike) => {
   const cmd = d.credit_command_status
 
   if (d.status === 'credited') {

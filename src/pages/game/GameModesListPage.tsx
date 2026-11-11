@@ -1,4 +1,3 @@
-import { Link } from 'react-router-dom'
 import { Server } from 'lucide-react'
 import SiteLayout from '@/components/layout/SiteLayout'
 import DataUnavailable from '@/components/ui/DataUnavailable'
@@ -92,8 +91,9 @@ export const GameModesListPage = () => {
             <ClusterStatsStrip stats={data.stats} className="mt-6 justify-center" />
             {(data.categories ?? []).length > 0 && (
               <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
-                <Link
-                  to="/may-chu"
+                {/* <a href> chủ ý — trang user điều hướng full reload để nhận window.DATA mới. */}
+                <a
+                  href="/may-chu"
                   className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${
                     data.current_category
                       ? 'border-border-c bg-surface text-muted hover:text-fg'
@@ -101,11 +101,11 @@ export const GameModesListPage = () => {
                   }`}
                 >
                   Tất cả
-                </Link>
+                </a>
                 {(data.categories ?? []).map((c) => (
-                  <Link
+                  <a
                     key={c.slug}
-                    to={`/may-chu/the-loai/${c.slug}`}
+                    href={`/may-chu/the-loai/${c.slug}`}
                     className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${
                       data.current_category?.slug === c.slug
                         ? 'border-primary/40 bg-primary-soft text-primary'
@@ -114,7 +114,7 @@ export const GameModesListPage = () => {
                   >
                     {c.name}
                     {typeof c.count === 'number' ? ` (${c.count})` : ''}
-                  </Link>
+                  </a>
                 ))}
               </div>
             )}

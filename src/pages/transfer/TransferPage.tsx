@@ -61,7 +61,7 @@ const STEP_BADGE: Record<StepTone, 'brand' | 'success' | 'warning' | 'danger'> =
 }
 
 /** Error map tiếng Việt — bảng FRONTEND-4 §3.2. */
-export const localizeTransferError = (error: string | null, transferId: string | null): string => {
+const localizeTransferError = (error: string | null, transferId: string | null): string => {
   if (!error) return 'Không xác định — kiểm tra lịch sử sau ít phút.'
   if (error.includes('player_not_found'))
     return 'Bạn chưa có nhân vật ở máy chủ đích — vào server đó 1 lần rồi thử lại'
@@ -158,7 +158,9 @@ export const TransferPage = () => {
 
   const data = result.status === 'ok' ? result.data : null
   
-  const isLoggedIn = Boolean(data?.my) || Boolean(user)
+  // Chỉ tin phiên thật (AuthProvider) — `data.my` của mock không được biến khách thành "đã đăng nhập"
+  // (cùng bug đã vá ở NapThePage).
+  const isLoggedIn = Boolean(user)
   const guest = !isLoggedIn && !authLoading
 
   useEffect(() => {

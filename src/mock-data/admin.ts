@@ -8,7 +8,7 @@
  * Lỗi mô phỏng bằng `ApiError(message, status, { code, message })` giống client thật.
  *
  * Lưu ý: CHUYỂN XU KHÔNG thuộc admin (user API `/api/points/**`) — mock này
- * không có points transfer, chỉ hạ tầng: cụm / server / API key / monitor.
+ * chỉ mô phỏng phía admin: server / API key / monitor + lịch sử tiền (read-only).
  */
 import { ApiError } from '@/api/client'
 
@@ -30,11 +30,10 @@ const uuid = (): string => {
 const randomToken = () => (uuid() + uuid()).replace(/-/g, '')
 
 const fail = (message: string, status = 400, code = 'bad_request'): never => {
-  throw new ApiError(message, status, { success: false, code, message })
+  throw new ApiError(message, status, { success: false, code, message, data: null })
 }
 
 const SLUG_RE = /^[a-z0-9][a-z0-9-]*$/
-const KEY_RE = /^[A-Za-z0-9._-]+$/
 const ROLES = new Set(['proxy', 'lobby', 'game'])
 
 /** PRNG cố định theo tên server → số liệu monitor mock ổn định giữa các lần reload. */
@@ -61,7 +60,6 @@ type AnyObj = Record<string, any>
 interface MockServer {
   id: number
   cluster_id: number
-  server_key: string
   slug: string
   name: string
   role: string
@@ -134,8 +132,8 @@ const state = {
     mkServer({
       id: 1,
       cluster_id: 1,
-      server_key: 'proxy-1',
-      slug: 'proxy-1',      name: 'Proxy 1',
+      slug: 'proxy-1',
+      name: 'Proxy 1',
       role: 'proxy',
       group_slug: 'network',
       host: 'play.aesieuquay.com',
@@ -148,8 +146,8 @@ const state = {
     mkServer({
       id: 2,
       cluster_id: 1,
-      server_key: 'lobby-1',
-      slug: 'lobby-1',      name: 'Lobby 1',
+      slug: 'lobby-1',
+      name: 'Lobby 1',
       role: 'lobby',
       group_slug: 'lobby',
       host: 'lobby.aesieuquay.com',
@@ -166,8 +164,8 @@ const state = {
     mkServer({
       id: 3,
       cluster_id: 1,
-      server_key: 'survival-1',
-      slug: 'survival-1',      name: 'Survival 1',
+      slug: 'survival-1',
+      name: 'Survival 1',
       role: 'game',
       group_slug: 'survival',
       host: 'survival.aesieuquay.com',
@@ -180,8 +178,8 @@ const state = {
     mkServer({
       id: 4,
       cluster_id: 1,
-      server_key: 'skyblock-1',
-      slug: 'skyblock-1',      name: 'SkyBlock 1',
+      slug: 'skyblock-1',
+      name: 'SkyBlock 1',
       role: 'game',
       group_slug: 'skyblock',
       host: 'skyblock.aesieuquay.com',
@@ -194,8 +192,8 @@ const state = {
     mkServer({
       id: 5,
       cluster_id: 2,
-      server_key: 'creative-test',
-      slug: 'creative-test',      name: 'Creative (test)',
+      slug: 'creative-test',
+      name: 'Creative (test)',
       role: 'game',
       group_slug: 'creative',
       host: 'test.aesieuquay.com',
@@ -337,25 +335,25 @@ const state = {
   ] as AnyObj[],
 
   transfers: [
-    { transfer_id: 'tr-completed-0001', idempotency_key: 'user16:abc', from_server_key: 'lobby-1', to_server_key: 'survival-1', player_uuid: uuid(), player_name: 'AnTrc2', created_by: 16, amount: 1200, status: 'completed', debit_command_id: 'tc-d1', credit_command_id: 'tc-c1', refund_command_id: null, from_balance_before: 2350, from_balance_after: 1150, to_balance_before: 800, to_balance_after: 2000, error: null, created_at: msAgo(200), updated_at: msAgo(197), completed_at: msAgo(197) },
-    { transfer_id: 'tr-pending-0002', idempotency_key: null, from_server_key: 'lobby-1', to_server_key: 'skyblock-1', player_uuid: uuid(), player_name: 'MinhTom', created_by: 17, amount: 300, status: 'debited', debit_command_id: 'tc-d2', credit_command_id: 'tc-c2', refund_command_id: null, from_balance_before: 900, from_balance_after: 600, to_balance_before: null, to_balance_after: null, error: null, created_at: msAgo(6), updated_at: msAgo(5), completed_at: null },
-    { transfer_id: 'tr-refund-0003', idempotency_key: null, from_server_key: 'lobby-1', to_server_key: 'pvp-1', player_uuid: uuid(), player_name: 'pe_Sity', created_by: 18, amount: 500, status: 'refund_pending', debit_command_id: 'tc-d3', credit_command_id: 'tc-c3', refund_command_id: 'tc-r3', from_balance_before: 700, from_balance_after: 200, to_balance_before: 0, to_balance_after: null, error: 'credit expired: pvp-1 offline quá TTL', created_at: msAgo(60 * 50), updated_at: msAgo(60 * 48), completed_at: null },
-    { transfer_id: 'tr-reconcile-0004', idempotency_key: null, from_server_key: 'lobby-1', to_server_key: 'survival-1', player_uuid: uuid(), player_name: 'GamerPro2012', created_by: 19, amount: 800, status: 'needs_reconcile', debit_command_id: 'tc-d4', credit_command_id: 'tc-c4', refund_command_id: null, from_balance_before: 1500, from_balance_after: 700, to_balance_before: null, to_balance_after: null, error: 'agent báo uncertain nhưng timeout — cần kiểm tra thủ công', created_at: msAgo(60 * 70), updated_at: msAgo(60 * 69), completed_at: null },
-    { transfer_id: 'tr-failed-0005', idempotency_key: null, from_server_key: 'lobby-1', to_server_key: 'minigame-1', player_uuid: uuid(), player_name: 'AnTrc2', created_by: 16, amount: 100, status: 'failed', debit_command_id: 'tc-d5', credit_command_id: null, refund_command_id: null, from_balance_before: 2350, from_balance_after: null, to_balance_before: null, to_balance_after: null, error: 'server_key không bật points', created_at: msAgo(60 * 90), updated_at: msAgo(60 * 90), completed_at: null },
+    { transfer_id: 'tr-completed-0001', idempotency_key: 'user16:abc', from_server_slug: 'lobby-1', to_server_slug: 'survival-1', player_uuid: uuid(), player_name: 'AnTrc2', created_by: 16, amount: 1200, status: 'completed', debit_command_id: 'tc-d1', credit_command_id: 'tc-c1', refund_command_id: null, from_balance_before: 2350, from_balance_after: 1150, to_balance_before: 800, to_balance_after: 2000, error: null, created_at: msAgo(200), updated_at: msAgo(197), completed_at: msAgo(197) },
+    { transfer_id: 'tr-pending-0002', idempotency_key: null, from_server_slug: 'lobby-1', to_server_slug: 'skyblock-1', player_uuid: uuid(), player_name: 'MinhTom', created_by: 17, amount: 300, status: 'debited', debit_command_id: 'tc-d2', credit_command_id: 'tc-c2', refund_command_id: null, from_balance_before: 900, from_balance_after: 600, to_balance_before: null, to_balance_after: null, error: null, created_at: msAgo(6), updated_at: msAgo(5), completed_at: null },
+    { transfer_id: 'tr-refund-0003', idempotency_key: null, from_server_slug: 'lobby-1', to_server_slug: 'pvp-1', player_uuid: uuid(), player_name: 'pe_Sity', created_by: 18, amount: 500, status: 'refund_pending', debit_command_id: 'tc-d3', credit_command_id: 'tc-c3', refund_command_id: 'tc-r3', from_balance_before: 700, from_balance_after: 200, to_balance_before: 0, to_balance_after: null, error: 'credit expired: pvp-1 offline quá TTL', created_at: msAgo(60 * 50), updated_at: msAgo(60 * 48), completed_at: null },
+    { transfer_id: 'tr-reconcile-0004', idempotency_key: null, from_server_slug: 'lobby-1', to_server_slug: 'survival-1', player_uuid: uuid(), player_name: 'GamerPro2012', created_by: 19, amount: 800, status: 'needs_reconcile', debit_command_id: 'tc-d4', credit_command_id: 'tc-c4', refund_command_id: null, from_balance_before: 1500, from_balance_after: 700, to_balance_before: null, to_balance_after: null, error: 'agent báo uncertain nhưng timeout — cần kiểm tra thủ công', created_at: msAgo(60 * 70), updated_at: msAgo(60 * 69), completed_at: null },
+    { transfer_id: 'tr-failed-0005', idempotency_key: null, from_server_slug: 'lobby-1', to_server_slug: 'minigame-1', player_uuid: uuid(), player_name: 'AnTrc2', created_by: 16, amount: 100, status: 'failed', debit_command_id: 'tc-d5', credit_command_id: null, refund_command_id: null, from_balance_before: 2350, from_balance_after: null, to_balance_before: null, to_balance_after: null, error: 'server không bật points', created_at: msAgo(60 * 90), updated_at: msAgo(60 * 90), completed_at: null },
   ] as AnyObj[],
 
   commands: [
-    { id: 'c1', transfer_id: null, type: 'credit', server_key: 'survival-1', player_uuid: uuid(), player_name: 'AnTrc2', amount: 500, status: 'done', attempts: 1, ok: true, balance: 2350, balance_before: -150, error: null, expires_at_ms: nowMs() + 47 * 3_600_000, created_at_ms: nowMs() - 3_600_000, claimed_at_ms: nowMs() - 3_600_000 + 4000, completed_at_ms: nowMs() - 3_600_000 + 5200, deposit_id: 1 },
-    { id: 'c2', transfer_id: null, type: 'credit', server_key: 'survival-1', player_uuid: uuid(), player_name: 'MinhTom', amount: 200, status: 'pending', attempts: 0, ok: null, balance: null, balance_before: null, error: null, expires_at_ms: nowMs() + 48 * 3_600_000, created_at_ms: nowMs() - 120_000, claimed_at_ms: null, completed_at_ms: null, deposit_id: 2 },
-    { id: 'c4', transfer_id: null, type: 'credit', server_key: 'survival-1', player_uuid: uuid(), player_name: 'pe_Sity', amount: 100, status: 'failed', attempts: 3, ok: false, balance: null, balance_before: null, error: 'player_not_found', expires_at_ms: nowMs() - 2 * 86_400_000, created_at_ms: nowMs() - 26 * 3_600_000, claimed_at_ms: nowMs() - 26 * 3_600_000 + 9000, completed_at_ms: nowMs() - 25 * 3_600_000, deposit_id: 4 },
-    { id: 'tc-d1', transfer_id: 'tr-completed-0001', type: 'debit', server_key: 'lobby-1', player_uuid: null, player_name: 'AnTrc2', amount: 1200, status: 'done', attempts: 1, ok: true, balance: 1150, balance_before: 2350, error: null, expires_at_ms: nowMs() - 197 * 60_000 + 60_000, created_at_ms: nowMs() - 200 * 60_000, claimed_at_ms: nowMs() - 200 * 60_000, completed_at_ms: nowMs() - 199 * 60_000, deposit_id: null },
-    { id: 'tc-c1', transfer_id: 'tr-completed-0001', type: 'credit', server_key: 'survival-1', player_uuid: null, player_name: 'AnTrc2', amount: 1200, status: 'done', attempts: 1, ok: true, balance: 2000, balance_before: 800, error: null, expires_at_ms: nowMs() - 197 * 60_000 + 60_000, created_at_ms: nowMs() - 200 * 60_000, claimed_at_ms: nowMs() - 198 * 60_000, completed_at_ms: nowMs() - 197 * 60_000, deposit_id: null },
-    { id: 'tc-d2', transfer_id: 'tr-pending-0002', type: 'debit', server_key: 'lobby-1', player_uuid: null, player_name: 'MinhTom', amount: 300, status: 'done', attempts: 1, ok: true, balance: 600, balance_before: 900, error: null, expires_at_ms: nowMs() - 4 * 60_000, created_at_ms: nowMs() - 6 * 60_000, claimed_at_ms: nowMs() - 6 * 60_000, completed_at_ms: nowMs() - 5 * 60_000, deposit_id: null },
-    { id: 'tc-c2', transfer_id: 'tr-pending-0002', type: 'credit', server_key: 'skyblock-1', player_uuid: null, player_name: 'MinhTom', amount: 300, status: 'claimed', attempts: 1, ok: null, balance: null, balance_before: null, error: null, expires_at_ms: nowMs() - 2 * 60_000, created_at_ms: nowMs() - 6 * 60_000, claimed_at_ms: nowMs() - 3 * 60_000, completed_at_ms: null, deposit_id: null },
-    { id: 'tc-d3', transfer_id: 'tr-refund-0003', type: 'debit', server_key: 'lobby-1', player_uuid: null, player_name: 'pe_Sity', amount: 500, status: 'done', attempts: 1, ok: true, balance: 200, balance_before: 700, error: null, expires_at_ms: nowMs() - 60 * 48_000_000, created_at_ms: nowMs() - 60 * 50 * 60_000, claimed_at_ms: nowMs() - 60 * 50 * 60_000, completed_at_ms: nowMs() - 60 * 50 * 60_000, deposit_id: null },
-    { id: 'tc-c3', transfer_id: 'tr-refund-0003', type: 'credit', server_key: 'pvp-1', player_uuid: null, player_name: 'pe_Sity', amount: 500, status: 'expired', attempts: 0, ok: false, balance: null, balance_before: null, error: 'expired', expires_at_ms: nowMs() - 60 * 49 * 60_000, created_at_ms: nowMs() - 60 * 50 * 60_000, claimed_at_ms: null, completed_at_ms: null, deposit_id: null },
-    { id: 'tc-r3', transfer_id: 'tr-refund-0003', type: 'refund', server_key: 'lobby-1', player_uuid: null, player_name: 'pe_Sity', amount: 500, status: 'pending', attempts: 0, ok: null, balance: null, balance_before: null, error: null, expires_at_ms: nowMs() + 60_000, created_at_ms: nowMs() - 60 * 48 * 60_000, claimed_at_ms: null, completed_at_ms: null, deposit_id: null },
-    { id: 'look-xyz', transfer_id: null, type: 'look', server_key: 'survival-1', player_uuid: uuid(), player_name: 'Notch', amount: 0, status: 'done', attempts: 1, ok: true, balance: 410, balance_before: null, error: null, expires_at_ms: nowMs() - 30_000, created_at_ms: nowMs() - 90_000, claimed_at_ms: nowMs() - 60_000, completed_at_ms: nowMs() - 59_000, deposit_id: null },
+    { id: 'c1', transfer_id: null, type: 'credit', server_slug: 'survival-1', player_uuid: uuid(), player_name: 'AnTrc2', amount: 500, status: 'done', attempts: 1, ok: true, balance: 2350, balance_before: -150, error: null, expires_at_ms: nowMs() + 47 * 3_600_000, created_at_ms: nowMs() - 3_600_000, claimed_at_ms: nowMs() - 3_600_000 + 4000, completed_at_ms: nowMs() - 3_600_000 + 5200, deposit_id: 1 },
+    { id: 'c2', transfer_id: null, type: 'credit', server_slug: 'survival-1', player_uuid: uuid(), player_name: 'MinhTom', amount: 200, status: 'pending', attempts: 0, ok: null, balance: null, balance_before: null, error: null, expires_at_ms: nowMs() + 48 * 3_600_000, created_at_ms: nowMs() - 120_000, claimed_at_ms: null, completed_at_ms: null, deposit_id: 2 },
+    { id: 'c4', transfer_id: null, type: 'credit', server_slug: 'survival-1', player_uuid: uuid(), player_name: 'pe_Sity', amount: 100, status: 'failed', attempts: 3, ok: false, balance: null, balance_before: null, error: 'player_not_found', expires_at_ms: nowMs() - 2 * 86_400_000, created_at_ms: nowMs() - 26 * 3_600_000, claimed_at_ms: nowMs() - 26 * 3_600_000 + 9000, completed_at_ms: nowMs() - 25 * 3_600_000, deposit_id: 4 },
+    { id: 'tc-d1', transfer_id: 'tr-completed-0001', type: 'debit', server_slug: 'lobby-1', player_uuid: null, player_name: 'AnTrc2', amount: 1200, status: 'done', attempts: 1, ok: true, balance: 1150, balance_before: 2350, error: null, expires_at_ms: nowMs() - 197 * 60_000 + 60_000, created_at_ms: nowMs() - 200 * 60_000, claimed_at_ms: nowMs() - 200 * 60_000, completed_at_ms: nowMs() - 199 * 60_000, deposit_id: null },
+    { id: 'tc-c1', transfer_id: 'tr-completed-0001', type: 'credit', server_slug: 'survival-1', player_uuid: null, player_name: 'AnTrc2', amount: 1200, status: 'done', attempts: 1, ok: true, balance: 2000, balance_before: 800, error: null, expires_at_ms: nowMs() - 197 * 60_000 + 60_000, created_at_ms: nowMs() - 200 * 60_000, claimed_at_ms: nowMs() - 198 * 60_000, completed_at_ms: nowMs() - 197 * 60_000, deposit_id: null },
+    { id: 'tc-d2', transfer_id: 'tr-pending-0002', type: 'debit', server_slug: 'lobby-1', player_uuid: null, player_name: 'MinhTom', amount: 300, status: 'done', attempts: 1, ok: true, balance: 600, balance_before: 900, error: null, expires_at_ms: nowMs() - 4 * 60_000, created_at_ms: nowMs() - 6 * 60_000, claimed_at_ms: nowMs() - 6 * 60_000, completed_at_ms: nowMs() - 5 * 60_000, deposit_id: null },
+    { id: 'tc-c2', transfer_id: 'tr-pending-0002', type: 'credit', server_slug: 'skyblock-1', player_uuid: null, player_name: 'MinhTom', amount: 300, status: 'claimed', attempts: 1, ok: null, balance: null, balance_before: null, error: null, expires_at_ms: nowMs() - 2 * 60_000, created_at_ms: nowMs() - 6 * 60_000, claimed_at_ms: nowMs() - 3 * 60_000, completed_at_ms: null, deposit_id: null },
+    { id: 'tc-d3', transfer_id: 'tr-refund-0003', type: 'debit', server_slug: 'lobby-1', player_uuid: null, player_name: 'pe_Sity', amount: 500, status: 'done', attempts: 1, ok: true, balance: 200, balance_before: 700, error: null, expires_at_ms: nowMs() - 60 * 48_000_000, created_at_ms: nowMs() - 60 * 50 * 60_000, claimed_at_ms: nowMs() - 60 * 50 * 60_000, completed_at_ms: nowMs() - 60 * 50 * 60_000, deposit_id: null },
+    { id: 'tc-c3', transfer_id: 'tr-refund-0003', type: 'credit', server_slug: 'pvp-1', player_uuid: null, player_name: 'pe_Sity', amount: 500, status: 'expired', attempts: 0, ok: false, balance: null, balance_before: null, error: 'expired', expires_at_ms: nowMs() - 60 * 49 * 60_000, created_at_ms: nowMs() - 60 * 50 * 60_000, claimed_at_ms: null, completed_at_ms: null, deposit_id: null },
+    { id: 'tc-r3', transfer_id: 'tr-refund-0003', type: 'refund', server_slug: 'lobby-1', player_uuid: null, player_name: 'pe_Sity', amount: 500, status: 'pending', attempts: 0, ok: null, balance: null, balance_before: null, error: null, expires_at_ms: nowMs() + 60_000, created_at_ms: nowMs() - 60 * 48 * 60_000, claimed_at_ms: null, completed_at_ms: null, deposit_id: null },
+    { id: 'look-xyz', transfer_id: null, type: 'look', server_slug: 'survival-1', player_uuid: uuid(), player_name: 'Notch', amount: 0, status: 'done', attempts: 1, ok: true, balance: 410, balance_before: null, error: null, expires_at_ms: nowMs() - 30_000, created_at_ms: nowMs() - 90_000, claimed_at_ms: nowMs() - 60_000, completed_at_ms: nowMs() - 59_000, deposit_id: null },
   ] as AnyObj[],
 
   /* P&L (FRONTEND-4 §5): real_amount = tiền thật về ví · user_receive = giá trị user nhận
@@ -383,8 +381,8 @@ const state = {
   ] as AnyObj[],
 
   /* ---- FRONTEND-5 §2: nội dung site (admin_content — backend-5 §4) ----
-   * Shape khớp SiteConfigOut / HeroSlideIn / HighlightIn / GalleryIn / SocialIn /
-   * FooterColumnIn; CRUD mock mutate in-memory.
+   * Shape khớp SiteConfigOut / HeroSlideIn / HighlightIn / GalleryIn / SocialIn;
+   * CRUD mock mutate in-memory.
    */
   siteConfig: {
     id: 1,
@@ -437,29 +435,12 @@ const state = {
     { id: 3, location: 'footer', icon: 'tiktok', label: 'TikTok', url: 'https://tiktok.com/@aesieuquay', sort_order: 2, is_active: true },
   ] as AnyObj[],
 
-  footerColumns: [
-    {
-      id: 1, title: 'Khám phá', sort_order: 0, is_active: true,
-      links: [
-        { id: 1, label: 'Máy chủ', to_url: '/may-chu' },
-        { id: 2, label: 'Nạp thẻ', to_url: '/nap-the' },
-        { id: 3, label: 'Chuyển xu', to_url: '/chuyen-xu' },
-      ],
-    },
-    {
-      id: 2, title: 'Tài khoản', sort_order: 1, is_active: true,
-      links: [
-        { id: 4, label: 'Đăng nhập', to_url: '/dang-nhap' },
-        { id: 5, label: 'Đăng ký', to_url: '/dang-ky' },
-      ],
-    },
-  ] as AnyObj[],
 }
 
 function mkServer(p: Partial<MockServer> & { id: number }): MockServer {
   return {
     cluster_id: 1,
-    server_key: `server-${p.id}`,
+    slug: `server-${p.id}`,
     name: `Server ${p.id}`,
     role: 'game',
     group_slug: null,
@@ -550,10 +531,8 @@ const slotsFor = (serverId: number) => {
 
 const serverView = (s: MockServer) => {
   const slots = slotsFor(s.id)
-  const cluster = state.clusters.find((c) => c.id === s.cluster_id)
   return {
     ...s,
-    cluster_slug: cluster?.slug ?? null,
     monitor_key_configured: !!slots.monitor.raw,
     points_key_configured: !!slots.points.raw,
     monitor_key_rotated_at: slots.monitor.rotated_at,
@@ -565,8 +544,7 @@ const keysView = (s: MockServer) => {
   const slots = slotsFor(s.id)
   return {
     server_id: s.id,
-    server_key: s.server_key,
-    cluster_id: s.cluster_id,
+    slug: s.slug,
     monitor: { configured: !!slots.monitor.raw, rotated_at: slots.monitor.rotated_at },
     points: { configured: !!slots.points.raw, rotated_at: slots.points.rotated_at },
   }
@@ -580,17 +558,28 @@ const normalizePointsFlag = (role: string, value: boolean | null | undefined) =>
   return value === undefined || value === null ? true : !!value
 }
 
+/** ServerDraft.slug bỏ trống = backend tự sinh từ Tên — mock slugify đơn giản. */
+const slugifyName = (name: string) =>
+  name
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .replace(/đ/gi, 'd')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+
 function validateServerDraft(s: AnyObj, idx: number) {
   const label = idx >= 0 ? `servers[${idx}]` : 'server'
-  const key = String(s.server_key ?? '').trim()
-  if (!KEY_RE.test(key)) fail(`${label}.server_key không hợp lệ (a-z A-Z 0-9 . _ -)`, 422, 'validation_error')
-  if (state.servers.some((x) => x.server_key === key)) fail(`server_key "${key}" đã tồn tại`, 409, 'conflict')
+  const name = String(s.name ?? '').trim()
+  const slug = String(s.slug ?? '').trim().toLowerCase() || slugifyName(name)
+  if (!SLUG_RE.test(slug)) fail(`${label}.slug không hợp lệ (a-z 0-9 -)`, 422, 'validation_error')
+  if (state.servers.some((x) => x.slug === slug)) fail(`slug "${slug}" đã tồn tại`, 409, 'conflict')
   const role = s.role ?? 'game'
   if (!ROLES.has(role)) fail(`${label}.role phải là proxy|lobby|game`, 422, 'validation_error')
   const pointsEnabled = normalizePointsFlag(role, s.points_enabled)
   return {
-    server_key: key,
-    name: String(s.name ?? '').trim() || key,
+    slug,
+    name: name || slug,
     role,
     group_slug: s.group_slug || null,
     host: s.host || null,
@@ -609,81 +598,6 @@ const findMonitor = (serverName: string) =>
 /* ---------------- mock API ---------------- */
 
 export const adminMock = {
-  /* ================= clusters ================= */
-
-  async listClusters() {
-    await wait()
-    return state.clusters.map((c) => ({ ...c, servers: null }))
-  },
-
-  async getCluster(clusterId: number) {
-    await wait()
-    const c = findCluster(clusterId)
-    return {
-      ...c,
-      servers: state.servers.filter((s) => s.cluster_id === c.id).map(serverView),
-    }
-  },
-
-  async createCluster(payload: AnyObj) {
-    await wait()
-    const slug = String(payload.slug ?? '').trim().toLowerCase()
-    if (!SLUG_RE.test(slug)) fail('slug phải khớp ^[a-z0-9][a-z0-9-]*$', 422, 'validation_error')
-    if (state.clusters.some((c) => c.slug === slug)) fail(`slug "${slug}" đã tồn tại`, 409, 'conflict')
-    if (!String(payload.name ?? '').trim()) fail('name là bắt buộc', 422, 'validation_error')
-
-    const rows = (payload.servers ?? []).map((s: AnyObj, idx: number) => validateServerDraft(s, idx))
-
-    const id = Math.max(0, ...state.clusters.map((c) => c.id)) + 1
-    const cluster: MockCluster = {
-      id,
-      slug,
-      name: String(payload.name).trim(),
-      description: payload.description ?? null,
-      is_active: payload.is_active !== false,
-      sort_order: Number(payload.sort_order ?? 0),
-      created_at: nowIso(),
-      updated_at: nowIso(),
-    }
-    state.clusters.push(cluster)
-    let nextId = Math.max(0, ...state.servers.map((s) => s.id)) + 1
-    for (const draft of rows) {
-      state.servers.push(mkServer({ ...draft, id: nextId++, cluster_id: id }))
-    }
-    return { ...cluster, servers: state.servers.filter((s) => s.cluster_id === id).map(serverView) }
-  },
-
-  async updateCluster(clusterId: number, patch: AnyObj) {
-    await wait()
-    const c = findCluster(clusterId)
-    if (patch.slug !== undefined) {
-      const slug = String(patch.slug ?? '').trim().toLowerCase()
-      if (!SLUG_RE.test(slug)) fail('slug phải khớp ^[a-z0-9][a-z0-9-]*$', 422, 'validation_error')
-      if (state.clusters.some((x) => x.id !== c.id && x.slug === slug)) fail(`slug "${slug}" đã tồn tại`, 409, 'conflict')
-      c.slug = slug
-    }
-    if (patch.name !== undefined) c.name = String(patch.name).trim() || c.name
-    if (patch.description !== undefined) c.description = patch.description
-    if (patch.is_active !== undefined) c.is_active = !!patch.is_active
-    if (patch.sort_order !== undefined) c.sort_order = Number(patch.sort_order)
-    c.updated_at = nowIso()
-    return { ...c, servers: state.servers.filter((s) => s.cluster_id === c.id).map(serverView) }
-  },
-
-  async deleteCluster(clusterId: number) {
-    await wait()
-    const c = findCluster(clusterId)
-    c.is_active = false
-    c.updated_at = nowIso()
-    for (const s of state.servers) {
-      if (s.cluster_id === c.id) {
-        s.is_active = false
-        s.updated_at = nowIso()
-      }
-    }
-    return null
-  },
-
   /* ================= servers ================= */
 
   async listServers(params: { cluster_id?: number; role?: string; include_inactive?: boolean } = {}) {
@@ -709,11 +623,11 @@ export const adminMock = {
   async updateServer(serverId: number, patch: AnyObj) {
     await wait()
     const s = findServer(serverId)
-    if (patch.server_key !== undefined) {
-      const key = String(patch.server_key).trim()
-      if (!KEY_RE.test(key)) fail('server_key chỉ được chứa a-z A-Z 0-9 . _ -', 422, 'validation_error')
-      if (state.servers.some((x) => x.id !== s.id && x.server_key === key)) fail(`server_key "${key}" đã tồn tại`, 409, 'conflict')
-      s.server_key = key
+    if (patch.slug !== undefined) {
+      const slug = String(patch.slug).trim().toLowerCase()
+      if (!SLUG_RE.test(slug)) fail('slug phải khớp ^[a-z0-9][a-z0-9-]*$', 422, 'validation_error')
+      if (state.servers.some((x) => x.id !== s.id && x.slug === slug)) fail(`slug "${slug}" đã tồn tại`, 409, 'conflict')
+      s.slug = slug
     }
     if (patch.role !== undefined) {
       if (!ROLES.has(patch.role)) fail('role phải là proxy|lobby|game', 422, 'validation_error')
@@ -799,7 +713,7 @@ export const adminMock = {
       s.monitoring_enabled = true
     }
     s.updated_at = nowIso()
-    return { server_id: s.id, server_key: s.server_key, kind, api_key: slots[kind as 'monitor' | 'points'].raw }
+    return { server_id: s.id, slug: s.slug, kind, api_key: slots[kind as 'monitor' | 'points'].raw }
   },
 
   async setKey(serverId: number, kind: string, apiKey: string) {
@@ -1114,51 +1028,9 @@ export const adminMock = {
     return null
   },
 
-  async listGameModes() {
-    await wait()
-    return state.gameModes.map((m) => ({ ...m }))
-  },
-
   async getGameMode(modeId: number) {
     await wait()
     return { ...findGameMode(modeId) }
-  },
-
-  async createGameMode(payload: AnyObj) {
-    await wait()
-    const slug = String(payload.slug ?? '').trim().toLowerCase()
-    if (!/^[a-z0-9][a-z0-9-]*$/.test(slug)) fail('slug phải khớp ^[a-z0-9-]+$', 422, 'validation_error')
-    if (state.gameModes.some((m) => m.slug === slug)) fail(`slug "${slug}" đã tồn tại`, 409, 'conflict')
-    if (!String(payload.name ?? '').trim()) fail('name là bắt buộc', 422, 'validation_error')
-    const id = Math.max(0, ...state.gameModes.map((m) => m.id)) + 1
-    const mode: AnyObj = {
-      id,
-      slug,
-      name: String(payload.name).trim(),
-      tagline: payload.tagline ?? null,
-      short_desc: payload.short_desc ?? null,
-      desc: payload.desc ?? null,
-      status: payload.status ?? 'normal',
-      players_online: Number(payload.players_online ?? 0),
-      difficulty: payload.difficulty ?? null,
-      features: payload.features ?? [],
-      highlights: payload.highlights ?? [],
-      images: payload.images ?? [],
-      rules: payload.rules ?? [],
-      commands: payload.commands ?? [],
-      cluster_id: payload.cluster_id ?? 1,
-      content_html: payload.content_html ?? null,
-      content_version: 0,
-      image_key: null,
-      image_url: null,
-      category_id: payload.category_id ?? null,
-      sort_order: Number(payload.sort_order ?? 0),
-      is_active: payload.is_active !== false,
-      created_at: nowIso(),
-      updated_at: nowIso(),
-    }
-    state.gameModes.push(mode)
-    return { ...mode }
   },
 
   async updateGameMode(modeId: number, patch: AnyObj) {
@@ -1200,12 +1072,6 @@ export const adminMock = {
     return { ...m }
   },
 
-  async deleteGameMode(modeId: number) {
-    await wait()
-    const m = findGameMode(modeId)
-    state.gameModes = state.gameModes.filter((x) => x.id !== m.id)
-  },
-
   /** Upload mock — trả URL ảnh "public" giả lập để editor chèn <img>. */
   async uploadGameModeImage(file: File) {
     await wait(500)
@@ -1236,11 +1102,6 @@ export const adminMock = {
       )
     }
     return pagedAdmin(rows, q.page, q.limit ?? 20)
-  },
-
-  async getBankDeposit(id: number) {
-    await wait()
-    return { ...findBankDeposit(id) }
   },
 
   async requeueBankDeposit(id: number, username?: string) {
@@ -1286,8 +1147,8 @@ export const adminMock = {
         (r) =>
           (r.player_name || '').toLowerCase().includes(needle) ||
           r.transfer_id.startsWith(String(q.q)) ||
-          r.from_server_key.toLowerCase().includes(needle) ||
-          r.to_server_key.toLowerCase().includes(needle),
+          r.from_server_slug.toLowerCase().includes(needle) ||
+          r.to_server_slug.toLowerCase().includes(needle),
       )
     }
     return pagedAdmin(rows, q.page, q.limit ?? 20)
@@ -1306,7 +1167,7 @@ export const adminMock = {
   async listPointCommands(q: AnyObj = {}) {
     await wait()
     let rows = [...state.commands].sort((a, b) => b.created_at_ms - a.created_at_ms)
-    if (q.server_key) rows = rows.filter((r) => r.server_key === q.server_key)
+    if (q.server_slug) rows = rows.filter((r) => r.server_slug === q.server_slug)
     if (q.type) rows = rows.filter((r) => r.type === q.type)
     if (q.status) rows = rows.filter((r) => r.status === q.status)
     if (q.q) {
@@ -1345,8 +1206,8 @@ export const adminMock = {
     // tạo CREDIT command mới tinh (pending) + flip in_game như backend; agent mock: 2.5s sau done.
     const commandId = uuid()
     state.commands.push({
-      id: commandId, transfer_id: null, type: 'credit', server_key: 'lobby-1',
-      slug: 'lobby-1',      player_uuid: uuid(), player_name: t.username, amount: t.xu_amount ?? 0, status: 'pending',
+      id: commandId, transfer_id: null, type: 'credit', server_slug: 'lobby-1',
+      player_uuid: uuid(), player_name: t.username, amount: t.xu_amount ?? 0, status: 'pending',
       attempts: 0, ok: null, balance: null, balance_before: null, error: null,
       expires_at_ms: nowMs() + 48 * 3_600_000, created_at_ms: nowMs(), claimed_at_ms: null, completed_at_ms: null, deposit_id: null,
     })
@@ -1698,60 +1559,6 @@ export const adminMock = {
   async deleteSocial(id: number) {
     await wait()
     state.socials = state.socials.filter((r) => r.id !== findContentRow(state.socials, id, 'social').id)
-    return null
-  },
-
-  async listFooterColumns() {
-    await wait()
-    return state.footerColumns
-      .map((c) => ({ ...c, links: c.links.map((l: AnyObj) => ({ ...l })) }) as AnyObj)
-      .sort((a, b) => a.sort_order - b.sort_order)
-  },
-
-  async createFooterColumn(payload: AnyObj) {
-    await wait()
-    if (!String(payload.title ?? '').trim()) fail('title là bắt buộc', 422, 'validation_error')
-    const id = nextContentId(state.footerColumns)
-    let linkId = nextContentId(state.footerColumns.flatMap((c) => c.links))
-    const row = {
-      id,
-      title: String(payload.title).trim(),
-      sort_order: Number(payload.sort_order ?? id),
-      is_active: payload.is_active !== false,
-      links: (Array.isArray(payload.links) ? payload.links : []).map((l: AnyObj) => ({
-        id: linkId++,
-        label: String(l.label ?? '').trim(),
-        to_url: String(l.to_url ?? '').trim(),
-      })),
-    }
-    state.footerColumns.push(row)
-    return { ...row, links: row.links.map((l: AnyObj) => ({ ...l })) }
-  },
-
-  /** PATCH kèm `links` = upsert TOÀN BỘ links của column (backend-5 §4.2). */
-  async updateFooterColumn(id: number, patch: AnyObj) {
-    await wait()
-    const row = findContentRow(state.footerColumns, id, 'cột footer')
-    if (patch.title !== undefined) {
-      if (!String(patch.title).trim()) fail('title không được rỗng', 422, 'validation_error')
-      row.title = String(patch.title).trim()
-    }
-    if (patch.sort_order !== undefined) row.sort_order = Number(patch.sort_order)
-    if (patch.is_active !== undefined) row.is_active = !!patch.is_active
-    if (Array.isArray(patch.links)) {
-      let linkId = nextContentId(state.footerColumns.flatMap((c) => c.links))
-      row.links = patch.links.map((l: AnyObj) => ({
-        id: linkId++,
-        label: String(l.label ?? '').trim(),
-        to_url: String(l.to_url ?? '').trim(),
-      }))
-    }
-    return { ...row, links: row.links.map((l: AnyObj) => ({ ...l })) }
-  },
-
-  async deleteFooterColumn(id: number) {
-    await wait()
-    state.footerColumns = state.footerColumns.filter((r) => r.id !== findContentRow(state.footerColumns, id, 'cột footer').id)
     return null
   },
 

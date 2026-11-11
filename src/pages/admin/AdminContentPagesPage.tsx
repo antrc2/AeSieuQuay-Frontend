@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useAdminList } from '@/hooks/useAdminList'
 
 import { useSeo } from '@/hooks/useSeo'
 import {
@@ -115,23 +116,10 @@ export const AdminContentPagesPage = () => {
   useSeo({ title: 'Quản trị — Trang nội dung — SV AeSieuQuay', noindex: true })
   const navigate = useNavigate()
 
-  const [rows, setRows] = useState<AdminContentPage[] | null>(null)
-  const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState<AdminContentPage | 'new' | null>(null)
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    try {
-      setRows(await listContentPages({ include_inactive: true }))
-    } catch (err) {
-      await showApiError(err, 'Không tải được danh sách trang')
-      setRows([])
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => { load() }, [load])
+  const fetchPages = useCallback(() => listContentPages({ include_inactive: true }), [])
+  const { rows, loading, load } = useAdminList(fetchPages, 'Không tải được danh sách trang')
 
   return (
     <div className="space-y-6">

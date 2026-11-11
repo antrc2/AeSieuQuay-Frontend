@@ -42,7 +42,7 @@ const COLUMNS: { key: SortKey | null; label: string; className?: string }[] = [
 export const AdminUsersPage = () => {
   useSeo({ title: 'Quản trị — Tài khoản — SV AeSieuQuay', noindex: true })
 
-  const q = usePagedQuery<{ q: string; sort: string; order: string }>({ q: '', sort: 'regdate', order: 'desc' }, 20)
+  const q = usePagedQuery<{ q: string; sort: string; order: string }>({ q: '', sort: 'regdate', order: 'desc' }, 20, 'page_size')
   const [data, setData] = useState<PagedAdmin<AdminUser> | null>(null)
   const [loading, setLoading] = useState(true)
   const [searchDraft, setSearchDraft] = useState(q.filters.q)

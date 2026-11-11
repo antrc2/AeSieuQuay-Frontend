@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
 import SiteLayout from '@/components/layout/SiteLayout'
 import Toast from '@/components/ui/Toast'
 import { EmptyState } from '@/components/ui/States'
@@ -181,7 +180,7 @@ const Hero = ({ hero = {}, serverStatus, serverInfo = {} }: { hero?: HomePayload
                   <code className="font-mono text-sm font-semibold text-fg sm:text-base">{displayIp}</code>
                 </span>
                 <span className={cn('shrink-0 rounded-lg px-2.5 py-1 text-xs font-bold', ipCopied ? 'bg-emerald-500/15 text-emerald-500' : 'bg-primary text-white')}>
-                  {ipCopied ? 'Đã copies ✓' : 'Copy IP'}
+                  {ipCopied ? 'Đã copy ✓' : 'Copy IP'}
                 </span>
               </button>
             )}
@@ -400,27 +399,8 @@ const Hero = ({ hero = {}, serverStatus, serverInfo = {} }: { hero?: HomePayload
  * đọc khối động `window.DATA.server_status`. `server_info` chỉ còn là fallback ip. */
 
 /* ================= Chế độ chơi =================
- * ≤ 3 mode  → grid căn giữa
- * > 3 mode  → carousel: auto-next 4s, nút < >, dots
- * Responsive: mobile 1 card / tablet 2 / desktop 3
+ * Grid nhóm theo thể loại (category_slug); thiếu thể loại → nhóm "Khác".
  */
-
-const usePerView = (enabled) => {
-  const [perView, setPerView] = useState(3)
-
-  useEffect(() => {
-    if (!enabled) return
-    const calc = () => {
-      const w = window.innerWidth
-      setPerView(w >= 1024 ? 3 : w >= 640 ? 2 : 1)
-    }
-    calc()
-    window.addEventListener('resize', calc)
-    return () => window.removeEventListener('resize', calc)
-  }, [enabled])
-
-  return perView
-}
 
 const GameModes = ({
   section = {},
@@ -471,12 +451,13 @@ const GameModes = ({
                   {group.name}
                 </h3>
                 {group.slug && (
-                  <Link
-                    to={`/may-chu/the-loai/${group.slug}`}
+                  /* <a href> chủ ý — trang user điều hướng full reload để nhận window.DATA mới. */
+                  <a
+                    href={`/may-chu/the-loai/${group.slug}`}
                     className="text-sm font-semibold text-primary transition-colors hover:text-primary-strong"
                   >
                     Xem tất cả {group.name} →
-                  </Link>
+                  </a>
                 )}
               </div>
               <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -660,8 +641,6 @@ export const HomePage = () => {
 
   const data = result.data
   const hero: NonNullable<HomePayload['hero']> = data.hero ?? {}
-  // Doc v2 §1: server_status thắng server_info — IP cho FinalCTA lấy từ block mới, fallback key cũ.
-  const siteIp = formatAddress(data.server_status?.ip ?? data.server_info?.ip, data.server_status?.port)
   const siteUrl = typeof window !== 'undefined' ? window.location.origin : ''
   const socials = data.community?.socials ?? []
   const description =

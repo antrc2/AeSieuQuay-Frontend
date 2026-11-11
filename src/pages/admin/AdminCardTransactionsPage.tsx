@@ -51,7 +51,7 @@ const CardStatusBadge = ({ t }: { t: CardTransactionAdmin }) => {
 }
 
 /** Điều kiện hiện nút requeue Xu (FRONTEND-4 §5 / backend-4 §1). */
-export const canRequeueCard = (t: CardTransactionAdmin) => {
+const canRequeueCard = (t: CardTransactionAdmin) => {
   const cmd = t.credit_command_status
   if (cmd === 'pending' || cmd === 'claimed') return false // backend 400 — ẩn luôn
   return t.status === 'success' && (!t.in_game || cmd === 'failed' || cmd === 'expired' || cmd === 'uncertain')
@@ -85,7 +85,7 @@ const PlCell = ({ t }: { t: CardTransactionAdmin }) => {
 export const AdminCardTransactionsPage = () => {
   useSeo({ title: 'Quản trị — Thẻ cào — SV AeSieuQuay', noindex: true })
 
-  const q = usePagedQuery({ status: '', q: '' }, 20)
+  const q = usePagedQuery({ status: '', q: '' }, 20, 'page_size')
   const [data, setData] = useState<PagedAdmin<CardTransactionAdmin> | null>(null)
   const [stats, setStats] = useState<{ todaySum: number; failRate: string; pending: number } | null>(null)
   const [loading, setLoading] = useState(true)

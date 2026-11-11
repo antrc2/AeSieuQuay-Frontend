@@ -7,6 +7,8 @@ import { useCallback, useMemo, useState } from 'react'
  * - `query` là object sạch (bỏ rỗng) đưa thẳng vào `params` của apiGet.
  * - Đếm `filters` được áp dụng bằng chính số key có giá trị — trang dùng
  *   để quyết định polling ("còn row non-terminal trong trang này không").
+ * - `sizeKey`: tên param cỡ trang backend đọc — bank/points dùng `limit`
+ *   (mặc định), card-transactions/users dùng `page_size`.
  */
 export interface PagedQueryState<T extends Record<string, string>> {
   page: number
@@ -24,7 +26,11 @@ export interface PagedQueryState<T extends Record<string, string>> {
   resetPage: () => void
 }
 
-export function usePagedQuery<T extends Record<string, string>>(initial: T, limit = 20): PagedQueryState<T> {
+export function usePagedQuery<T extends Record<string, string>>(
+  initial: T,
+  limit = 20,
+  sizeKey: 'limit' | 'page_size' = 'limit',
+): PagedQueryState<T> {
   const [page, setPage] = useState(1)
   const [filters, setFiltersState] = useState<T>(initial)
 
@@ -39,12 +45,12 @@ export function usePagedQuery<T extends Record<string, string>>(initial: T, limi
   }, [])
 
   const query = useMemo(() => {
-    const out: Record<string, string | number> = { page, limit }
+    const out: Record<string, string | number> = { page, [sizeKey]: limit }
     for (const [k, v] of Object.entries(filters)) {
       if (v !== '' && v != null) out[k] = v
     }
     return out
-  }, [filters, page, limit])
+  }, [filters, page, limit, sizeKey])
 
   return {
     page,

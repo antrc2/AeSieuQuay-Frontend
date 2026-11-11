@@ -1,25 +1,20 @@
 import Logo from '@/components/Logo'
 import { Copy } from 'lucide-react'
 import { DEFAULT_FOOTER, DEFAULT_SERVER_INFO } from '@/data/site'
+import type { FooterColumn, SocialLink } from '@/data/contract'
 
-/**
- * @typedef {{ title: string, links: Array<{ label: string, to: string }> }} FooterColumn
- * @typedef {{ label: string, url: string }} FooterSocial
- */
+export interface FooterProps {
+  columns?: FooterColumn[]
+  socials?: SocialLink[]
+  copyright?: string
+  ip?: string
+}
 
-/**
- * @param {{
- *   columns?: FooterColumn[],
- *   socials?: FooterSocial[],
- *   copyright?: string,
- *   ip?: string,
- * }} props
- */
-export const Footer = ({ columns = [], socials = [], copyright = '', ip = '' }) => {
-  const cols = columns.length ? columns : DEFAULT_FOOTER.columns
-  const socialsList = socials.length ? socials : DEFAULT_FOOTER.socials
-  const copyrightText = copyright || DEFAULT_FOOTER.copyright
-  const serverIp = ip || DEFAULT_SERVER_INFO.ip
+export const Footer = ({ columns = [], socials = [], copyright = '', ip = '' }: FooterProps) => {
+  const cols = columns.length ? columns : DEFAULT_FOOTER.columns ?? []
+  const socialsList = socials.length ? socials : DEFAULT_FOOTER.socials ?? []
+  const copyrightText = copyright || DEFAULT_FOOTER.copyright || ''
+  const serverIp = ip || DEFAULT_SERVER_INFO.ip || ''
 
   return (
     <footer className="relative mt-24 overflow-hidden border-t border-border-c bg-surface">

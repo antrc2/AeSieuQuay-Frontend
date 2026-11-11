@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 
 import { useSeo } from '@/hooks/useSeo'
 import {
@@ -21,8 +21,6 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/States'
-
-const KEY_RE = /^[A-Za-z0-9._-]+$/
 
 /** Trang quản lý MÁY CHỦ HỢP NHẤT (hạ tầng + trang public /may-chu). Không còn cụm. */
 export const AdminServersPage = () => {
@@ -253,7 +251,7 @@ type ServerForm = {
   credit_destination: boolean
 }
 
-export const ServerFormModal = ({
+const ServerFormModal = ({
   server,
   categories,
   onClose,

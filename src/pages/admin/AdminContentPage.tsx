@@ -38,15 +38,16 @@ import Modal from '@/components/admin/Modal'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { EmptyState, Skeleton } from '@/components/ui/States'
+import { useAdminList } from '@/hooks/useAdminList'
 import { cn } from '@/lib/utils'
 
 /**
- * FRONTEND-5 §3 — /admin/content: "Nội dung website", 6 tab CRUD
+ * FRONTEND-5 §3 — /admin/content: "Nội dung website", 5 tab CRUD
  * (backend-5 §4 — modules/api/admin_content).
  *
  * Chính sách chủ server: MỌI nội dung DB show ra user phải quản lý được ở đây —
- * hero slides, highlight, gallery, socials, footer columns, site-config.
- * Menu Header KHÔNG nằm ở đây: FE tự sở hữu (DEFAULT_MENU — src/data/site.js).
+ * hero slides, highlight, gallery, socials, site-config.
+ * Menu Header KHÔNG nằm ở đây: FE tự sở hữu (DEFAULT_MENU — src/data/site.ts).
  * Ảnh upload qua uploadContentImage (prefix `content`), gửi cả image_key + image_url.
  * Nút "Đồng bộ cache" gọi refreshSiteCache() (429 trong 15s — message backend tiếng Việt).
  */
@@ -90,38 +91,6 @@ const makeSortSwapper =
       await showApiError(err, 'Không đổi được thứ tự')
     }
   }
-
-/** Load list + reload + toast lỗi — idiom AdminPromotionsPage (aliveRef chống setState sau unmount). */
-function useContentList<T>(fetcher: () => Promise<T[]>, errorTitle: string) {
-  const [rows, setRows] = useState<T[] | null>(null)
-  const [loading, setLoading] = useState(true)
-  const aliveRef = useRef(true)
-
-  const load = useCallback(async () => {
-    setLoading(true)
-    try {
-      const res = await fetcher()
-      if (aliveRef.current) setRows(res)
-    } catch (err) {
-      if (aliveRef.current) {
-        await showApiError(err, errorTitle)
-        setRows([])
-      }
-    } finally {
-      if (aliveRef.current) setLoading(false)
-    }
-  }, [fetcher, errorTitle])
-
-  useEffect(() => {
-    aliveRef.current = true
-    load()
-    return () => {
-      aliveRef.current = false
-    }
-  }, [load])
-
-  return { rows, loading, load, setRows }
-}
 
 /* ================= ô ảnh upload dùng chung 3.1/3.2 ================= */
 
@@ -423,7 +392,7 @@ const HeroFormModal = ({ editing, onClose, onSaved }: { editing: AdminHeroSlide 
 
 const HeroTab = () => {
   const fetcher = useCallback(() => listHeroSlides(), [])
-  const { rows, loading, load } = useContentList(fetcher, 'Không tải được danh sách slide')
+  const { rows, loading, load } = useAdminList(fetcher, 'Không tải được danh sách slide')
   const [editing, setEditing] = useState<AdminHeroSlide | 'new' | null>(null)
   const swap = makeSortSwapper(rows ?? [], load, (id, body) => updateHeroSlide(id, body))
   const list = bySort(rows ?? [])
@@ -573,7 +542,7 @@ const HighlightFormModal = ({ editing, onClose, onSaved }: { editing: AdminHighl
 
 const HighlightTab = () => {
   const fetcher = useCallback(() => listHighlights(), [])
-  const { rows, loading, load } = useContentList(fetcher, 'Không tải được danh sách highlight')
+  const { rows, loading, load } = useAdminList(fetcher, 'Không tải được danh sách highlight')
   const [editing, setEditing] = useState<AdminHighlight | 'new' | null>(null)
   const swap = makeSortSwapper(rows ?? [], load, (id, body) => updateHighlight(id, body))
   const list = bySort(rows ?? [])
@@ -742,7 +711,7 @@ const GalleryFormModal = ({ editing, onClose, onSaved }: { editing: AdminGallery
 
 const GalleryTab = () => {
   const fetcher = useCallback(() => listGallery(), [])
-  const { rows, loading, load } = useContentList(fetcher, 'Không tải được gallery')
+  const { rows, loading, load } = useAdminList(fetcher, 'Không tải được gallery')
   const [editing, setEditing] = useState<AdminGalleryImage | 'new' | null>(null)
   const swap = makeSortSwapper(rows ?? [], load, (id, body) => updateGalleryImage(id, body))
   const list = bySort(rows ?? [])
@@ -926,7 +895,7 @@ const SocialFormModal = ({ editing, onClose, onSaved }: { editing: AdminSocial |
 
 const SocialsTab = () => {
   const fetcher = useCallback(() => listSocials(), [])
-  const { rows, loading, load } = useContentList(fetcher, 'Không tải được danh sách mạng xã hội')
+  const { rows, loading, load } = useAdminList(fetcher, 'Không tải được danh sách mạng xã hội')
   const [editing, setEditing] = useState<AdminSocial | 'new' | null>(null)
   const swap = makeSortSwapper(rows ?? [], load, (id, body) => updateSocial(id, body))
   const list = bySort(rows ?? [])
@@ -999,15 +968,6 @@ const SocialsTab = () => {
     </div>
   )
 }
-
-/* ================= 3.5 Tab Footer (columns + nested links editor) ================= */
-
-type LinkDraft = { label: string; to_url: string }
-type ColumnDraft = { title: string; sort_order: string; is_active: boolean; links: LinkDraft[] }
-const EMPTY_COLUMN: ColumnDraft = { title: '', sort_order: '0', is_active: true, links: [{ label: '', to_url: '' }] }
-
-/** link nội bộ `/...` (kể cả `/`, hoặc `#...`) hoặc http(s) — backend nhận cả hai. */
-const isLinkTarget = (to = '') => to === '/' || /^\/[^/]/.test(to) || to.startsWith('#') || /^https?:\/\//i.test(to)
 
 /* ================= Trang ================= */
 

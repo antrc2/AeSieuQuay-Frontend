@@ -8,11 +8,18 @@
  * `VITE_DATA_SOURCE=mock` ép dùng mock kể cả trong build production.
  */
 
+declare global {
+  interface Window {
+    /** Payload SSR backend nhúng — shape chuẩn hoá ở `src/data/contract.ts`. */
+    DATA?: unknown
+  }
+}
+
 /**
  * Đọc `window.DATA` mỗi lần gọi (không cache) để không bỏ lỡ trường hợp
  * script backend nạp muộn hoặc dữ liệu bị thay thế khi test.
  */
-export const getWindowData = () => {
+export const getWindowData = (): unknown => {
   try {
     return window.DATA ?? null
   } catch {
@@ -20,11 +27,11 @@ export const getWindowData = () => {
   }
 }
 
-export const isDev = import.meta.env.DEV
-export const isProd = import.meta.env.PROD
+export const isDev: boolean = import.meta.env.DEV
+export const isProd: boolean = import.meta.env.PROD
 
 /** Quyết định nguồn dữ liệu trang: mock hay window.DATA. */
-export const useMockData =
+export const useMockData: boolean =
   import.meta.env.VITE_DATA_SOURCE === 'window'
     ? false
     : import.meta.env.VITE_DATA_SOURCE === 'mock'
@@ -36,7 +43,7 @@ export const useMockData =
  * - dev: http://localhost:5000/api (.env.development)
  * - prod: /api (.env.production)
  */
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
+export const API_BASE_URL: string = import.meta.env.VITE_API_BASE_URL || '/api'
 
 /** Domain chuẩn dùng cho canonical/OG — fallback về origin hiện tại. */
-export const SITE_URL = (import.meta.env.VITE_SITE_URL || '').replace(/\/+$/, '')
+export const SITE_URL: string = (import.meta.env.VITE_SITE_URL || '').replace(/\/+$/, '')
